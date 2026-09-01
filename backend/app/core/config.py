@@ -6,6 +6,7 @@ class Settings(BaseSettings):
 
     app_name: str = "iPermit API"
     environment: str = "development"
+    cors_origins: list[str] = ["http://localhost:8081", "http://localhost:19006"]
 
     database_url: str = "postgresql+psycopg2://ipermit:ipermit@localhost:5432/ipermit"
 

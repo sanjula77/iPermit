@@ -51,12 +51,22 @@ TypeScript mobile app, Next.js + TypeScript admin web — per the [ADR](design.m
     - _Requirements: REQ-1_
     - _Dependencies: 1.1_
 
-- [ ] 2. Mobile App Foundation
-  - [ ] 2.1 Expo app scaffold + Expo Router navigation structure
+- [x] 2. Mobile App Foundation
+  - [x] 2.1 Expo app scaffold + Expo Router navigation structure
+    (verified: `tsc --noEmit` and `eslint .` clean; `(auth)`/`(app)` route groups
+    with redirect gating in both directions based on auth state)
     - _Requirements: n/a (foundation)_
     - _Dependencies: 0.1_
-  - [ ] 2.2 Registration/login screens wired to backend auth; secure token storage (Expo Secure Store)
+  - [x] 2.2 Registration/login screens wired to backend auth; secure token storage
+    (Expo SecureStore on native, localStorage on web since SecureStore doesn't
+    support web — verified end-to-end in a browser preview against the live backend:
+    register → auto-login → home → logout → login again, token persists across reload)
     - _Requirements: REQ-1_
+    - _Dependencies: 1.2, 2.1_
+
+  **CORS added to backend** (not originally scoped, but required for any web-based
+  client — mobile-web preview now, Next.js admin later — to call the API from a
+  browser): `backend/app/main.py` + `cors_origins` in `backend/app/core/config.py`.
     - _Dependencies: 1.2, 2.1_
 
 - [ ] 3. License Application Module

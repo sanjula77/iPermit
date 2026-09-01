@@ -32,18 +32,22 @@ TypeScript mobile app, Next.js + TypeScript admin web — per the [ADR](design.m
 ## Phases
 
 - [ ] 0. Project Scaffolding
-  - [ ] 0.1 Create repo structure (backend/, mobile/, admin-web/, docs/ already exists)
+  - [x] 0.1a Create backend/ repo structure — mobile/ and admin-web/ still pending
     - _Requirements: n/a (foundation)_
-  - [ ] 0.2 Docker Compose for local Postgres + backend dev environment
+  - [x] 0.2 Docker Compose for local Postgres + backend dev environment (verified: builds, `db` healthcheck passes, backend reachable on :8000)
     - _Requirements: n/a (foundation)_
-  - [ ] 0.3 Base tooling: linting/formatting for Python (ruff/black) and TS (eslint/prettier)
+  - [x] 0.3a Python tooling: ruff + black configured and passing — TS tooling (eslint/prettier) still pending until 2.1/3.3 scaffold the JS apps
     - _Requirements: n/a (quality gate)_
 
-- [ ] 1. Backend Foundation
-  - [ ] 1.1 FastAPI project skeleton, PostgreSQL connection, SQLAlchemy models, Alembic migrations
+- [x] 1. Backend Foundation
+  - [x] 1.1 FastAPI project skeleton, PostgreSQL connection, SQLAlchemy models, Alembic migrations
+    (verified: `alembic upgrade head` applied against real Postgres, `/ready` confirms DB connectivity)
     - _Requirements: REQ-1_
     - _Dependencies: 0.1, 0.2_
-  - [ ] 1.2 User model + JWT auth (register/login) + RBAC (DRIVER/POLICE/ADMIN)
+  - [x] 1.2 User model + JWT auth (register/login) + RBAC (DRIVER/POLICE/ADMIN)
+    (verified end-to-end: register, login by email/NIC, wrong-password rejection,
+    client-supplied `role` ignored on registration, JWT-protected `/me`, 7 automated
+    tests passing)
     - _Requirements: REQ-1_
     - _Dependencies: 1.1_
 

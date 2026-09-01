@@ -19,7 +19,7 @@ export function TextField({ label, error, style, ...rest }: TextFieldProps) {
       <TextInput
         style={[
           styles.input,
-          { color: theme.text, borderColor: error ? '#d92d20' : theme.backgroundSelected },
+          { color: theme.text, borderColor: error ? theme.danger : theme.backgroundSelected },
           style,
         ]}
         placeholderTextColor={theme.textSecondary}
@@ -28,7 +28,7 @@ export function TextField({ label, error, style, ...rest }: TextFieldProps) {
         {...rest}
       />
       {error ? (
-        <ThemedText type="small" style={styles.error}>
+        <ThemedText type="small" themeColor="danger" selectable>
           {error}
         </ThemedText>
       ) : null}
@@ -46,8 +46,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
     fontSize: 16,
-  },
-  error: {
-    color: '#d92d20',
   },
 });

@@ -1,7 +1,6 @@
 import { Link } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Pressable, ScrollView, StyleSheet } from 'react-native';
 
 import { extractErrorMessage } from '@/api/client';
 import { ThemedText } from '@/components/themed-text';
@@ -9,12 +8,14 @@ import { ThemedView } from '@/components/themed-view';
 import { TextField } from '@/components/text-field';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useAuth } from '@/context/auth-context';
+import { useTheme } from '@/hooks/use-theme';
 
 // Mirrors backend/app/schemas/auth.py RegisterRequest — keep in sync.
 const MIN_PASSWORD_LENGTH = 8;
 
 export default function RegisterScreen() {
   const { register } = useAuth();
+  const theme = useTheme();
   const [email, setEmail] = useState('');
   const [nic, setNic] = useState('');
   const [password, setPassword] = useState('');
@@ -50,8 +51,13 @@ export default function RegisterScreen() {
   }
 
   return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      contentInsetAdjustmentBehavior="automatic"
+      keyboardShouldPersistTaps="handled"
+    >
+      <ThemedView style={styles.form}>
         <ThemedText type="title" style={styles.title}>
           iPermit
         </ThemedText>
@@ -81,18 +87,18 @@ export default function RegisterScreen() {
         />
 
         {error ? (
-          <ThemedText type="small" style={styles.error} testID="register-error">
+          <ThemedText type="small" themeColor="danger" selectable testID="register-error">
             {error}
           </ThemedText>
         ) : null}
 
         <Pressable
-          style={[styles.button, isSubmitting && styles.buttonDisabled]}
+          style={[styles.button, { backgroundColor: theme.primary }, isSubmitting && styles.buttonDisabled]}
           onPress={handleSubmit}
           disabled={isSubmitting}
           testID="register-submit"
         >
-          <ThemedText type="smallBold" style={styles.buttonText}>
+          <ThemedText type="smallBold" themeColor="onPrimary">
             {isSubmitting ? 'Creating account…' : 'Register'}
           </ThemedText>
         </Pressable>
@@ -100,29 +106,30 @@ export default function RegisterScreen() {
         <Link href="/(auth)/login" testID="register-go-login">
           <ThemedText type="link">Already have an account? Log in</ThemedText>
         </Link>
-      </SafeAreaView>
-    </ThemedView>
+      </ThemedView>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: 'center' },
-  safeArea: {
-    flex: 1,
+  container: { flex: 1 },
+  content: {
+    flexGrow: 1,
     justifyContent: 'center',
+    alignItems: 'center',
     paddingHorizontal: Spacing.four,
-    gap: Spacing.three,
+    paddingVertical: Spacing.five,
+  },
+  form: {
     width: '100%',
     maxWidth: MaxContentWidth,
+    gap: Spacing.three,
   },
   title: { textAlign: 'center' },
-  error: { color: '#d92d20' },
   button: {
-    backgroundColor: '#208AEF',
     borderRadius: Spacing.two,
     paddingVertical: Spacing.three,
     alignItems: 'center',
   },
   buttonDisabled: { opacity: 0.5 },
-  buttonText: { color: '#ffffff' },
 });

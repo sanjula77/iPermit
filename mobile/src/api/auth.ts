@@ -13,16 +13,13 @@ export interface LoginPayload {
 }
 
 export async function register(payload: RegisterPayload): Promise<User> {
-  const { data } = await apiClient.post<User>('/auth/register', payload);
-  return data;
+  return apiClient.post<User>('/auth/register', payload);
 }
 
 export async function login(payload: LoginPayload): Promise<TokenResponse> {
-  const { data } = await apiClient.post<TokenResponse>('/auth/login', payload);
-  return data;
+  return apiClient.post<TokenResponse>('/auth/login', payload);
 }
 
 export async function fetchCurrentUser(): Promise<User> {
-  const { data } = await apiClient.get<User>('/auth/me');
-  return data;
+  return apiClient.get<User>('/auth/me');
 }

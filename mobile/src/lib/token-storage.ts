@@ -1,10 +1,9 @@
-import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 
 // expo-secure-store is native-only; it throws on web. Fall back to localStorage
 // there so the same auth flow works in the web preview used for development.
 const TOKEN_KEY = 'ipermit_access_token';
-const isWeb = Platform.OS === 'web';
+const isWeb = process.env.EXPO_OS === 'web';
 
 export async function saveToken(token: string): Promise<void> {
   if (isWeb) {

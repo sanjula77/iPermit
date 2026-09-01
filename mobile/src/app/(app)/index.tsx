@@ -1,47 +1,66 @@
-import { Pressable, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Pressable, ScrollView, StyleSheet } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useAuth } from '@/context/auth-context';
+import { useTheme } from '@/hooks/use-theme';
 
 export default function HomeScreen() {
   const { user, logout } = useAuth();
+  const theme = useTheme();
 
   return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      contentInsetAdjustmentBehavior="automatic"
+    >
+      <ThemedView style={styles.form}>
         <ThemedText type="title">Welcome</ThemedText>
 
         <ThemedView type="backgroundElement" style={styles.card}>
           <ThemedText type="smallBold">Email</ThemedText>
-          <ThemedText testID="home-email">{user?.email}</ThemedText>
+          <ThemedText testID="home-email" selectable>
+            {user?.email}
+          </ThemedText>
           <ThemedText type="smallBold">NIC</ThemedText>
-          <ThemedText testID="home-nic">{user?.nic}</ThemedText>
+          <ThemedText testID="home-nic" selectable>
+            {user?.nic}
+          </ThemedText>
           <ThemedText type="smallBold">Role</ThemedText>
-          <ThemedText testID="home-role">{user?.role}</ThemedText>
+          <ThemedText testID="home-role" selectable>
+            {user?.role}
+          </ThemedText>
         </ThemedView>
 
-        <Pressable style={styles.button} onPress={logout} testID="logout-button">
-          <ThemedText type="smallBold" style={styles.buttonText}>
+        <Pressable
+          style={[styles.button, { backgroundColor: theme.danger }]}
+          onPress={logout}
+          testID="logout-button"
+        >
+          <ThemedText type="smallBold" themeColor="onPrimary">
             Log out
           </ThemedText>
         </Pressable>
-      </SafeAreaView>
-    </ThemedView>
+      </ThemedView>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: 'center' },
-  safeArea: {
-    flex: 1,
+  container: { flex: 1 },
+  content: {
+    flexGrow: 1,
+    alignItems: 'center',
     paddingHorizontal: Spacing.four,
     paddingTop: Spacing.five,
-    gap: Spacing.four,
+    paddingBottom: Spacing.five,
+  },
+  form: {
     width: '100%',
-    maxWidth: 800,
+    maxWidth: MaxContentWidth,
+    gap: Spacing.four,
   },
   card: {
     borderRadius: Spacing.three,
@@ -52,7 +71,5 @@ const styles = StyleSheet.create({
     borderRadius: Spacing.two,
     paddingVertical: Spacing.three,
     alignItems: 'center',
-    backgroundColor: '#d92d20',
   },
-  buttonText: { color: '#ffffff' },
 });

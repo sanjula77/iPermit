@@ -1,4 +1,4 @@
-import { create, isAxiosError } from 'axios';
+import { fetch } from 'expo/fetch';
 
 import { getToken } from '@/lib/token-storage';
 
@@ -6,24 +6,53 @@ import { getToken } from '@/lib/token-storage';
 // (localhost won't reach a host-machine backend from those). See mobile/README.md.
 const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8000';
 
-export const apiClient = create({
-  baseURL: API_URL,
-  timeout: 10000,
-});
+export class ApiError extends Error {
+  status: number;
+  detail: unknown;
 
-apiClient.interceptors.request.use(async (config) => {
-  const token = await getToken();
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+  constructor(message: string, status: number, detail?: unknown) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.detail = detail;
   }
-  return config;
-});
+}
+
+async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const token = await getToken();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(init.headers as Record<string, string> | undefined),
+  };
+
+  const response = await fetch(`${API_URL}${path}`, { ...init, headers });
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    const detail = body?.detail;
+    const message = typeof detail === 'string' ? detail : `HTTP ${response.status}`;
+    throw new ApiError(message, response.status, detail);
+  }
+
+  if (response.status === 204) {
+    return undefined as T;
+  }
+  return response.json();
+}
+
+export const apiClient = {
+  get: <T>(path: string): Promise<T> => request<T>(path, { method: 'GET' }),
+  post: <T>(path: string, body?: unknown): Promise<T> =>
+    request<T>(path, {
+      method: 'POST',
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    }),
+};
 
 export function extractErrorMessage(error: unknown): string {
-  if (isAxiosError(error)) {
-    const detail = error.response?.data?.detail;
-    if (typeof detail === 'string') return detail;
-    if (error.message) return error.message;
+  if (error instanceof ApiError) {
+    return error.message;
   }
   return 'Something went wrong. Please try again.';
 }

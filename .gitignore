@@ -1,0 +1,33 @@
+# Claude Code tooling (not part of the project)
+.claude/
+CLAUDE.md
+skills-lock.json
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# Node / Expo / Next.js
+node_modules/
+.expo/
+.next/
+dist/
+build/
+out/
+*.tsbuildinfo
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+*.log

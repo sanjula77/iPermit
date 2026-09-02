@@ -14,5 +14,8 @@ class Settings(BaseSettings):
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
 
+    upload_dir: str = "uploads"
+    max_upload_size_bytes: int = 10 * 1024 * 1024  # 10 MB per file
+
 
 settings = Settings()

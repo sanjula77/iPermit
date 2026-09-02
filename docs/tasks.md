@@ -70,9 +70,18 @@ TypeScript mobile app, Next.js + TypeScript admin web — per the [ADR](design.m
     - _Dependencies: 1.2, 2.1_
 
 - [ ] 3. License Application Module
-  - [ ] 3.1 Backend: application model + submission endpoint (photo/document uploads)
+  - [x] 3.1 Backend: application model + submission endpoint (photo/document uploads)
+    (verified end-to-end via live curl + 16 automated tests: exactly-4-photos rule,
+    content-type + decodable-image validation, orphaned-file cleanup on partial
+    failure, ownership-scoped list/get, driver-only RBAC, `file_path` never
+    leaked in API responses. Basic structural image validation only — deeper
+    blur/face-visibility checks are deferred to the Phase 4 face recognition
+    module, see requirements.md REQ-2 AC2 note in code)
     - _Requirements: REQ-2_
     - _Dependencies: 1.2_
+    - _Known gap: submission doesn't yet trigger a notification (REQ-2 AC3) —
+      Notification model doesn't exist until Phase 8; hook point is in
+      `application_service.submit_application`._
   - [ ] 3.2 Mobile: application submission flow (camera/document picker)
     - _Requirements: REQ-2_
     - _Dependencies: 2.2, 3.1_

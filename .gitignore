@@ -12,6 +12,9 @@ venv/
 .pytest_cache/
 .ruff_cache/
 
+# User-uploaded files (license application photos/documents)
+backend/uploads/
+
 # Node / Expo / Next.js
 node_modules/
 .expo/

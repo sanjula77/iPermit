@@ -6,7 +6,11 @@ class Settings(BaseSettings):
 
     app_name: str = "iPermit API"
     environment: str = "development"
-    cors_origins: list[str] = ["http://localhost:8081", "http://localhost:19006"]
+    cors_origins: list[str] = [
+        "http://localhost:8081",  # Expo web preview
+        "http://localhost:19006",  # Expo web (legacy port)
+        "http://localhost:3000",  # Next.js admin dashboard
+    ]
 
     database_url: str = "postgresql+psycopg2://ipermit:ipermit@localhost:5432/ipermit"
 

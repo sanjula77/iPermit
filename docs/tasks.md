@@ -93,7 +93,24 @@ TypeScript mobile app, Next.js + TypeScript admin web — per the [ADR](design.m
     on its child, needed `StyleSheet.flatten`)
     - _Requirements: REQ-2_
     - _Dependencies: 2.2, 3.1_
-  - [ ] 3.3 Admin web scaffold (Next.js) + application review list + approve/reject endpoints
+  - [x] 3.3 Admin web scaffold (Next.js) + application review list + approve/reject endpoints
+    (Backend: GET /admin/applications with status filter, POST .../approve,
+    POST .../reject with required reason, ADMIN-only RBAC, state-machine guard
+    against re-deciding an already-approved/rejected application. Added
+    driver email/NIC to ApplicationRead — a UUID-only review list wasn't
+    actually usable. Added app/scripts/create_admin.py CLI to bootstrap the
+    first admin, since only DRIVER self-registration exists over HTTP.
+    Frontend: Next.js admin-web/ scaffold, admin-only login (client-side
+    role check rejects non-admin credentials even though they're valid),
+    filterable application list, inline approve/reject with reason textarea.
+    Verified end-to-end in a browser preview against the live backend: login,
+    filter, reject-with-reason, list refresh, non-admin login correctly
+    rejected. Found and fixed two real bugs: a rate-limiter test-isolation
+    bug (limiter.reset() now runs between tests) and a missing error-message
+    path (extractErrorMessage only handled ApiError, so a deliberately-thrown
+    plain Error's message was swallowed by the generic fallback) — also
+    caught a pre-existing gitignore bug where admin-web's own `.env*` rule
+    was shadowing the root's `!.env.example` negation.)
     - _Requirements: REQ-3_
     - _Dependencies: 3.1_
   - [ ] 3.4 Digital license generation (license number, expiry, QR token) on approval

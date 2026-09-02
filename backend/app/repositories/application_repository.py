@@ -3,7 +3,14 @@ import uuid
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from app.models.application import Application, ApplicationDocument, DocumentType
+from app.models.application import (
+    Application,
+    ApplicationDocument,
+    ApplicationStatus,
+    DocumentType,
+)
+
+_EAGER_LOAD = (selectinload(Application.documents), selectinload(Application.driver))
 
 
 def create(
@@ -17,14 +24,14 @@ def create(
     db.add(application)
     db.commit()
     db.refresh(application)
-    return application
+    return get_by_id(db, application.id)  # reload with driver/documents eager-loaded
 
 
 def get_by_id(db: Session, application_id: uuid.UUID) -> Application | None:
     stmt = (
         select(Application)
         .where(Application.id == application_id)
-        .options(selectinload(Application.documents))
+        .options(*_EAGER_LOAD)
     )
     return db.scalar(stmt)
 
@@ -33,7 +40,31 @@ def list_by_driver(db: Session, driver_id: uuid.UUID) -> list[Application]:
     stmt = (
         select(Application)
         .where(Application.driver_id == driver_id)
-        .options(selectinload(Application.documents))
+        .options(*_EAGER_LOAD)
         .order_by(Application.created_at.desc())
     )
     return list(db.scalars(stmt))
+
+
+def list_all(
+    db: Session, *, status: ApplicationStatus | None = None
+) -> list[Application]:
+    stmt = select(Application).options(*_EAGER_LOAD)
+    if status is not None:
+        stmt = stmt.where(Application.status == status)
+    stmt = stmt.order_by(Application.created_at.desc())
+    return list(db.scalars(stmt))
+
+
+def update_status(
+    db: Session,
+    application: Application,
+    *,
+    status: ApplicationStatus,
+    reason: str | None,
+) -> Application:
+    application.status = status
+    application.reason = reason
+    db.commit()
+    db.refresh(application)
+    return application

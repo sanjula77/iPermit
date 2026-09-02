@@ -6,6 +6,7 @@ from sqlalchemy import Enum, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
+from app.models.user import User  # noqa: F401 -- referenced by the driver relationship
 
 
 class ApplicationStatus(str, enum.Enum):
@@ -40,6 +41,7 @@ class Application(Base):
     documents: Mapped[list["ApplicationDocument"]] = relationship(
         back_populates="application", cascade="all, delete-orphan"
     )
+    driver: Mapped["User"] = relationship()
 
 
 class ApplicationDocument(Base):

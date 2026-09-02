@@ -5,9 +5,21 @@ from sqlalchemy.pool import StaticPool
 
 from app.api.deps import get_db
 from app.core.database import Base
+from app.core.rate_limit import limiter
 from app.main import app
 
 TEST_DATABASE_URL = "sqlite:///:memory:"
+
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limits():
+    """The rate limiter keys on client IP, and TestClient always uses the
+    same IP -- without a reset, limits accumulate across the whole test
+    session instead of resetting per test, causing unrelated tests to fail
+    with 429s once enough tests have run before them."""
+    limiter.reset()
+    yield
+    limiter.reset()
 
 
 @pytest.fixture()

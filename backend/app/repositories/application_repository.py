@@ -56,6 +56,17 @@ def list_all(
     return list(db.scalars(stmt))
 
 
+def set_status(
+    application: Application, *, status: ApplicationStatus, reason: str | None
+) -> None:
+    """Mutates in-memory only -- no commit. Use when the status change must
+    commit atomically with another write (see
+    application_service.approve_application, which also issues a License in
+    the same transaction). For a standalone status change, use update_status."""
+    application.status = status
+    application.reason = reason
+
+
 def update_status(
     db: Session,
     application: Application,
@@ -63,8 +74,7 @@ def update_status(
     status: ApplicationStatus,
     reason: str | None,
 ) -> Application:
-    application.status = status
-    application.reason = reason
+    set_status(application, status=status, reason=reason)
     db.commit()
     db.refresh(application)
     return application

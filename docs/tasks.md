@@ -113,10 +113,32 @@ TypeScript mobile app, Next.js + TypeScript admin web — per the [ADR](design.m
     was shadowing the root's `!.env.example` negation.)
     - _Requirements: REQ-3_
     - _Dependencies: 3.1_
-  - [ ] 3.4 Digital license generation (license number, expiry, QR token) on approval
+  - [x] 3.4 Digital license generation (license number, expiry, QR token) on approval
+    (License model + migration, issued atomically with approval in the same
+    DB transaction via application_service.approve_application — an
+    application can never end up APPROVED with no license, or vice versa,
+    if either write fails. license_no = "DL-" + random hex (no sequence
+    table needed); qr_token = secrets.token_urlsafe(32); expiry = issued_at
+    + license_validity_years (default 5, configurable). GET /licenses/me
+    added for the driver's own current license. Verified end-to-end: 404
+    before approval, license appears after approval with correct 5-year
+    expiry, two drivers get distinct license_no/qr_token, a driver can't
+    see another driver's license. 6 new tests, 31/31 passing.)
     - _Requirements: REQ-4_
     - _Dependencies: 3.3_
-  - [ ] 3.5 Mobile: digital license card screen (QR display, points, status)
+  - [~] 3.5 Mobile: digital license card screen (QR display, points, status)
+    (Partially done as part of 3.4's verification loop: a LicenseCard on
+    the Home screen shows license_no, expiry, ACTIVE/SUSPENDED status, and
+    a real scannable QR code (react-native-qrcode-svg) rendered from
+    qr_token — verified visually in the browser preview, including a real
+    bug fix (an unstyled wrapper View was painting a background seam over
+    the card). Silently and correctly shows nothing (not an error) when a
+    driver has no license yet, confirmed for both cases live.
+    Still open: **points balance** display — blocked on Phase 6 (points
+    don't exist yet). Also open: this is a card on the shared Home screen,
+    not the dedicated full-screen license view implied by "screen" in the
+    task title — revisit if a dedicated view becomes worth the navigation
+    overhead once points are added.)
     - _Requirements: REQ-4_
     - _Dependencies: 3.4_
 

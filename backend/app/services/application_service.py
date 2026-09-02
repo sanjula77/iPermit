@@ -13,6 +13,7 @@ from app.core.file_storage import (
 )
 from app.models.application import Application, ApplicationStatus, DocumentType
 from app.repositories import application_repository
+from app.services import license_service
 
 REQUIRED_FACE_PHOTOS = 4
 
@@ -131,15 +132,19 @@ def _get_pending_or_raise(db: Session, application_id: uuid.UUID) -> Application
 
 
 def approve_application(db: Session, *, application_id: uuid.UUID) -> Application:
-    """REQ-3 AC2: approve a pending application.
-
-    License/face-template generation happens in Phase 3.4/4 — this only
-    flips the status. See docs/tasks.md for the follow-up dependency.
+    """REQ-3 AC2 + REQ-4: approve a pending application and issue its digital
+    license in the same transaction -- an application should never end up
+    APPROVED with no corresponding license (or vice versa) if either write
+    fails. Face-template generation (REQ-5) is separate, Phase 4 work.
     """
     application = _get_pending_or_raise(db, application_id)
-    return application_repository.update_status(
-        db, application, status=ApplicationStatus.APPROVED, reason=None
+    application_repository.set_status(
+        application, status=ApplicationStatus.APPROVED, reason=None
     )
+    license_service.issue_license(db, application)
+    db.commit()
+    db.refresh(application)
+    return application
 
 
 def reject_application(

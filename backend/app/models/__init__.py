@@ -4,6 +4,7 @@ from app.models.application import (
     ApplicationStatus,
     DocumentType,
 )
+from app.models.license import License, LicenseStatus
 from app.models.user import User, UserRole
 
 __all__ = [
@@ -13,4 +14,6 @@ __all__ = [
     "ApplicationDocument",
     "ApplicationStatus",
     "DocumentType",
+    "License",
+    "LicenseStatus",
 ]

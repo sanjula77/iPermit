@@ -3,13 +3,16 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet } from 'react-native';
 
 import { listApplications } from '@/api/applications';
-import { extractErrorMessage } from '@/api/client';
+import { ApiError, extractErrorMessage } from '@/api/client';
+import { getMyLicense } from '@/api/licenses';
+import { LicenseCard } from '@/components/license-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useAuth } from '@/context/auth-context';
 import { useTheme } from '@/hooks/use-theme';
 import type { Application, ApplicationStatus } from '@/types/application';
+import type { License } from '@/types/license';
 
 const STATUS_COLOR: Record<ApplicationStatus, 'primary' | 'danger' | 'textSecondary'> = {
   PENDING: 'textSecondary',
@@ -22,6 +25,8 @@ export default function HomeScreen() {
   const theme = useTheme();
   const [applications, setApplications] = useState<Application[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [license, setLicense] = useState<License | null>(null);
+  const [licenseError, setLicenseError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -31,6 +36,24 @@ export default function HomeScreen() {
       })
       .catch((err) => {
         if (!cancelled) setLoadError(extractErrorMessage(err));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    getMyLicense()
+      .then((data) => {
+        if (!cancelled) setLicense(data);
+      })
+      .catch((err) => {
+        // No license yet is expected (not every driver has one) -- only
+        // surface genuine errors, not the routine 404.
+        if (!cancelled && !(err instanceof ApiError && err.status === 404)) {
+          setLicenseError(extractErrorMessage(err));
+        }
       });
     return () => {
       cancelled = true;
@@ -60,6 +83,14 @@ export default function HomeScreen() {
             {user?.role}
           </ThemedText>
         </ThemedView>
+
+        {license ? (
+          <LicenseCard license={license} />
+        ) : licenseError ? (
+          <ThemedText type="small" themeColor="danger" selectable testID="license-error">
+            {licenseError}
+          </ThemedText>
+        ) : null}
 
         <ThemedView style={styles.applicationsSection}>
           <ThemedText type="subtitle">Your Applications</ThemedText>

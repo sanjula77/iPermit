@@ -82,7 +82,15 @@ TypeScript mobile app, Next.js + TypeScript admin web — per the [ADR](design.m
     - _Known gap: submission doesn't yet trigger a notification (REQ-2 AC3) —
       Notification model doesn't exist until Phase 8; hook point is in
       `application_service.submit_application`._
-  - [ ] 3.2 Mobile: application submission flow (camera/document picker)
+  - [x] 3.2 Mobile: application submission flow (camera/document picker)
+    (4 face photo slots with camera+library capture via expo-image-picker,
+    3 document slots via expo-document-picker, cross-platform FormData upload
+    handling web `File` objects vs. native `{uri,name,type}`. Home screen
+    fetches and displays the driver's own application status. Verified
+    end-to-end in a browser preview: full multipart submission to the live
+    backend, 201 response, redirect to home, PENDING status displayed.
+    Found and fixed a real bug: `Link asChild` doesn't accept an array style
+    on its child, needed `StyleSheet.flatten`)
     - _Requirements: REQ-2_
     - _Dependencies: 2.2, 3.1_
   - [ ] 3.3 Admin web scaffold (Next.js) + application review list + approve/reject endpoints

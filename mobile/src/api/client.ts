@@ -18,10 +18,16 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+async function request<T>(
+  path: string,
+  init: RequestInit = {},
+  options: { isFormData?: boolean } = {},
+): Promise<T> {
   const token = await getToken();
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    // Multipart requests must NOT set this — fetch generates the
+    // boundary itself. Setting it manually breaks the server's parser.
+    ...(options.isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...(init.headers as Record<string, string> | undefined),
   };
@@ -48,6 +54,8 @@ export const apiClient = {
       method: 'POST',
       body: body !== undefined ? JSON.stringify(body) : undefined,
     }),
+  postForm: <T>(path: string, formData: FormData): Promise<T> =>
+    request<T>(path, { method: 'POST', body: formData as unknown as BodyInit }, { isFormData: true }),
 };
 
 export function extractErrorMessage(error: unknown): string {

@@ -4,6 +4,8 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.api.deps import get_db
+from app.core import face_index
+from app.core.config import settings
 from app.core.database import Base
 from app.core.rate_limit import limiter
 from app.main import app
@@ -20,6 +22,19 @@ def _reset_rate_limits():
     limiter.reset()
     yield
     limiter.reset()
+
+
+@pytest.fixture(autouse=True)
+def isolated_face_store(tmp_path, monkeypatch):
+    """face_templates.db is a real SQLite file (not the in-memory Postgres
+    substitute), and the FAISS index is a module-level singleton -- both
+    need resetting per test or templates leak across tests."""
+    monkeypatch.setattr(
+        settings, "face_template_db_path", str(tmp_path / "face_templates.db")
+    )
+    face_index._index = None
+    yield
+    face_index._index = None
 
 
 @pytest.fixture()

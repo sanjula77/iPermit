@@ -11,6 +11,7 @@ class LicenseRead(BaseModel):
     license_no: str
     qr_token: str
     status: LicenseStatus
+    points: int
     issued_at: datetime
     expiry_at: datetime
 

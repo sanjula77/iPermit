@@ -4,7 +4,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from sqlalchemy import text
 
-from app.api.routers import admin, applications, auth, face, licenses
+from app.api.routers import admin, applications, auth, face, licenses, police
 from app.core.config import settings
 from app.core.database import SessionLocal
 from app.core.rate_limit import limiter
@@ -25,6 +25,7 @@ app.include_router(applications.router)
 app.include_router(admin.router)
 app.include_router(licenses.router)
 app.include_router(face.router)
+app.include_router(police.router)
 
 
 @app.get("/health")

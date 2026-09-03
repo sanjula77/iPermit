@@ -32,6 +32,12 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
         }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "iPermit uses the camera for officer identity verification (face scan and license QR scan)."
+        }
       ]
     ],
     "experiments": {

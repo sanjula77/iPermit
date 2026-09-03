@@ -8,8 +8,10 @@ from app.core.database import Base
 from app.models import (  # noqa: F401 -- ensures all models are registered on Base
     Application,
     ApplicationDocument,
+    Fine,
     License,
     User,
+    Violation,
 )
 
 config = context.config

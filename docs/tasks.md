@@ -218,24 +218,85 @@ TypeScript mobile app, Next.js + TypeScript admin web — per the [ADR](design.m
     - _Requirements: REQ-5_
     - _Dependencies: 4.1_
 
-- [ ] 5. Police Verification & Violation Detection
-  - [ ] 5.1 Officer face-scan + QR-scan verification endpoints and mobile screens
+- [~] 5. Police Verification & Violation Detection
+  - [x] 5.1 Officer face-scan + QR-scan verification endpoints and mobile screens
+    (Backend: POST /police/verify-face (live photo -> face_engine.detect_faces
+    -> face_index.search top-3) and GET /police/verify-qr/{qr_token} (direct
+    license lookup, no ambiguity since it's a token match not a biometric
+    one), both POLICE-only via require_role. Added
+    face_template_store.get_driver_id_by_rowid to resolve a FAISS rowid back
+    to a driver (search only returns rowids). Mobile: new (app)/police-verify.tsx
+    with a Face Scan tab (reuses the existing takePhoto() camera picker) and
+    a QR Scan tab (added expo-camera's CameraView for real scanning, plus a
+    manual-token text entry as a fallback that's actually what got exercised
+    in the browser preview, since a headless preview has no real camera to
+    point at a QR code). A confident face match or a QR/NIC hit navigates
+    straight to (app)/police-driver.tsx with the driver summary passed as a
+    route param. Verified live end-to-end: face-scan against an enrolled
+    driver's own photo returns similarity 1.0 and auto-opens their detail
+    view; a driver account gets 403 from every /police/* route.)
     - _Requirements: REQ-6_
     - _Dependencies: 4.2, 2.2_
-  - [ ] 5.2 NIC/license lookup for officers
+  - [x] 5.2 NIC/license lookup for officers
+    (GET /police/lookup?nic=|license_no= on the same DriverSummary shape as
+    verify-face/verify-qr, added as the "NIC / License" tab on
+    police-verify.tsx. Rejects with 422 if neither param is given, 404 if
+    nothing matches. Verified live via the browser preview: looked up a
+    driver by NIC, landed on their detail screen with correct license
+    status/points/violation history.)
     - _Requirements: REQ-6_
     - _Dependencies: 1.2_
-  - [ ] 5.3 Manual-confirmation UI for low-confidence face matches
+  - [x] 5.3 Manual-confirmation UI for low-confidence face matches
+    (REQ-6 AC4: verify-face never auto-confirms below settings.face_match_threshold
+    (the same 0.42 documented as unvalidated in Phase 4) or when the FAISS
+    index has no match at all -- requires_manual_confirmation is set and the
+    UI shows the ranked candidates (or "no close match" if none) instead of
+    silently picking one. The officer must tap a specific candidate to open
+    their detail view; nothing is auto-selected. Verified live: with no
+    enrolled drivers, verify-face correctly returns
+    requires_manual_confirmation=true with an empty candidate list rather
+    than erroring.)
     - _Requirements: REQ-6_
     - _Dependencies: 5.1_
   - [ ] 5.4 Violation detection service: YOLOv8n-seg (lane) + YOLOv8n (vehicle) + three-tier
     overlap check — train/fine-tune on the JPJ Lane Dataset, expose as a callable service
+    (Not started. Blocked on a real decision, not effort: there is no dataset
+    or GPU available in this environment to train from scratch per
+    requirements.md's known gap ("no prior model or dataset is available to
+    reuse"). Needs the project owner to source/build a lane dataset (or pick
+    a stand-in public dataset) and decide where training actually runs
+    before this can proceed -- see the open question raised alongside this
+    update.)
     - _Requirements: REQ-7_
     - _Dependencies: 1.1_
   - [ ] 5.5 Officer confirmation UI for AI-flagged violations
+    (Blocked on 5.4 -- there's no AI-flagged candidate to confirm yet. The
+    manually-recorded violation flow built in 5.6 uses the same driver-detail
+    screen and will be the base this extends once 5.4 exists.)
     - _Requirements: REQ-7_
     - _Dependencies: 5.4_
-  - [ ] 5.6 Violation recording + point deduction schedule + fine generation (single DB transaction)
+  - [x] 5.6 Violation recording + point deduction schedule + fine generation (single DB transaction)
+    (Built ahead of 5.5 since an officer can record a violation manually
+    (evidence_ref is an optional free-text field, ready for 5.4/5.5 to
+    populate with a real evidence image reference later) -- AI-assisted
+    flagging is an enhancement to this flow, not a prerequisite for it.
+    New Violation/Fine models + a single Alembic migration that also adds
+    License.points (server_default='0' to backfill existing rows). REQ-8
+    AC1's schedule (WHITE_LINE=3, SPEEDING=4, RED_LIGHT=6, DRUNK_DRIVING=10
+    points; placeholder LKR fine amounts) lives in
+    models/violation.py:VIOLATION_POINTS and models/fine.py:VIOLATION_FINE_AMOUNT,
+    both explicitly flagged as unsourced from any real traffic-fine schedule
+    -- same honesty pattern as face_match_threshold. violation_service.record_violation
+    creates the Violation + Fine and updates License.points in one
+    transaction, suspending at the REQ-8 AC2 threshold (10). Also closed a
+    known gap from task 3.5: License.points now exists and both the
+    /licenses/me API response and the mobile LicenseCard display it, so the
+    card's point balance is no longer blocked on this phase. Verified live:
+    three violations recorded via the mobile UI/API against the same driver
+    correctly accumulated 3+6+4=13 points and flipped the license to
+    SUSPENDED at the threshold, both /police/lookup and the driver's own
+    /licenses/me immediately reflected it. 14 new backend tests, 54/54
+    passing; ruff/black clean.)
     - _Requirements: REQ-8, REQ-9_
     - _Dependencies: 5.3, 5.5_
 

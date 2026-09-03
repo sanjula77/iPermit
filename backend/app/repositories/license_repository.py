@@ -41,3 +41,11 @@ def get_latest_for_driver(db: Session, driver_id: uuid.UUID) -> License | None:
         .limit(1)
     )
     return db.scalar(stmt)
+
+
+def get_by_qr_token(db: Session, qr_token: str) -> License | None:
+    return db.scalar(select(License).where(License.qr_token == qr_token))
+
+
+def get_by_license_no(db: Session, license_no: str) -> License | None:
+    return db.scalar(select(License).where(License.license_no == license_no))

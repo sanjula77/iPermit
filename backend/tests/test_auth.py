@@ -1,7 +1,11 @@
 def test_register_creates_driver(client):
     response = client.post(
         "/auth/register",
-        json={"email": "driver@example.com", "nic": "991234567V", "password": "supersecret"},
+        json={
+            "email": "driver@example.com",
+            "nic": "991234567V",
+            "password": "supersecret",
+        },
     )
     assert response.status_code == 201
     body = response.json()
@@ -26,7 +30,11 @@ def test_register_rejects_client_supplied_role(client):
 
 
 def test_duplicate_email_rejected(client):
-    payload = {"email": "dup@example.com", "nic": "991234569V", "password": "supersecret"}
+    payload = {
+        "email": "dup@example.com",
+        "nic": "991234569V",
+        "password": "supersecret",
+    }
     first = client.post("/auth/register", json=payload)
     assert first.status_code == 201
 
@@ -40,11 +48,16 @@ def test_duplicate_email_rejected(client):
 def test_login_and_me(client):
     client.post(
         "/auth/register",
-        json={"email": "login@example.com", "nic": "991234571V", "password": "supersecret"},
+        json={
+            "email": "login@example.com",
+            "nic": "991234571V",
+            "password": "supersecret",
+        },
     )
 
     login_response = client.post(
-        "/auth/login", json={"identifier": "login@example.com", "password": "supersecret"}
+        "/auth/login",
+        json={"identifier": "login@example.com", "password": "supersecret"},
     )
     assert login_response.status_code == 200
     token = login_response.json()["access_token"]
@@ -57,7 +70,11 @@ def test_login_and_me(client):
 def test_login_wrong_password_rejected(client):
     client.post(
         "/auth/register",
-        json={"email": "wrong@example.com", "nic": "991234572V", "password": "supersecret"},
+        json={
+            "email": "wrong@example.com",
+            "nic": "991234572V",
+            "password": "supersecret",
+        },
     )
 
     response = client.post(

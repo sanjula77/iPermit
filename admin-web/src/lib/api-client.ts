@@ -1,0 +1,61 @@
+import { getToken } from '@/lib/token-storage';
+
+// Set NEXT_PUBLIC_API_URL in .env.local if the backend isn't on localhost:8000.
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
+
+export class ApiError extends Error {
+  status: number;
+  detail: unknown;
+
+  constructor(message: string, status: number, detail?: unknown) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.detail = detail;
+  }
+}
+
+async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const token = getToken();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(init.headers as Record<string, string> | undefined),
+  };
+
+  const response = await fetch(`${API_URL}${path}`, { ...init, headers });
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    const detail = body?.detail;
+    const message = typeof detail === 'string' ? detail : `HTTP ${response.status}`;
+    throw new ApiError(message, response.status, detail);
+  }
+
+  if (response.status === 204) {
+    return undefined as T;
+  }
+  return response.json();
+}
+
+export const apiClient = {
+  get: <T>(path: string): Promise<T> => request<T>(path, { method: 'GET' }),
+  post: <T>(path: string, body?: unknown): Promise<T> =>
+    request<T>(path, {
+      method: 'POST',
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    }),
+};
+
+export function extractErrorMessage(error: unknown): string {
+  if (error instanceof ApiError) {
+    return error.message;
+  }
+  // Deliberately-thrown local errors (e.g. auth-context's "admin accounts
+  // only" check) carry a message meant for the user -- surface it instead
+  // of masking it with the generic fallback.
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+  return 'Something went wrong. Please try again.';
+}

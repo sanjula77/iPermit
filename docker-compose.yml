@@ -28,6 +28,8 @@ services:
       - "8000:8000"
     volumes:
       - ./backend:/app
+      - ipermit_face_models:/root/.insightface
 
 volumes:
   ipermit_pgdata:
+  ipermit_face_models:

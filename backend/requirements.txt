@@ -11,3 +11,14 @@ bcrypt==4.0.1
 python-jose[cryptography]==3.3.0
 python-multipart==0.0.20
 slowapi==0.1.9
+pillow==11.1.0
+numpy==2.4.6
+# opencv-python-headless: insightface's own deps pull in GUI opencv-python
+# regardless of this pin (different distribution name, same pip resolution
+# doesn't reconcile them) -- see the Dockerfile's forced-reinstall step,
+# which is what actually guarantees the headless build wins.
+opencv-python-headless==5.0.0.93
+onnxruntime==1.29.0
+insightface==1.0.1
+faiss-cpu==1.15.0
+requests==2.34.2

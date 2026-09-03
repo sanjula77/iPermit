@@ -15,6 +15,16 @@ docker compose up --build
 - Interactive docs: http://localhost:8000/docs
 - Health: http://localhost:8000/health · Readiness (DB check): http://localhost:8000/ready
 
+## Bootstrapping an admin/police account
+
+Only DRIVER accounts self-register (REQ-1 AC4). Create the first ADMIN or POLICE
+account via CLI, not a public endpoint:
+
+```bash
+docker compose exec backend python -m app.scripts.create_admin \
+  --email admin@ipermit.lk --nic 000000000V --password <password> --role ADMIN
+```
+
 ## Migrations
 
 Run inside the backend container (or locally with `DATABASE_URL` pointed at the

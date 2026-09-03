@@ -2,7 +2,7 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, String
+from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -29,6 +29,9 @@ class License(Base):
     status: Mapped[LicenseStatus] = mapped_column(
         Enum(LicenseStatus), default=LicenseStatus.ACTIVE
     )
+    # REQ-8 AC2: cumulative demerit points; license suspends at the
+    # configured threshold (see app.services.violation_service).
+    points: Mapped[int] = mapped_column(Integer, default=0)
     issued_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     expiry_at: Mapped[datetime] = mapped_column(DateTime)
 

@@ -23,6 +23,14 @@ export default function AppLayout() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="index" />
       <Stack.Screen name="apply" options={{ headerShown: true, title: 'Apply for License' }} />
+      <Stack.Screen
+        name="police-verify"
+        options={{ headerShown: true, title: 'Verify Driver' }}
+      />
+      <Stack.Screen
+        name="police-driver"
+        options={{ headerShown: true, title: 'Driver Details' }}
+      />
     </Stack>
   );
 }

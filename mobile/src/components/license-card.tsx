@@ -26,6 +26,9 @@ export function LicenseCard({ license }: { license: License }) {
         >
           {license.status}
         </ThemedText>
+        <ThemedText type="small" themeColor="textSecondary" testID="license-points">
+          {license.points} demerit points
+        </ThemedText>
       </View>
       <View style={styles.qrWrapper} testID="license-qr">
         <QRCode value={license.qr_token} size={120} />

@@ -45,6 +45,17 @@ def save_template(driver_id: str, embedding: np.ndarray) -> int:
         return cursor.lastrowid
 
 
+def get_driver_id_by_rowid(rowid: int) -> str | None:
+    """Reverse lookup for FAISS search results, which only carry rowids
+    (FAISS needs int64 IDs; driver_id is a UUID string) -- used to resolve a
+    match back to a driver for police verification (REQ-6 AC1)."""
+    with _connect() as conn:
+        row = conn.execute(
+            "SELECT driver_id FROM face_templates WHERE rowid = ?", (rowid,)
+        ).fetchone()
+    return row[0] if row is not None else None
+
+
 def get_template(driver_id: str) -> np.ndarray | None:
     with _connect() as conn:
         row = conn.execute(

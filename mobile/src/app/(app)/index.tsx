@@ -21,6 +21,65 @@ const STATUS_COLOR: Record<ApplicationStatus, 'primary' | 'danger' | 'textSecond
 };
 
 export default function HomeScreen() {
+  const { user } = useAuth();
+
+  if (user?.role === 'POLICE') {
+    return <PoliceHomeScreen />;
+  }
+
+  return <DriverHomeScreen />;
+}
+
+function PoliceHomeScreen() {
+  const { user, logout } = useAuth();
+  const theme = useTheme();
+
+  return (
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      contentInsetAdjustmentBehavior="automatic"
+    >
+      <ThemedView style={styles.form}>
+        <ThemedText type="title">Officer Console</ThemedText>
+
+        <ThemedView type="backgroundElement" style={styles.card}>
+          <ThemedText type="smallBold">Email</ThemedText>
+          <ThemedText testID="home-email" selectable>
+            {user?.email}
+          </ThemedText>
+          <ThemedText type="smallBold">Role</ThemedText>
+          <ThemedText testID="home-role" selectable>
+            {user?.role}
+          </ThemedText>
+        </ThemedView>
+
+        <Link href="/(app)/police-verify" asChild>
+          <Pressable
+            style={StyleSheet.flatten([styles.button, { backgroundColor: theme.primary }])}
+            testID="police-verify-link"
+          >
+            <ThemedText type="smallBold" themeColor="onPrimary">
+              Verify Driver
+            </ThemedText>
+          </Pressable>
+        </Link>
+
+        <Pressable
+          style={[styles.button, { backgroundColor: theme.danger }]}
+          onPress={logout}
+          testID="logout-button"
+        >
+          <ThemedText type="smallBold" themeColor="onPrimary">
+            Log out
+          </ThemedText>
+        </Pressable>
+      </ThemedView>
+    </ScrollView>
+  );
+}
+
+function DriverHomeScreen() {
   const { user, logout } = useAuth();
   const theme = useTheme();
   const [applications, setApplications] = useState<Application[] | null>(null);

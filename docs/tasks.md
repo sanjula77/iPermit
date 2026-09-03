@@ -302,14 +302,61 @@ TypeScript mobile app, Next.js + TypeScript admin web — per the [ADR](design.m
     - _Requirements: REQ-8, REQ-9_
     - _Dependencies: 5.3, 5.5_
 
-- [ ] 6. Fine Payment, Points & Appeals
-  - [ ] 6.1 Point balance tracking + suspension at 10 points
+- [x] 6. Fine Payment, Points & Appeals
+  - [x] 6.1 Point balance tracking + suspension at 10 points
+    (Point accumulation and the suspension threshold were already built in
+    5.6 -- what REQ-8 AC3 still needed was the *restoration* half:
+    "restore points/reactivate a license after the associated fine(s) are
+    paid, per the defined restoration rule." Added
+    violation_service.restore_points_for_violation as that defined rule:
+    subtract the specific violation's points_deducted from License.points
+    (floored at 0), reactivating a SUSPENDED license if the balance drops
+    back below the threshold. Shared by both 6.2 (payment) and 6.3
+    (appeal-overturned) -- the two are mutually exclusive paths out of
+    UNPAID, so there's no double-restore risk between them. Verified live:
+    paying off a 10-point DRUNK_DRIVING fine took a SUSPENDED license back
+    to ACTIVE with 0 points.)
     - _Requirements: REQ-8_
     - _Dependencies: 5.6_
-  - [ ] 6.2 Mock payment flow (mobile + backend) + transactional fine-status update
+  - [x] 6.2 Mock payment flow (mobile + backend) + transactional fine-status update
+    (Backend: GET /fines/me (driver's own fines with nested violation info)
+    and POST /fines/{id}/pay (body: payment_method CARD|BANK|WALLET --
+    explicitly cosmetic, no processor behind it per REQ-9 AC3). Added a
+    payment_method column to Fine (a deviation from design.md's minimal
+    Fine model, same pragmatic-addition pattern as License.points in 6.1)
+    so the driver's history shows how they "paid." Payment blocks if the
+    fine already has a pending appeal (see 6.3) to avoid a payment and an
+    appeal resolving the same fine at once. Mobile: new (app)/fines.tsx
+    screen listing fines with an outstanding-balance total, a payment-method
+    picker, and inline pay/appeal actions per fine, linked from the driver
+    home screen. Verified live end-to-end in the browser preview: paying a
+    fine flips it to PAID with the chosen method shown, and the outstanding
+    total updates immediately.)
     - _Requirements: REQ-9_
     - _Dependencies: 5.6_
-  - [ ] 6.3 Appeal submission (mobile) + admin resolution + reversal logic
+  - [x] 6.3 Appeal submission (mobile) + admin resolution + reversal logic
+    (New Appeal model (id, fine_id [unique -- at most one appeal per fine
+    ever, since a fine's status is terminal after PAID/REVERSED], driver_id,
+    reason, status[PENDING|UPHELD|OVERTURNED], resolved_by, timestamps).
+    POST /appeals and GET /appeals/me for drivers (only an UNPAID fine can
+    be appealed -- REQ-10 AC1); GET /admin/appeals (status-filterable) and
+    POST /admin/appeals/{id}/resolve for admins. Resolving UPHELD leaves the
+    fine UNPAID and payable; OVERTURNED reverses the fine (status=REVERSED)
+    and runs the same restore_points_for_violation from 6.1 (REQ-10 AC3).
+    Found and fixed a real gap while wiring the admin-web UI: AppealRead
+    initially had no driver identity on it at all -- an admin reviewing an
+    appeal had no way to know whose it was. Added a nested DriverSummary
+    (reusing the same schema ApplicationRead already used) and eager-loaded
+    it in appeal_repository. Mobile: appeal action added to the fines.tsx
+    card (reason textarea, shows "Appeal: PENDING/UPHELD/OVERTURNED" once
+    one exists instead of the pay/appeal buttons). Admin web: new /appeals
+    page plus a nav bar added to the dashboard layout (previously just one
+    page existed, so there was no navigation at all) with status filters and
+    Uphold/Overturn actions. Verified live end-to-end across both frontends:
+    submitted an appeal on mobile, saw it appear with correct driver/fine
+    context on the admin appeals page, overturned it there, and confirmed
+    the mobile fines screen immediately showed the fine as REVERSED with
+    the points restored on the driver's license.)
     - _Requirements: REQ-10_
     - _Dependencies: 6.1, 3.3_
 

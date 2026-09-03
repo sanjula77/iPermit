@@ -198,6 +198,15 @@ function DriverHomeScreen() {
           </Link>
         </ThemedView>
 
+        <Link href="/(app)/fines" asChild>
+          <Pressable
+            style={StyleSheet.flatten([styles.button, { backgroundColor: theme.backgroundSelected }])}
+            testID="fines-link"
+          >
+            <ThemedText type="smallBold">Fines &amp; Appeals</ThemedText>
+          </Pressable>
+        </Link>
+
         <Pressable
           style={[styles.button, { backgroundColor: theme.danger }]}
           onPress={logout}

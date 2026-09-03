@@ -260,13 +260,15 @@ TypeScript mobile app, Next.js + TypeScript admin web — per the [ADR](design.m
     - _Dependencies: 5.1_
   - [ ] 5.4 Violation detection service: YOLOv8n-seg (lane) + YOLOv8n (vehicle) + three-tier
     overlap check — train/fine-tune on the JPJ Lane Dataset, expose as a callable service
-    (Not started. Blocked on a real decision, not effort: there is no dataset
-    or GPU available in this environment to train from scratch per
-    requirements.md's known gap ("no prior model or dataset is available to
-    reuse"). Needs the project owner to source/build a lane dataset (or pick
-    a stand-in public dataset) and decide where training actually runs
-    before this can proceed -- see the open question raised alongside this
-    update.)
+    (Deliberately deferred, not an oversight: there is no dataset or GPU
+    available in this environment to train from scratch per requirements.md's
+    known gap ("no prior model or dataset is available to reuse"). Asked the
+    project owner how to proceed (stub the pipeline now / source a public
+    dataset and train elsewhere / defer entirely / bring your own trained
+    weights) — decision was to explicitly skip 5.4/5.5 for now and continue
+    with other phases, revisiting this once a dataset and training compute
+    are sorted out separately. Come back to this before Task 9.2's
+    evaluation step, since that depends on a trained model existing.)
     - _Requirements: REQ-7_
     - _Dependencies: 1.1_
   - [ ] 5.5 Officer confirmation UI for AI-flagged violations

@@ -142,17 +142,79 @@ TypeScript mobile app, Next.js + TypeScript admin web — per the [ADR](design.m
     - _Requirements: REQ-4_
     - _Dependencies: 3.4_
 
-- [ ] 4. Facial Recognition Module
-  - [ ] 4.1 Stand up the face recognition service: RetinaFace detection + ArcFace embedding via ONNX Runtime
+- [x] 4. Facial Recognition Module
+  - [x] 4.1 Stand up the face recognition service: RetinaFace detection + ArcFace embedding via ONNX Runtime
+    (app/core/face_engine.py wraps insightface's `buffalo_l` model pack
+    (RetinaFace det_10g.onnx + ArcFace w600k_r50.onnx) via ONNX Runtime
+    CPUExecutionProvider. Model loading is lazy — first real use, not app
+    startup — so uvicorn's --reload doesn't reinitialize a ~275MB model on
+    every file save. Models are cached in a persistent Docker volume
+    (ipermit_face_models) so they download once, not on every rebuild.
+    Hit two real infra problems: insightface's own downloader isn't
+    resumable and failed outright on a flaky connection — replaced with a
+    custom retrying/resumable downloader (Range headers, 8 attempts,
+    exponential backoff); and insightface's transitive deps pull in
+    GUI-enabled opencv-python regardless of an explicit
+    opencv-python-headless pin in requirements.txt, which crashes on this
+    slim image (missing libxcb/libGL) — fixed with a forced
+    uninstall-both-then-reinstall-headless step in the Dockerfile. Verified
+    against real fixture images: correctly returns 1 face with a properly
+    L2-normalized 512-dim embedding, 0 faces for a solid-color image, 2
+    faces for a two-person composite.)
     - _Requirements: REQ-5_
     - _Dependencies: 1.1_
-  - [ ] 4.2 SQLite template store + FAISS index (build + rebuild-from-SQLite procedure)
+  - [x] 4.2 SQLite template store + FAISS index (build + rebuild-from-SQLite procedure)
+    (app/core/face_template_store.py: plain sqlite3 — not SQLAlchemy — one
+    table doesn't warrant a second ORM/migration universe alongside
+    Alembic's Postgres one, and keeps biometric data isolated from the
+    primary Postgres PII store per the NFR. One row per driver_id (upsert on
+    re-enrollment). app/core/face_index.py: FAISS IndexIDMap wrapping
+    IndexFlatIP (cosine similarity via inner product on L2-normalized
+    vectors), with rebuild_index() reconstructing the whole index from
+    SQLite — SQLite is the source of truth, FAISS is a derived/rebuildable
+    cache, not the other way around. search() is implemented as a
+    primitive but not yet wired to an endpoint — roadside verification is
+    Phase 5 (REQ-6).)
     - _Requirements: REQ-5_
     - _Dependencies: 4.1_
-  - [ ] 4.3 Enrollment pipeline: multi-photo consistency check, wire into application-approval flow (3.4)
+  - [x] 4.3 Enrollment pipeline: multi-photo consistency check, wire into application-approval flow (3.4)
+    (app/services/face_service.py: extracts one embedding per of the 4
+    required FACE_PHOTO documents, requires every pairwise cosine
+    similarity to clear face_match_threshold (default 0.42 — a commonly-
+    cited ArcFace starting point, NOT validated on our own data, see
+    config.py comment and requirements.md's "Benchmarks From Prior
+    Research" note about the prior 100%-on-6-people overfitting mistake),
+    then averages and re-normalizes into one template embedding. Wired into
+    application_service.approve_application with a deliberate ordering
+    across two storage systems that can't share one transaction: (1) build
+    the face embedding FIRST, before touching Postgres — if photos are
+    inconsistent or a photo has 0/2+ faces, FaceEnrollmentError propagates
+    and the application stays PENDING, nothing written anywhere; (2) only
+    then approve + issue the license in one Postgres transaction (existing
+    3.4 behavior, unchanged); (3) only after that commits, persist the face
+    template to SQLite/FAISS. Known gap: if step 3 fails, the approval and
+    license already committed and are not rolled back — no cross-database
+    two-phase commit was built for this academic-scope project. Verified
+    end-to-end against the real running backend (not just tests): approving
+    with 4 consistent real face photos succeeds, issues a license, and
+    stores a retrievable/searchable (self-similarity 1.0) template in both
+    SQLite and FAISS; approving with one no-face photo returns 422, leaves
+    the application PENDING, issues no license, and stores no orphaned
+    template. 9 new tests (5 pure-math consistency tests with synthetic
+    vectors + 4 real-fixture integration tests covering success, no-face,
+    multiple-faces, and existing admin/license tests updated to use a real
+    face fixture since approval now runs real detection), 40/40 passing.)
     - _Requirements: REQ-5_
     - _Dependencies: 4.2, 3.4_
-  - [ ] 4.4 Liveness/anti-spoofing check (or explicit "disabled" disclosure if deferred)
+  - [x] 4.4 Liveness/anti-spoofing check (or explicit "disabled" disclosure if deferred)
+    (Not implemented this phase — descoped per the project's academic
+    timeline. Per REQ-5 AC4, made this an explicit, checkable fact instead
+    of a silently skipped step: config.liveness_check_enabled = False, and
+    GET /face/status discloses it along with a note that a face match
+    confirms embedding similarity only, not that a live person is present.
+    Verified live. Phase 5's police verification UI should surface this
+    disclosure to officers rather than implying a face match alone proves
+    liveness.)
     - _Requirements: REQ-5_
     - _Dependencies: 4.1_
 

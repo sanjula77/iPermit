@@ -8,6 +8,7 @@ from app.models.application import ApplicationStatus
 from app.models.user import User, UserRole
 from app.schemas.application import ApplicationRead, RejectApplicationRequest
 from app.services import application_service
+from app.services.face_service import FaceEnrollmentError
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -42,6 +43,10 @@ def approve_application(
     except application_service.InvalidStateError as exc:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail=str(exc)
+        ) from exc
+    except FaceEnrollmentError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
         ) from exc
 
 

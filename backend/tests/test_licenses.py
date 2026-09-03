@@ -1,5 +1,6 @@
 import io
 from datetime import datetime
+from pathlib import Path
 
 import pytest
 from PIL import Image
@@ -8,6 +9,8 @@ from app.core.config import settings
 from app.core.security import hash_password
 from app.models.user import UserRole
 from app.repositories import user_repository
+
+FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
 
 @pytest.fixture(autouse=True)
@@ -21,8 +24,15 @@ def _fake_image_bytes() -> bytes:
     return buffer.getvalue()
 
 
+def _face_photo_bytes() -> bytes:
+    # Approval now runs real face detection (Phase 4) -- these tests exercise
+    # license issuance, not face enrollment itself, so a real single-face
+    # fixture is used here purely to let approval succeed.
+    return (FIXTURES_DIR / "face_fixture.jpg").read_bytes()
+
+
 def _valid_files():
-    photo = ("photo.jpg", _fake_image_bytes(), "image/jpeg")
+    photo = ("photo.jpg", _face_photo_bytes(), "image/jpeg")
     return [
         ("face_photos", photo),
         ("face_photos", photo),

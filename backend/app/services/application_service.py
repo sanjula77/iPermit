@@ -13,7 +13,7 @@ from app.core.file_storage import (
 )
 from app.models.application import Application, ApplicationStatus, DocumentType
 from app.repositories import application_repository
-from app.services import license_service
+from app.services import face_service, license_service
 
 REQUIRED_FACE_PHOTOS = 4
 
@@ -132,18 +132,39 @@ def _get_pending_or_raise(db: Session, application_id: uuid.UUID) -> Application
 
 
 def approve_application(db: Session, *, application_id: uuid.UUID) -> Application:
-    """REQ-3 AC2 + REQ-4: approve a pending application and issue its digital
-    license in the same transaction -- an application should never end up
-    APPROVED with no corresponding license (or vice versa) if either write
-    fails. Face-template generation (REQ-5) is separate, Phase 4 work.
+    """REQ-3 AC2 + REQ-4 + REQ-5: approve a pending application, issue its
+    digital license, and enroll its face template.
+
+    Ordering matters here across two storage systems that can't share one
+    transaction (Postgres for the application/license, SQLite+FAISS for
+    biometric data, kept separate per REQ-5 AC3 / the NFR isolating
+    biometric data from primary PII):
+
+    1. Build the face embedding FIRST, before touching Postgres at all. If
+       the enrollment photos don't consistently show one face,
+       FaceEnrollmentError propagates and the application stays PENDING --
+       nothing was written anywhere.
+    2. Only once that succeeds: approve + issue the license in one Postgres
+       transaction (existing behavior, unchanged).
+    3. Only once THAT commits: persist the face template to SQLite/FAISS.
+       If this last step fails, the approval and license already succeeded
+       and are not rolled back -- a known gap (see docs/tasks.md Phase 4)
+       rather than building cross-database two-phase commit for an
+       academic-scope project.
     """
     application = _get_pending_or_raise(db, application_id)
+
+    face_embedding = face_service.build_enrollment_embedding(application)
+
     application_repository.set_status(
         application, status=ApplicationStatus.APPROVED, reason=None
     )
     license_service.issue_license(db, application)
     db.commit()
     db.refresh(application)
+
+    face_service.store_template(str(application.driver_id), face_embedding)
+
     return application
 
 

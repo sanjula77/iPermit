@@ -18,6 +18,15 @@ class FineStatus(str, enum.Enum):
     REVERSED = "REVERSED"
 
 
+class PaymentMethod(str, enum.Enum):
+    """REQ-9 AC3: selection only for the mock payment UX -- there is no real
+    processor behind any of these."""
+
+    CARD = "CARD"
+    BANK = "BANK"
+    WALLET = "WALLET"
+
+
 # Placeholder LKR amounts, not sourced from an official traffic-fine
 # schedule -- see the same caveat on VIOLATION_POINTS in models/violation.py.
 VIOLATION_FINE_AMOUNT: dict[ViolationType, int] = {
@@ -41,5 +50,8 @@ class Fine(Base):
     )
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     paid_at: Mapped[datetime | None] = mapped_column(DateTime, default=None)
+    payment_method: Mapped[PaymentMethod | None] = mapped_column(
+        Enum(PaymentMethod), default=None
+    )
 
     violation: Mapped["Violation"] = relationship()

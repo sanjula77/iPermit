@@ -1,31 +1,11 @@
 import uuid
-from datetime import datetime
 
 from pydantic import BaseModel, Field
 
-from app.models.fine import FineStatus
 from app.models.license import LicenseStatus
 from app.models.violation import ViolationType
-
-
-class ViolationRead(BaseModel):
-    id: uuid.UUID
-    type: ViolationType
-    points_deducted: int
-    evidence_ref: str | None
-    confirmed_at: datetime
-
-    model_config = {"from_attributes": True}
-
-
-class FineRead(BaseModel):
-    id: uuid.UUID
-    amount: int
-    status: FineStatus
-    created_at: datetime
-    paid_at: datetime | None
-
-    model_config = {"from_attributes": True}
+from app.schemas.fine import FineRead
+from app.schemas.violation import ViolationRead
 
 
 class DriverSummary(BaseModel):

@@ -31,6 +31,7 @@ export default function AppLayout() {
         name="police-driver"
         options={{ headerShown: true, title: 'Driver Details' }}
       />
+      <Stack.Screen name="fines" options={{ headerShown: true, title: 'Fines' }} />
     </Stack>
   );
 }

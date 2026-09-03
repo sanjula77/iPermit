@@ -4,10 +4,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db, require_role
+from app.models.appeal import AppealStatus
 from app.models.application import ApplicationStatus
 from app.models.user import User, UserRole
+from app.schemas.appeal import AppealRead, ResolveAppealRequest
 from app.schemas.application import ApplicationRead, RejectApplicationRequest
-from app.services import application_service
+from app.services import appeal_service, application_service
 from app.services.face_service import FaceEnrollmentError
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -72,4 +74,34 @@ def reject_application(
     except application_service.ApplicationError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
+        ) from exc
+
+
+@router.get("/appeals", response_model=list[AppealRead])
+def list_appeals(
+    status_filter: AppealStatus | None = None,
+    db: Session = Depends(get_db),
+    _admin: User = Depends(_admin_only),
+):
+    return appeal_service.list_all_appeals(db, status_filter=status_filter)
+
+
+@router.post("/appeals/{appeal_id}/resolve", response_model=AppealRead)
+def resolve_appeal(
+    appeal_id: uuid.UUID,
+    payload: ResolveAppealRequest,
+    db: Session = Depends(get_db),
+    admin: User = Depends(_admin_only),
+):
+    try:
+        return appeal_service.resolve_appeal(
+            db, appeal_id=appeal_id, admin_id=admin.id, resolution=payload.resolution
+        )
+    except appeal_service.NotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
+    except appeal_service.InvalidStateError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail=str(exc)
         ) from exc

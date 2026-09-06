@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.models.appeal import AppealStatus
 from app.models.fine import Fine, FineStatus, PaymentMethod
 from app.repositories import appeal_repository, fine_repository
+from app.services import badge_service
 from app.services.violation_service import restore_points_for_violation
 
 
@@ -54,6 +55,8 @@ def pay_fine(
     db.commit()
     db.refresh(fine)
     db.refresh(license_)
+
+    badge_service.recompute_badge(db, driver_id)  # REQ-11 AC2
 
     return {
         "fine": fine,

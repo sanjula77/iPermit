@@ -13,7 +13,7 @@ from app.core.file_storage import (
 )
 from app.models.application import Application, ApplicationStatus, DocumentType
 from app.repositories import application_repository
-from app.services import face_service, license_service
+from app.services import badge_service, face_service, license_service
 
 REQUIRED_FACE_PHOTOS = 4
 
@@ -151,6 +151,9 @@ def approve_application(db: Session, *, application_id: uuid.UUID) -> Applicatio
        and are not rolled back -- a known gap (see docs/tasks.md Phase 4)
        rather than building cross-database two-phase commit for an
        academic-scope project.
+    4. Compute the driver's initial Badge (REQ-11 AC2) now that a License
+       exists -- every driver gets a badge from day one instead of needing
+       lazy compute-on-read in the badge endpoints.
     """
     application = _get_pending_or_raise(db, application_id)
 
@@ -164,6 +167,7 @@ def approve_application(db: Session, *, application_id: uuid.UUID) -> Applicatio
     db.refresh(application)
 
     face_service.store_template(str(application.driver_id), face_embedding)
+    badge_service.recompute_badge(db, application.driver_id)
 
     return application
 

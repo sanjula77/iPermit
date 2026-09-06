@@ -6,6 +6,7 @@ from app.models.fine import VIOLATION_FINE_AMOUNT
 from app.models.license import License, LicenseStatus
 from app.models.violation import VIOLATION_POINTS, Violation, ViolationType
 from app.repositories import fine_repository, license_repository, violation_repository
+from app.services import badge_service
 
 # REQ-8 AC2: license suspends once cumulative points reach this threshold.
 SUSPENSION_POINTS_THRESHOLD = 10
@@ -79,6 +80,8 @@ def record_violation(
     db.refresh(violation)
     db.refresh(fine)
     db.refresh(license_)
+
+    badge_service.recompute_badge(db, driver_id)  # REQ-11 AC2
 
     return {
         "violation": violation,

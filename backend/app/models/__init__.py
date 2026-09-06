@@ -5,6 +5,7 @@ from app.models.application import (
     ApplicationStatus,
     DocumentType,
 )
+from app.models.badge import Badge, BadgeTier
 from app.models.fine import VIOLATION_FINE_AMOUNT, Fine, FineStatus, PaymentMethod
 from app.models.license import License, LicenseStatus
 from app.models.user import User, UserRole
@@ -28,4 +29,6 @@ __all__ = [
     "VIOLATION_FINE_AMOUNT",
     "Appeal",
     "AppealStatus",
+    "Badge",
+    "BadgeTier",
 ]

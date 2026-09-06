@@ -360,11 +360,49 @@ TypeScript mobile app, Next.js + TypeScript admin web — per the [ADR](design.m
     - _Requirements: REQ-10_
     - _Dependencies: 6.1, 3.3_
 
-- [ ] 7. Driver Behavior Analytics
-  - [ ] 7.1 Rule-based badge/tier calculation (Platinum…Suspended) recomputed on state change
+- [x] 7. Driver Behavior Analytics
+  - [x] 7.1 Rule-based badge/tier calculation (Platinum…Suspended) recomputed on state change
+    (New Badge model (driver_id PK, tier, safety_score, updated_at) +
+    migration. badge_service.compute_safety_score/tier_for_score are pure
+    functions (no I/O, independently unit-tested with 18 synthetic-input
+    cases) implementing REQ-11 AC1's five named factors in one transparent
+    formula: `100 - points*5 - lifetime_violation_severity_sum*0.5 -
+    unpaid_fine_count*5 + tenure_bonus(capped at 10, +1/quarter)`, then
+    mapped to a tier via fixed score thresholds (90/75/60/40) with
+    SUSPENDED as a hard override on top of the score whenever
+    License.status is SUSPENDED regardless of what the score says.
+    Recomputed (REQ-11 AC2) at 4 points: license approval (so every driver
+    gets an initial PLATINUM badge from day one -- no lazy compute-on-read
+    needed anywhere), violation recorded, fine paid, appeal resolved --
+    each a best-effort follow-up after that flow's own commit, same
+    "known gap if this fails" pattern as Phase 4's face-template write.
+    Went through the brainstorming skill's bounded-path process before
+    implementing: presented the formula/tiers/recompute-points design in
+    chat and got explicit approval before writing any code.)
     - _Requirements: REQ-11_
     - _Dependencies: 6.1, 6.2_
-  - [ ] 7.2 Admin dashboard: badge distribution + attention queue
+  - [x] 7.2 Admin dashboard: badge distribution + attention queue
+    (GET /badges/me (driver) and GET /admin/badges (admin -- tier
+    distribution counts + the AT_RISK/SUSPENDED attention queue with
+    nested driver email/nic, reusing the same DriverSummary schema
+    ApplicationRead already used). Admin web: new /badges page (tier-count
+    cards + an attention-queue table, no new chart dependency) plus the
+    dashboard's first proper nav bar got a third link. Mobile: a small
+    "Your Standing: TIER (score)" chip added to the existing LicenseCard,
+    color-coded by tier, tolerating a missing badge silently (same 404
+    tolerance as the license fetch). Verified live end-to-end: a clean
+    driver got PLATINUM/100 immediately on approval; recording a
+    DRUNK_DRIVING violation against a second driver correctly forced
+    SUSPENDED (score alone would have been BRONZE at 40, but the license-
+    status override takes precedence) and the admin dashboard's
+    distribution/attention-queue reflected it immediately, as did the
+    driver's own mobile home screen and GET /badges/me. Paying a fine (or
+    having it overturned on appeal) correctly restored the score most of
+    the way back (a small permanent severity scar remains per REQ-8 AC4's
+    immutability, confirmed live: 100 → 73 after a violation → 98 after
+    paying it off, never back to a full 100). 27 new backend tests
+    (18 pure-formula unit tests + 9 integration), 97/97 passing;
+    ruff/black/tsc/eslint clean across all three apps.)
     - _Requirements: REQ-11, REQ-14_
     - _Dependencies: 7.1, 3.3_
 

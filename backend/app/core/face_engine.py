@@ -17,6 +17,9 @@ import cv2
 import numpy as np
 import requests
 
+from app.core import face_preprocessing
+from app.core.config import settings
+
 _BUFFALO_L_URL = (
     "https://github.com/deepinsight/insightface/releases/download/v0.7/buffalo_l.zip"
 )
@@ -115,6 +118,9 @@ def detect_faces(image_bytes: bytes) -> list[FaceDetection]:
     image = cv2.imdecode(array, cv2.IMREAD_COLOR)
     if image is None:
         raise FaceEngineError("Could not decode image for face detection")
+
+    if settings.face_clahe_enabled:
+        image = face_preprocessing.apply_clahe(image)
 
     app = _get_face_app()
     faces = app.get(image)

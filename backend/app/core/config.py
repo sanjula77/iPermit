@@ -35,6 +35,21 @@ class Settings(BaseSettings):
     # This flag exists so that disabled-state is an explicit, checkable
     # fact (see GET /face/status) rather than a silently skipped step.
     liveness_check_enabled: bool = False
+    # REQ-5: CLAHE contrast enhancement before face detection, closing the
+    # gap between design.md's documented pipeline and what Phase 4 actually
+    # shipped. Toggle-able in case real evaluation data (Task 9.1) later
+    # shows it hurts rather than helps accuracy.
+    face_clahe_enabled: bool = True
+    # Enrollment-photo quality gate thresholds (REQ-2 AC2). Commonly-cited
+    # starting points (detection score, blur/brightness heuristics), NOT
+    # independently validated on iPermit's own data -- same honesty
+    # pattern as face_match_threshold above; revisit once Task 9.1 has
+    # real data to test against.
+    face_min_detection_score: float = 0.7
+    face_min_face_size_px: int = 80
+    face_min_sharpness: float = 100.0  # Laplacian variance
+    face_min_brightness: int = 30
+    face_max_brightness: int = 220
 
     # REQ-13 AC4: how long a reported road incident stays ACTIVE before
     # lazily expiring on next read (no scheduler infra exists in this

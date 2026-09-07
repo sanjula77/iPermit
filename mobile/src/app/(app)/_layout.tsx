@@ -3,9 +3,11 @@ import { ActivityIndicator } from 'react-native';
 
 import { ThemedView } from '@/components/themed-view';
 import { useAuth } from '@/context/auth-context';
+import { useRegisterPushToken } from '@/hooks/use-register-push-token';
 
 export default function AppLayout() {
   const { user, isLoading } = useAuth();
+  useRegisterPushToken(!!user);
 
   if (isLoading) {
     return (
@@ -32,6 +34,11 @@ export default function AppLayout() {
         options={{ headerShown: true, title: 'Driver Details' }}
       />
       <Stack.Screen name="fines" options={{ headerShown: true, title: 'Fines' }} />
+      <Stack.Screen
+        name="notifications"
+        options={{ headerShown: true, title: 'Notifications' }}
+      />
+      <Stack.Screen name="incidents" options={{ headerShown: true, title: 'Road Incidents' }} />
     </Stack>
   );
 }

@@ -6,12 +6,14 @@ from sqlalchemy.orm import Session
 from app.models.badge import Badge, BadgeTier
 from app.models.fine import FineStatus
 from app.models.license import LicenseStatus
+from app.models.notification import NotificationType
 from app.repositories import (
     badge_repository,
     fine_repository,
     license_repository,
     violation_repository,
 )
+from app.services import notification_service
 
 # REQ-11 AC1: a deliberately simple, explainable rule-based formula, not a
 # fitted/ML model -- tune by adjusting these constants, not by adding
@@ -109,11 +111,26 @@ def recompute_badge(db: Session, driver_id: uuid.UUID) -> Badge:
     )
     tier = tier_for_score(score, license_.status)
 
+    existing = badge_repository.get_by_driver_id(db, driver_id)
+    previous_tier = existing.tier if existing is not None else None
+
     badge = badge_repository.upsert(
         db, driver_id=driver_id, tier=tier, safety_score=score
     )
     db.commit()
     db.refresh(badge)
+
+    # REQ-12 AC1: notify on an actual tier transition only -- not on the
+    # very first badge a driver ever gets (that's covered by the
+    # LICENSE_APPROVED notification already sent in the same flow).
+    if previous_tier is not None and previous_tier != tier:
+        notification_service.notify(
+            db,
+            user_id=driver_id,
+            notification_type=NotificationType.BADGE_CHANGED,
+            message=f"Your driver standing changed to {tier.value.replace('_', ' ')}.",
+        )
+
     return badge
 
 

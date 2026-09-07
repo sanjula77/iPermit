@@ -12,6 +12,8 @@ from app.models import (  # noqa: F401 -- ensures all models are registered on B
     Badge,
     Fine,
     License,
+    Notification,
+    RoadIncident,
     User,
     Violation,
 )

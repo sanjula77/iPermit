@@ -12,8 +12,14 @@ from app.core.file_storage import (
     save_upload,
 )
 from app.models.application import Application, ApplicationStatus, DocumentType
+from app.models.notification import NotificationType
 from app.repositories import application_repository
-from app.services import badge_service, face_service, license_service
+from app.services import (
+    badge_service,
+    face_service,
+    license_service,
+    notification_service,
+)
 
 REQUIRED_FACE_PHOTOS = 4
 
@@ -168,6 +174,12 @@ def approve_application(db: Session, *, application_id: uuid.UUID) -> Applicatio
 
     face_service.store_template(str(application.driver_id), face_embedding)
     badge_service.recompute_badge(db, application.driver_id)
+    notification_service.notify(
+        db,
+        user_id=application.driver_id,
+        notification_type=NotificationType.LICENSE_APPROVED,
+        message="Your license application has been approved.",
+    )
 
     return application
 
@@ -179,6 +191,13 @@ def reject_application(
     if not reason or not reason.strip():
         raise ApplicationError("A rejection reason is required")
     application = _get_pending_or_raise(db, application_id)
-    return application_repository.update_status(
+    application = application_repository.update_status(
         db, application, status=ApplicationStatus.REJECTED, reason=reason.strip()
     )
+    notification_service.notify(
+        db,
+        user_id=application.driver_id,
+        notification_type=NotificationType.LICENSE_REJECTED,
+        message=f"Your license application was rejected: {reason.strip()}",
+    )
+    return application

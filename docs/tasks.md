@@ -406,13 +406,80 @@ TypeScript mobile app, Next.js + TypeScript admin web — per the [ADR](design.m
     - _Requirements: REQ-11, REQ-14_
     - _Dependencies: 7.1, 3.3_
 
-- [ ] 8. Notifications & Road Incidents
-  - [ ] 8.1 In-app notification model + Expo push integration for account/fine/appeal/badge events
+- [x] 8. Notifications & Road Incidents
+  - [x] 8.1 In-app notification model + Expo push integration for account/fine/appeal/badge events
+    (New Notification model (user_id FK, type[9-value enum covering every
+    AC1 event], message: str, read_at, created_at) -- `message` is a flat
+    pre-rendered string rather than design.md's generic `payload` JSON
+    blob, same pragmatic-deviation pattern as License.points. Wired as a
+    best-effort follow-up (same "known gap if this fails" pattern as badge
+    recompute) into all 6 relevant flows: application approve/reject,
+    violation recorded (+ a second LICENSE_SUSPENDED notification if it
+    suspends), fine paid, appeal resolved (UPHELD vs OVERTURNED get
+    distinct messages), and badge recompute (BADGE_CHANGED fires only on
+    an actual tier transition, not the driver's very first badge -- that's
+    already covered by LICENSE_APPROVED). GET /notifications/me, POST
+    /notifications/{id}/read, POST /notifications/register-push-token
+    open to any authenticated role, not just drivers, since the inbox
+    mechanism itself isn't role-specific even though today's event types
+    all target drivers. Push: added User.push_token + app/core/push_service.py
+    wrapping Expo's push HTTP API, called fire-and-forget whenever a
+    notification is created for a user with a registered token. Mobile:
+    new notifications screen (unread visually marked, tap-to-read) linked
+    from both home screens, plus a use-register-push-token hook that
+    requests permission and registers the Expo push token on app load
+    (skipped on web, silently no-ops on any failure).
+    **Known gap, stated up front:** push delivery itself is NOT verified
+    against a real device -- there is no physical device or EAS project
+    reachable from this sandbox. Only the plumbing is tested: the HTTP
+    call shape/error-handling in isolation, and (via a monkeypatched
+    push_service.send_push_notification) that registering a token
+    actually triggers a call with the right token when a later
+    notification fires. In-app notification creation, the read-marking
+    flow, and every trigger point ARE fully verified, live and in tests.)
     - _Requirements: REQ-12_
     - _Dependencies: 6.2, 6.3, 7.1_
-  - [ ] 8.2 Road incident reporting (GPS, type, severity) + map display + confirm/clear + auto-expiry
+  - [x] 8.2 Road incident reporting (GPS, type, severity) + map display + confirm/clear + auto-expiry
+    (New RoadIncident model (reporter_id FK, type[8-value enum], severity
+    [LOW|MEDIUM|HIGH], lat, lng, status[ACTIVE|CLEARED|EXPIRED],
+    confirmation_count, created_at, expires_at). POST /road-incidents,
+    GET /road-incidents?lat&lng&radius_km (nearest-first), POST .../confirm
+    (informational tally only, doesn't change status), POST .../clear (any
+    driver can clear outright -- no invented confirmation-threshold
+    logic). "Nearby" (AC2) is a Haversine distance computed in Python over
+    active incidents -- no PostGIS/new geo dependency at this project's
+    scale. Auto-expiry (AC4) is lazy: checked and persisted whenever an
+    incident is read, since no scheduler/background-job infra exists in
+    this project; the 4-hour window is a flat placeholder, unsourced from
+    any traffic-authority guidance (REQ-13 doesn't specify a duration).
+    Mobile: new incidents screen with expo-location (falls back to a
+    Colombo coordinate if permission is denied, so the screen still works
+    for a demo), a report form, and confirm/clear actions, linked from
+    both home screens. react-native-maps renders on native via a
+    platform-variant component (incidents-map.tsx / incidents-map.web.tsx,
+    same convention as use-color-scheme.web.ts) -- the .web variant is a
+    deliberate no-op since react-native-maps has no functional web
+    renderer, with an explicit "map view is only available on the native
+    app" note shown instead. Verified live end-to-end in the browser
+    preview: location-permission-denied correctly fell back to Colombo,
+    reporting/confirming/clearing an incident all worked and the cleared
+    incident correctly dropped out of the nearby list.
+    **Known gap, decided with the project owner before building:** AC5
+    ("notify nearby drivers of new high-severity incidents") is
+    deliberately NOT implemented -- it requires knowing where other
+    drivers currently are, which structurally conflicts with this
+    project's own Privacy/Ethics NFR ("incident location is point-in-time
+    only, not continuous tracking of a driver"). There is no live-location
+    subsystem to target such a notification, and building one would
+    violate that NFR. AC1-AC4 are fully implemented and verified.
+    **Also unverified:** the native map component itself (incidents-map.tsx)
+    -- built to the SDK's documented API but not visually confirmed, since
+    this environment's only test surface is the browser preview and
+    react-native-maps doesn't render there. 22 new backend tests (13
+    notifications + 9 road incidents), 115/115 passing; ruff/black/tsc/eslint
+    clean across all three apps.)
     - _Requirements: REQ-13_
-    - _Dependencies: 2.2
+    - _Dependencies: 2.2_
 
 - [ ] 9. Testing, Evaluation & Report Writing
   - [ ] 9.1 Face recognition evaluation on a properly sized, held-out test set (avoid the

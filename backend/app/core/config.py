@@ -36,5 +36,13 @@ class Settings(BaseSettings):
     # fact (see GET /face/status) rather than a silently skipped step.
     liveness_check_enabled: bool = False
 
+    # REQ-13 AC4: how long a reported road incident stays ACTIVE before
+    # lazily expiring on next read (no scheduler infra exists in this
+    # project). A flat window, not sourced from any traffic-authority
+    # guidance -- REQ-13 doesn't specify a duration.
+    road_incident_expiry_hours: int = 4
+    # REQ-13 AC2: default search radius for "nearby" active incidents.
+    road_incident_default_radius_km: float = 5.0
+
 
 settings = Settings()

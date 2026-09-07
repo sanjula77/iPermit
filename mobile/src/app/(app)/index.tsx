@@ -67,6 +67,24 @@ function PoliceHomeScreen() {
           </Pressable>
         </Link>
 
+        <Link href="/(app)/incidents" asChild>
+          <Pressable
+            style={StyleSheet.flatten([styles.button, { backgroundColor: theme.backgroundSelected }])}
+            testID="incidents-link"
+          >
+            <ThemedText type="smallBold">Road Incidents</ThemedText>
+          </Pressable>
+        </Link>
+
+        <Link href="/(app)/notifications" asChild>
+          <Pressable
+            style={StyleSheet.flatten([styles.button, { backgroundColor: theme.backgroundSelected }])}
+            testID="notifications-link"
+          >
+            <ThemedText type="smallBold">Notifications</ThemedText>
+          </Pressable>
+        </Link>
+
         <Pressable
           style={[styles.button, { backgroundColor: theme.danger }]}
           onPress={logout}
@@ -221,6 +239,24 @@ function DriverHomeScreen() {
             testID="fines-link"
           >
             <ThemedText type="smallBold">Fines &amp; Appeals</ThemedText>
+          </Pressable>
+        </Link>
+
+        <Link href="/(app)/incidents" asChild>
+          <Pressable
+            style={StyleSheet.flatten([styles.button, { backgroundColor: theme.backgroundSelected }])}
+            testID="incidents-link"
+          >
+            <ThemedText type="smallBold">Road Incidents</ThemedText>
+          </Pressable>
+        </Link>
+
+        <Link href="/(app)/notifications" asChild>
+          <Pressable
+            style={StyleSheet.flatten([styles.button, { backgroundColor: theme.backgroundSelected }])}
+            testID="notifications-link"
+          >
+            <ThemedText type="smallBold">Notifications</ThemedText>
           </Pressable>
         </Link>
 

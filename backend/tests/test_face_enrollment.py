@@ -13,11 +13,6 @@ from app.repositories import user_repository
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
 
-@pytest.fixture(autouse=True)
-def isolated_upload_dir(tmp_path, monkeypatch):
-    monkeypatch.setattr(settings, "upload_dir", str(tmp_path))
-
-
 def _solid_color_bytes() -> bytes:
     buffer = io.BytesIO()
     Image.new("RGB", (300, 300), color="blue").save(buffer, format="JPEG")
@@ -110,57 +105,31 @@ def test_approve_with_consistent_face_photos_enrolls_face(client, db_session):
 
 
 def test_approve_fails_when_a_photo_has_no_face(client, db_session):
-    admin_headers = _create_admin_and_login(client, db_session)
+    # REQ-2 AC2: enrollment-photo quality gate now rejects bad photos at
+    # submission time (not just at approval). This test verifies that behavior.
     driver_headers = _register_and_login(client)
 
     photos = [_single_face_bytes()] * 3 + [_solid_color_bytes()]
-    application = client.post(
-        "/applications", headers=driver_headers, files=_files_with_face_photos(photos)
-    ).json()
-
     response = client.post(
-        f"/admin/applications/{application['id']}/approve", headers=admin_headers
+        "/applications", headers=driver_headers, files=_files_with_face_photos(photos)
     )
 
     assert response.status_code == 422
     assert "No face detected" in response.json()["detail"]
 
-    driver_view = client.get(
-        f"/applications/{application['id']}", headers=driver_headers
-    )
-    assert driver_view.json()["status"] == "PENDING"
-
-    license_response = client.get("/licenses/me", headers=driver_headers)
-    assert license_response.status_code == 404
-
-    assert face_template_store.get_template(application["driver_id"]) is None
-
 
 def test_approve_fails_when_a_photo_has_multiple_faces(client, db_session):
-    admin_headers = _create_admin_and_login(client, db_session)
+    # REQ-2 AC2: enrollment-photo quality gate now rejects bad photos at
+    # submission time (not just at approval). This test verifies that behavior.
     driver_headers = _register_and_login(client)
 
     photos = [_single_face_bytes()] * 3 + [_multi_face_bytes()]
-    application = client.post(
-        "/applications", headers=driver_headers, files=_files_with_face_photos(photos)
-    ).json()
-
     response = client.post(
-        f"/admin/applications/{application['id']}/approve", headers=admin_headers
+        "/applications", headers=driver_headers, files=_files_with_face_photos(photos)
     )
 
     assert response.status_code == 422
     assert "Multiple faces detected" in response.json()["detail"]
-
-    driver_view = client.get(
-        f"/applications/{application['id']}", headers=driver_headers
-    )
-    assert driver_view.json()["status"] == "PENDING"
-
-    license_response = client.get("/licenses/me", headers=driver_headers)
-    assert license_response.status_code == 404
-
-    assert face_template_store.get_template(application["driver_id"]) is None
 
 
 def test_face_status_endpoint_discloses_liveness_is_disabled(client):

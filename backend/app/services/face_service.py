@@ -1,9 +1,10 @@
 from itertools import combinations
 from pathlib import Path
 
+import cv2
 import numpy as np
 
-from app.core import face_index, face_template_store
+from app.core import face_index, face_preprocessing, face_template_store
 from app.core.config import settings
 from app.core.face_engine import FaceEngineError, cosine_similarity, detect_faces
 from app.models.application import Application, DocumentType
@@ -50,6 +51,36 @@ def _extract_single_embedding(path: Path, photo_index: int) -> np.ndarray:
             "only the driver should be in frame"
         )
     return detections[0].embedding
+
+
+def assess_enrollment_photo_quality(image_bytes: bytes) -> None:
+    """REQ-2 AC2: rejects a face photo at submission time if it fails
+    detection or basic quality gates (blur, brightness, size, detection
+    confidence) -- gives the driver immediate feedback instead of waiting
+    until admin approval to discover a bad photo. Approval-time enrollment
+    (build_enrollment_embedding) still re-runs detection and the
+    pairwise-consistency check independently; this function only adds an
+    earlier, cheaper rejection point."""
+    try:
+        detections = detect_faces(image_bytes)
+    except FaceEngineError as exc:
+        raise FaceEnrollmentError(f"Face detection failed: {exc}") from exc
+
+    if len(detections) == 0:
+        raise FaceEnrollmentError("No face detected in this photo")
+    if len(detections) > 1:
+        raise FaceEnrollmentError(
+            "Multiple faces detected -- only the driver should be in frame"
+        )
+
+    array = np.frombuffer(image_bytes, dtype=np.uint8)
+    image = cv2.imdecode(array, cv2.IMREAD_COLOR)
+    detection = detections[0]
+    quality = face_preprocessing.assess_photo_quality(
+        image, bbox=detection.bbox, det_score=detection.det_score
+    )
+    if not quality.passes:
+        raise FaceEnrollmentError("Photo quality is too low: " + "; ".join(quality.reasons))
 
 
 def check_pairwise_consistency(embeddings: list[np.ndarray], threshold: float) -> None:

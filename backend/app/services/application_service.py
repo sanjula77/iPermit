@@ -65,12 +65,17 @@ async def submit_application(
 
     try:
         for photo in face_photos:
+            # First validate the file format (mime type, is valid image)
             path = await save_upload(
                 photo,
                 subdir=subdir,
                 allowed_types=IMAGE_CONTENT_TYPES,
                 require_image=True,
             )
+            saved_path = Path(settings.upload_dir) / path
+            # Then assess photo quality (face detection, blur, brightness, etc.)
+            raw_photo = saved_path.read_bytes()
+            face_service.assess_enrollment_photo_quality(raw_photo)
             saved.append((DocumentType.FACE_PHOTO, path))
 
         for doc_type, upload in (
@@ -85,7 +90,7 @@ async def submit_application(
                 require_image=False,
             )
             saved.append((doc_type, path))
-    except UploadValidationError as exc:
+    except (UploadValidationError, face_service.FaceEnrollmentError) as exc:
         _delete_saved_files(saved)
         raise ApplicationError(str(exc)) from exc
 

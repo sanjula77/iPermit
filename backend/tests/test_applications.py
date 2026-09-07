@@ -1,16 +1,10 @@
 import io
+from pathlib import Path
 
 import pytest
 from PIL import Image
 
 from app.core.config import settings
-
-
-@pytest.fixture(autouse=True)
-def isolated_upload_dir(tmp_path, monkeypatch):
-    """Redirect uploads to a temp dir per test so tests never touch real
-    storage and never leak files between runs."""
-    monkeypatch.setattr(settings, "upload_dir", str(tmp_path))
 
 
 def _register_and_login(client, email="driver@example.com", nic="991234567V"):
@@ -31,13 +25,19 @@ def _fake_image_bytes(size=(300, 300)) -> bytes:
     return buffer.getvalue()
 
 
+def _face_photo_bytes() -> bytes:
+    """Load a real face photo fixture that passes quality gates."""
+    fixture_path = Path(__file__).parent / "fixtures" / "face_fixture.jpg"
+    return fixture_path.read_bytes()
+
+
 def _valid_files():
-    photo = ("photo.jpg", _fake_image_bytes(), "image/jpeg")
+    face_photo = ("photo.jpg", _face_photo_bytes(), "image/jpeg")
     return [
-        ("face_photos", photo),
-        ("face_photos", photo),
-        ("face_photos", photo),
-        ("face_photos", photo),
+        ("face_photos", face_photo),
+        ("face_photos", face_photo),
+        ("face_photos", face_photo),
+        ("face_photos", face_photo),
         ("nic_document", ("nic.jpg", _fake_image_bytes(), "image/jpeg")),
         ("medical_cert", ("medical.jpg", _fake_image_bytes(), "image/jpeg")),
         ("birth_cert", ("birth.jpg", _fake_image_bytes(), "image/jpeg")),
@@ -153,3 +153,26 @@ def test_get_application_not_found(client):
         "/applications/00000000-0000-0000-0000-000000000000", headers=headers
     )
     assert response.status_code == 404
+
+
+def test_submit_application_rejects_blurry_face_photo(client):
+    driver_headers = _register_and_login(client)
+
+    blurry = io.BytesIO()
+    Image.new("RGB", (300, 300), color=(128, 128, 128)).save(blurry, format="JPEG")
+    blurry_bytes = blurry.getvalue()
+
+    files = [
+        ("face_photos", ("photo0.jpg", blurry_bytes, "image/jpeg")),
+        ("face_photos", ("photo1.jpg", blurry_bytes, "image/jpeg")),
+        ("face_photos", ("photo2.jpg", blurry_bytes, "image/jpeg")),
+        ("face_photos", ("photo3.jpg", blurry_bytes, "image/jpeg")),
+        ("nic_document", ("nic.jpg", _fake_image_bytes(), "image/jpeg")),
+        ("medical_cert", ("medical.jpg", _fake_image_bytes(), "image/jpeg")),
+        ("birth_cert", ("birth.jpg", _fake_image_bytes(), "image/jpeg")),
+    ]
+
+    response = client.post("/applications", headers=driver_headers, files=files)
+
+    assert response.status_code == 422
+    assert "No face detected" in response.json()["detail"] or "blurry" in response.json()["detail"]

@@ -162,7 +162,7 @@ def test_get_application_not_found(client):
     assert response.status_code == 404
 
 
-def test_submit_application_rejects_blurry_face_photo(client):
+def test_submit_application_rejects_blurry_face_photo(client, tmp_path):
     driver_headers = _register_and_login(client)
 
     blurry = io.BytesIO()
@@ -183,3 +183,8 @@ def test_submit_application_rejects_blurry_face_photo(client):
 
     assert response.status_code == 422
     assert "No face detected" in response.json()["detail"] or "blurry" in response.json()["detail"]
+    # The rejected face photo was written to disk before the quality gate
+    # ran; it must be cleaned up, not left orphaned.
+    leftover = list(tmp_path.rglob("*"))
+    leftover_files = [p for p in leftover if p.is_file()]
+    assert leftover_files == []

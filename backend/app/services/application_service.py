@@ -72,11 +72,11 @@ async def submit_application(
                 allowed_types=IMAGE_CONTENT_TYPES,
                 require_image=True,
             )
+            saved.append((DocumentType.FACE_PHOTO, path))
             saved_path = Path(settings.upload_dir) / path
             # Then assess photo quality (face detection, blur, brightness, etc.)
             raw_photo = saved_path.read_bytes()
             face_service.assess_enrollment_photo_quality(raw_photo)
-            saved.append((DocumentType.FACE_PHOTO, path))
 
         for doc_type, upload in (
             (DocumentType.NIC, nic_document),

@@ -1,4 +1,5 @@
 import io
+from pathlib import Path
 
 import pytest
 from PIL import Image
@@ -31,13 +32,19 @@ def _fake_image_bytes(size=(300, 300)) -> bytes:
     return buffer.getvalue()
 
 
+def _face_photo_bytes() -> bytes:
+    """Load a real face photo fixture that passes quality gates."""
+    fixture_path = Path(__file__).parent / "fixtures" / "face_fixture.jpg"
+    return fixture_path.read_bytes()
+
+
 def _valid_files():
-    photo = ("photo.jpg", _fake_image_bytes(), "image/jpeg")
+    face_photo = ("photo.jpg", _face_photo_bytes(), "image/jpeg")
     return [
-        ("face_photos", photo),
-        ("face_photos", photo),
-        ("face_photos", photo),
-        ("face_photos", photo),
+        ("face_photos", face_photo),
+        ("face_photos", face_photo),
+        ("face_photos", face_photo),
+        ("face_photos", face_photo),
         ("nic_document", ("nic.jpg", _fake_image_bytes(), "image/jpeg")),
         ("medical_cert", ("medical.jpg", _fake_image_bytes(), "image/jpeg")),
         ("birth_cert", ("birth.jpg", _fake_image_bytes(), "image/jpeg")),
@@ -153,3 +160,31 @@ def test_get_application_not_found(client):
         "/applications/00000000-0000-0000-0000-000000000000", headers=headers
     )
     assert response.status_code == 404
+
+
+def test_submit_application_rejects_blurry_face_photo(client, tmp_path):
+    driver_headers = _register_and_login(client)
+
+    blurry = io.BytesIO()
+    Image.new("RGB", (300, 300), color=(128, 128, 128)).save(blurry, format="JPEG")
+    blurry_bytes = blurry.getvalue()
+
+    files = [
+        ("face_photos", ("photo0.jpg", blurry_bytes, "image/jpeg")),
+        ("face_photos", ("photo1.jpg", blurry_bytes, "image/jpeg")),
+        ("face_photos", ("photo2.jpg", blurry_bytes, "image/jpeg")),
+        ("face_photos", ("photo3.jpg", blurry_bytes, "image/jpeg")),
+        ("nic_document", ("nic.jpg", _fake_image_bytes(), "image/jpeg")),
+        ("medical_cert", ("medical.jpg", _fake_image_bytes(), "image/jpeg")),
+        ("birth_cert", ("birth.jpg", _fake_image_bytes(), "image/jpeg")),
+    ]
+
+    response = client.post("/applications", headers=driver_headers, files=files)
+
+    assert response.status_code == 422
+    assert "No face detected" in response.json()["detail"] or "blurry" in response.json()["detail"]
+    # The rejected face photo was written to disk before the quality gate
+    # ran; it must be cleaned up, not left orphaned.
+    leftover = list(tmp_path.rglob("*"))
+    leftover_files = [p for p in leftover if p.is_file()]
+    assert leftover_files == []

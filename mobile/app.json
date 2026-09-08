@@ -38,7 +38,14 @@
         {
           "cameraPermission": "iPermit uses the camera for officer identity verification (face scan and license QR scan)."
         }
-      ]
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "iPermit uses your location to show and report nearby road incidents."
+        }
+      ],
+      "expo-notifications"
     ],
     "experiments": {
       "typedRoutes": true,

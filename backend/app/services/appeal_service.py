@@ -5,8 +5,10 @@ from sqlalchemy.orm import Session
 
 from app.models.appeal import Appeal, AppealStatus
 from app.models.fine import FineStatus
+from app.models.notification import NotificationType
 from app.repositories import appeal_repository, fine_repository
 from app.schemas.appeal import AppealResolution
+from app.services import badge_service, notification_service
 from app.services.violation_service import restore_points_for_violation
 
 
@@ -80,4 +82,22 @@ def resolve_appeal(
 
     db.commit()
     db.refresh(appeal)
+
+    badge_service.recompute_badge(db, appeal.driver_id)  # REQ-11 AC2
+
+    notification_service.notify(
+        db,
+        user_id=appeal.driver_id,
+        notification_type=(
+            NotificationType.APPEAL_OVERTURNED
+            if resolution == AppealResolution.OVERTURNED
+            else NotificationType.APPEAL_UPHELD
+        ),
+        message=(
+            "Your appeal was upheld -- the fine has been reversed."
+            if resolution == AppealResolution.OVERTURNED
+            else "Your appeal was reviewed and the fine was upheld."
+        ),
+    )
+
     return appeal

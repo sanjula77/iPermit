@@ -12,8 +12,14 @@ from app.core.file_storage import (
     save_upload,
 )
 from app.models.application import Application, ApplicationStatus, DocumentType
+from app.models.notification import NotificationType
 from app.repositories import application_repository
-from app.services import face_service, license_service
+from app.services import (
+    badge_service,
+    face_service,
+    license_service,
+    notification_service,
+)
 
 REQUIRED_FACE_PHOTOS = 4
 
@@ -59,6 +65,7 @@ async def submit_application(
 
     try:
         for photo in face_photos:
+            # First validate the file format (mime type, is valid image)
             path = await save_upload(
                 photo,
                 subdir=subdir,
@@ -66,6 +73,10 @@ async def submit_application(
                 require_image=True,
             )
             saved.append((DocumentType.FACE_PHOTO, path))
+            saved_path = Path(settings.upload_dir) / path
+            # Then assess photo quality (face detection, blur, brightness, etc.)
+            raw_photo = saved_path.read_bytes()
+            face_service.assess_enrollment_photo_quality(raw_photo)
 
         for doc_type, upload in (
             (DocumentType.NIC, nic_document),
@@ -79,7 +90,7 @@ async def submit_application(
                 require_image=False,
             )
             saved.append((doc_type, path))
-    except UploadValidationError as exc:
+    except (UploadValidationError, face_service.FaceEnrollmentError) as exc:
         _delete_saved_files(saved)
         raise ApplicationError(str(exc)) from exc
 
@@ -151,6 +162,9 @@ def approve_application(db: Session, *, application_id: uuid.UUID) -> Applicatio
        and are not rolled back -- a known gap (see docs/tasks.md Phase 4)
        rather than building cross-database two-phase commit for an
        academic-scope project.
+    4. Compute the driver's initial Badge (REQ-11 AC2) now that a License
+       exists -- every driver gets a badge from day one instead of needing
+       lazy compute-on-read in the badge endpoints.
     """
     application = _get_pending_or_raise(db, application_id)
 
@@ -164,6 +178,13 @@ def approve_application(db: Session, *, application_id: uuid.UUID) -> Applicatio
     db.refresh(application)
 
     face_service.store_template(str(application.driver_id), face_embedding)
+    badge_service.recompute_badge(db, application.driver_id)
+    notification_service.notify(
+        db,
+        user_id=application.driver_id,
+        notification_type=NotificationType.LICENSE_APPROVED,
+        message="Your license application has been approved.",
+    )
 
     return application
 
@@ -175,6 +196,13 @@ def reject_application(
     if not reason or not reason.strip():
         raise ApplicationError("A rejection reason is required")
     application = _get_pending_or_raise(db, application_id)
-    return application_repository.update_status(
+    application = application_repository.update_status(
         db, application, status=ApplicationStatus.REJECTED, reason=reason.strip()
     )
+    notification_service.notify(
+        db,
+        user_id=application.driver_id,
+        notification_type=NotificationType.LICENSE_REJECTED,
+        message=f"Your license application was rejected: {reason.strip()}",
+    )
+    return application

@@ -2,6 +2,7 @@ import { Link } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet } from 'react-native';
 
+import { getMyBadge } from '@/api/badges';
 import { listApplications } from '@/api/applications';
 import { ApiError, extractErrorMessage } from '@/api/client';
 import { getMyLicense } from '@/api/licenses';
@@ -12,6 +13,7 @@ import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useAuth } from '@/context/auth-context';
 import { useTheme } from '@/hooks/use-theme';
 import type { Application, ApplicationStatus } from '@/types/application';
+import type { Badge } from '@/types/badge';
 import type { License } from '@/types/license';
 
 const STATUS_COLOR: Record<ApplicationStatus, 'primary' | 'danger' | 'textSecondary'> = {
@@ -65,6 +67,24 @@ function PoliceHomeScreen() {
           </Pressable>
         </Link>
 
+        <Link href="/(app)/incidents" asChild>
+          <Pressable
+            style={StyleSheet.flatten([styles.button, { backgroundColor: theme.backgroundSelected }])}
+            testID="incidents-link"
+          >
+            <ThemedText type="smallBold">Road Incidents</ThemedText>
+          </Pressable>
+        </Link>
+
+        <Link href="/(app)/notifications" asChild>
+          <Pressable
+            style={StyleSheet.flatten([styles.button, { backgroundColor: theme.backgroundSelected }])}
+            testID="notifications-link"
+          >
+            <ThemedText type="smallBold">Notifications</ThemedText>
+          </Pressable>
+        </Link>
+
         <Pressable
           style={[styles.button, { backgroundColor: theme.danger }]}
           onPress={logout}
@@ -86,6 +106,7 @@ function DriverHomeScreen() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [license, setLicense] = useState<License | null>(null);
   const [licenseError, setLicenseError] = useState<string | null>(null);
+  const [badge, setBadge] = useState<Badge | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -119,6 +140,20 @@ function DriverHomeScreen() {
     };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    // No badge yet (e.g. no license) is a routine 404 -- fail silently,
+    // the chip just doesn't render, same tolerance as the license fetch above.
+    getMyBadge()
+      .then((data) => {
+        if (!cancelled) setBadge(data);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <ScrollView
       style={styles.container}
@@ -144,7 +179,7 @@ function DriverHomeScreen() {
         </ThemedView>
 
         {license ? (
-          <LicenseCard license={license} />
+          <LicenseCard license={license} badge={badge} />
         ) : licenseError ? (
           <ThemedText type="small" themeColor="danger" selectable testID="license-error">
             {licenseError}
@@ -204,6 +239,24 @@ function DriverHomeScreen() {
             testID="fines-link"
           >
             <ThemedText type="smallBold">Fines &amp; Appeals</ThemedText>
+          </Pressable>
+        </Link>
+
+        <Link href="/(app)/incidents" asChild>
+          <Pressable
+            style={StyleSheet.flatten([styles.button, { backgroundColor: theme.backgroundSelected }])}
+            testID="incidents-link"
+          >
+            <ThemedText type="smallBold">Road Incidents</ThemedText>
+          </Pressable>
+        </Link>
+
+        <Link href="/(app)/notifications" asChild>
+          <Pressable
+            style={StyleSheet.flatten([styles.button, { backgroundColor: theme.backgroundSelected }])}
+            testID="notifications-link"
+          >
+            <ThemedText type="smallBold">Notifications</ThemedText>
           </Pressable>
         </Link>
 

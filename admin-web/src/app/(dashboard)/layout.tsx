@@ -10,6 +10,7 @@ import { useAuth } from '@/context/auth-context';
 const NAV_LINKS = [
   { href: '/applications', label: 'Applications' },
   { href: '/appeals', label: 'Appeals' },
+  { href: '/badges', label: 'Badges' },
 ];
 
 export default function DashboardLayout({ children }: PropsWithChildren) {

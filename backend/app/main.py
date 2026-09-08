@@ -9,10 +9,13 @@ from app.api.routers import (
     appeals,
     applications,
     auth,
+    badges,
     face,
     fines,
     licenses,
+    notifications,
     police,
+    road_incidents,
 )
 from app.core.config import settings
 from app.core.database import SessionLocal
@@ -37,6 +40,9 @@ app.include_router(face.router)
 app.include_router(police.router)
 app.include_router(fines.router)
 app.include_router(appeals.router)
+app.include_router(badges.router)
+app.include_router(notifications.router)
+app.include_router(road_incidents.router)
 
 
 @app.get("/health")

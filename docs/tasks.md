@@ -217,6 +217,30 @@ TypeScript mobile app, Next.js + TypeScript admin web — per the [ADR](design.m
     liveness.)
     - _Requirements: REQ-5_
     - _Dependencies: 4.1_
+  - (Post-4.4 enhancement: CLAHE contrast enhancement was added to the
+    detection pipeline (app/core/face_preprocessing.py apply_clahe(),
+    LAB L-channel, gated by settings.face_clahe_enabled) — this closes the
+    design.md-vs-shipped gap noted in 4.1 above. The same module adds
+    assess_photo_quality(), which checks detection confidence, face bbox
+    size, Laplacian-variance sharpness, and brightness range, and is now
+    wired into application_service.submit_application's face-photo loop
+    (app/services/face_service.py) so a low-quality enrollment photo is
+    rejected with a 422 ("No face detected", "Multiple faces detected",
+    "Photo quality is too low: ...") at submission time, not just at
+    approval time (REQ-2 AC2 — previously only 4.3's approval-time check
+    existed). The six new threshold Settings fields
+    (face_clahe_enabled, face_min_detection_score, face_min_face_size_px,
+    face_min_sharpness, face_min_brightness, face_max_brightness) are each
+    commented in config.py as commonly-cited starting points, NOT
+    independently validated on iPermit's own data — same honesty pattern
+    as face_match_threshold, to be revisited once 9.1 has real numbers.
+    Two existing enrollment tests were adapted since the no-face/multi-face
+    rejection now happens earlier (at POST /applications, asserting a 422
+    and that GET /applications returns [] afterward, i.e. nothing was
+    persisted), and fixture images were regenerated at 2x scale so the
+    detected face clears the new 80px minimum size threshold. 7 new unit
+    tests for assess_photo_quality against synthetic images. 123/123
+    backend tests passing.)
 
 - [~] 5. Police Verification & Violation Detection
   - [x] 5.1 Officer face-scan + QR-scan verification endpoints and mobile screens
@@ -360,25 +384,143 @@ TypeScript mobile app, Next.js + TypeScript admin web — per the [ADR](design.m
     - _Requirements: REQ-10_
     - _Dependencies: 6.1, 3.3_
 
-- [ ] 7. Driver Behavior Analytics
-  - [ ] 7.1 Rule-based badge/tier calculation (Platinum…Suspended) recomputed on state change
+- [x] 7. Driver Behavior Analytics
+  - [x] 7.1 Rule-based badge/tier calculation (Platinum…Suspended) recomputed on state change
+    (New Badge model (driver_id PK, tier, safety_score, updated_at) +
+    migration. badge_service.compute_safety_score/tier_for_score are pure
+    functions (no I/O, independently unit-tested with 18 synthetic-input
+    cases) implementing REQ-11 AC1's five named factors in one transparent
+    formula: `100 - points*5 - lifetime_violation_severity_sum*0.5 -
+    unpaid_fine_count*5 + tenure_bonus(capped at 10, +1/quarter)`, then
+    mapped to a tier via fixed score thresholds (90/75/60/40) with
+    SUSPENDED as a hard override on top of the score whenever
+    License.status is SUSPENDED regardless of what the score says.
+    Recomputed (REQ-11 AC2) at 4 points: license approval (so every driver
+    gets an initial PLATINUM badge from day one -- no lazy compute-on-read
+    needed anywhere), violation recorded, fine paid, appeal resolved --
+    each a best-effort follow-up after that flow's own commit, same
+    "known gap if this fails" pattern as Phase 4's face-template write.
+    Went through the brainstorming skill's bounded-path process before
+    implementing: presented the formula/tiers/recompute-points design in
+    chat and got explicit approval before writing any code.)
     - _Requirements: REQ-11_
     - _Dependencies: 6.1, 6.2_
-  - [ ] 7.2 Admin dashboard: badge distribution + attention queue
+  - [x] 7.2 Admin dashboard: badge distribution + attention queue
+    (GET /badges/me (driver) and GET /admin/badges (admin -- tier
+    distribution counts + the AT_RISK/SUSPENDED attention queue with
+    nested driver email/nic, reusing the same DriverSummary schema
+    ApplicationRead already used). Admin web: new /badges page (tier-count
+    cards + an attention-queue table, no new chart dependency) plus the
+    dashboard's first proper nav bar got a third link. Mobile: a small
+    "Your Standing: TIER (score)" chip added to the existing LicenseCard,
+    color-coded by tier, tolerating a missing badge silently (same 404
+    tolerance as the license fetch). Verified live end-to-end: a clean
+    driver got PLATINUM/100 immediately on approval; recording a
+    DRUNK_DRIVING violation against a second driver correctly forced
+    SUSPENDED (score alone would have been BRONZE at 40, but the license-
+    status override takes precedence) and the admin dashboard's
+    distribution/attention-queue reflected it immediately, as did the
+    driver's own mobile home screen and GET /badges/me. Paying a fine (or
+    having it overturned on appeal) correctly restored the score most of
+    the way back (a small permanent severity scar remains per REQ-8 AC4's
+    immutability, confirmed live: 100 → 73 after a violation → 98 after
+    paying it off, never back to a full 100). 27 new backend tests
+    (18 pure-formula unit tests + 9 integration), 97/97 passing;
+    ruff/black/tsc/eslint clean across all three apps.)
     - _Requirements: REQ-11, REQ-14_
     - _Dependencies: 7.1, 3.3_
 
-- [ ] 8. Notifications & Road Incidents
-  - [ ] 8.1 In-app notification model + Expo push integration for account/fine/appeal/badge events
+- [x] 8. Notifications & Road Incidents
+  - [x] 8.1 In-app notification model + Expo push integration for account/fine/appeal/badge events
+    (New Notification model (user_id FK, type[9-value enum covering every
+    AC1 event], message: str, read_at, created_at) -- `message` is a flat
+    pre-rendered string rather than design.md's generic `payload` JSON
+    blob, same pragmatic-deviation pattern as License.points. Wired as a
+    best-effort follow-up (same "known gap if this fails" pattern as badge
+    recompute) into all 6 relevant flows: application approve/reject,
+    violation recorded (+ a second LICENSE_SUSPENDED notification if it
+    suspends), fine paid, appeal resolved (UPHELD vs OVERTURNED get
+    distinct messages), and badge recompute (BADGE_CHANGED fires only on
+    an actual tier transition, not the driver's very first badge -- that's
+    already covered by LICENSE_APPROVED). GET /notifications/me, POST
+    /notifications/{id}/read, POST /notifications/register-push-token
+    open to any authenticated role, not just drivers, since the inbox
+    mechanism itself isn't role-specific even though today's event types
+    all target drivers. Push: added User.push_token + app/core/push_service.py
+    wrapping Expo's push HTTP API, called fire-and-forget whenever a
+    notification is created for a user with a registered token. Mobile:
+    new notifications screen (unread visually marked, tap-to-read) linked
+    from both home screens, plus a use-register-push-token hook that
+    requests permission and registers the Expo push token on app load
+    (skipped on web, silently no-ops on any failure).
+    **Known gap, stated up front:** push delivery itself is NOT verified
+    against a real device -- there is no physical device or EAS project
+    reachable from this sandbox. Only the plumbing is tested: the HTTP
+    call shape/error-handling in isolation, and (via a monkeypatched
+    push_service.send_push_notification) that registering a token
+    actually triggers a call with the right token when a later
+    notification fires. In-app notification creation, the read-marking
+    flow, and every trigger point ARE fully verified, live and in tests.)
     - _Requirements: REQ-12_
     - _Dependencies: 6.2, 6.3, 7.1_
-  - [ ] 8.2 Road incident reporting (GPS, type, severity) + map display + confirm/clear + auto-expiry
+  - [x] 8.2 Road incident reporting (GPS, type, severity) + map display + confirm/clear + auto-expiry
+    (New RoadIncident model (reporter_id FK, type[8-value enum], severity
+    [LOW|MEDIUM|HIGH], lat, lng, status[ACTIVE|CLEARED|EXPIRED],
+    confirmation_count, created_at, expires_at). POST /road-incidents,
+    GET /road-incidents?lat&lng&radius_km (nearest-first), POST .../confirm
+    (informational tally only, doesn't change status), POST .../clear (any
+    driver can clear outright -- no invented confirmation-threshold
+    logic). "Nearby" (AC2) is a Haversine distance computed in Python over
+    active incidents -- no PostGIS/new geo dependency at this project's
+    scale. Auto-expiry (AC4) is lazy: checked and persisted whenever an
+    incident is read, since no scheduler/background-job infra exists in
+    this project; the 4-hour window is a flat placeholder, unsourced from
+    any traffic-authority guidance (REQ-13 doesn't specify a duration).
+    Mobile: new incidents screen with expo-location (falls back to a
+    Colombo coordinate if permission is denied, so the screen still works
+    for a demo), a report form, and confirm/clear actions, linked from
+    both home screens. react-native-maps renders on native via a
+    platform-variant component (incidents-map.tsx / incidents-map.web.tsx,
+    same convention as use-color-scheme.web.ts) -- the .web variant is a
+    deliberate no-op since react-native-maps has no functional web
+    renderer, with an explicit "map view is only available on the native
+    app" note shown instead. Verified live end-to-end in the browser
+    preview: location-permission-denied correctly fell back to Colombo,
+    reporting/confirming/clearing an incident all worked and the cleared
+    incident correctly dropped out of the nearby list.
+    **Known gap, decided with the project owner before building:** AC5
+    ("notify nearby drivers of new high-severity incidents") is
+    deliberately NOT implemented -- it requires knowing where other
+    drivers currently are, which structurally conflicts with this
+    project's own Privacy/Ethics NFR ("incident location is point-in-time
+    only, not continuous tracking of a driver"). There is no live-location
+    subsystem to target such a notification, and building one would
+    violate that NFR. AC1-AC4 are fully implemented and verified.
+    **Also unverified:** the native map component itself (incidents-map.tsx)
+    -- built to the SDK's documented API but not visually confirmed, since
+    this environment's only test surface is the browser preview and
+    react-native-maps doesn't render there. 22 new backend tests (13
+    notifications + 9 road incidents), 115/115 passing; ruff/black/tsc/eslint
+    clean across all three apps.)
     - _Requirements: REQ-13_
-    - _Dependencies: 2.2
+    - _Dependencies: 2.2_
 
 - [ ] 9. Testing, Evaluation & Report Writing
   - [ ] 9.1 Face recognition evaluation on a properly sized, held-out test set (avoid the
     small-dataset overfitting risk flagged in requirements.md); report Accuracy/FAR/FRR/EER
+    (The evaluation harness itself now exists and is unit-tested:
+    app/core/face_evaluation.py (compute_far_frr, sweep_thresholds,
+    find_equal_error_rate — pure math, no I/O; 6 tests in
+    test_face_evaluation.py) and scripts/evaluate_face_threshold.py, a CLI
+    that takes a --dataset-dir of images named <identity>_<n>.<ext>, builds
+    genuine/impostor score pairs, and prints Accuracy/FAR/FRR at both the
+    current face_match_threshold (0.42, unvalidated) and the empirically-
+    found EER point. Running it against real numbers is still blocked on
+    an evaluation-dataset decision that has not been made yet — no public
+    dataset, real-usage collection, or purpose-built dataset exists for
+    this project today; see the plan doc's "Open Decision: Evaluation
+    Dataset" for the options under discussion. This task stays open until
+    that decision is made and the harness is actually run.)
     - _Requirements: REQ-5_
     - _Dependencies: 4.3_
   - [ ] 9.2 Violation detector evaluation (mAP50, precision/recall) against the JPJ dataset split

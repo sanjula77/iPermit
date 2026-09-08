@@ -9,7 +9,8 @@ from app.models.application import ApplicationStatus
 from app.models.user import User, UserRole
 from app.schemas.appeal import AppealRead, ResolveAppealRequest
 from app.schemas.application import ApplicationRead, RejectApplicationRequest
-from app.services import appeal_service, application_service
+from app.schemas.badge import BadgeDistributionResponse
+from app.services import appeal_service, application_service, badge_service
 from app.services.face_service import FaceEnrollmentError
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -105,3 +106,11 @@ def resolve_appeal(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail=str(exc)
         ) from exc
+
+
+@router.get("/badges", response_model=BadgeDistributionResponse)
+def get_badge_distribution(
+    db: Session = Depends(get_db),
+    _admin: User = Depends(_admin_only),
+):
+    return badge_service.get_badge_distribution(db)

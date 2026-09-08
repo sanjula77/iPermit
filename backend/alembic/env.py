@@ -9,8 +9,11 @@ from app.models import (  # noqa: F401 -- ensures all models are registered on B
     Appeal,
     Application,
     ApplicationDocument,
+    Badge,
     Fine,
     License,
+    Notification,
+    RoadIncident,
     User,
     Violation,
 )

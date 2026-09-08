@@ -5,8 +5,16 @@ from app.models.application import (
     ApplicationStatus,
     DocumentType,
 )
+from app.models.badge import Badge, BadgeTier
 from app.models.fine import VIOLATION_FINE_AMOUNT, Fine, FineStatus, PaymentMethod
 from app.models.license import License, LicenseStatus
+from app.models.notification import Notification, NotificationType
+from app.models.road_incident import (
+    RoadIncident,
+    RoadIncidentSeverity,
+    RoadIncidentStatus,
+    RoadIncidentType,
+)
 from app.models.user import User, UserRole
 from app.models.violation import VIOLATION_POINTS, Violation, ViolationType
 
@@ -28,4 +36,12 @@ __all__ = [
     "VIOLATION_FINE_AMOUNT",
     "Appeal",
     "AppealStatus",
+    "Badge",
+    "BadgeTier",
+    "Notification",
+    "NotificationType",
+    "RoadIncident",
+    "RoadIncidentType",
+    "RoadIncidentSeverity",
+    "RoadIncidentStatus",
 ]

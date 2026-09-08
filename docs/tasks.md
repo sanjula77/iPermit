@@ -217,6 +217,30 @@ TypeScript mobile app, Next.js + TypeScript admin web — per the [ADR](design.m
     liveness.)
     - _Requirements: REQ-5_
     - _Dependencies: 4.1_
+  - (Post-4.4 enhancement: CLAHE contrast enhancement was added to the
+    detection pipeline (app/core/face_preprocessing.py apply_clahe(),
+    LAB L-channel, gated by settings.face_clahe_enabled) — this closes the
+    design.md-vs-shipped gap noted in 4.1 above. The same module adds
+    assess_photo_quality(), which checks detection confidence, face bbox
+    size, Laplacian-variance sharpness, and brightness range, and is now
+    wired into application_service.submit_application's face-photo loop
+    (app/services/face_service.py) so a low-quality enrollment photo is
+    rejected with a 422 ("No face detected", "Multiple faces detected",
+    "Photo quality is too low: ...") at submission time, not just at
+    approval time (REQ-2 AC2 — previously only 4.3's approval-time check
+    existed). The six new threshold Settings fields
+    (face_clahe_enabled, face_min_detection_score, face_min_face_size_px,
+    face_min_sharpness, face_min_brightness, face_max_brightness) are each
+    commented in config.py as commonly-cited starting points, NOT
+    independently validated on iPermit's own data — same honesty pattern
+    as face_match_threshold, to be revisited once 9.1 has real numbers.
+    Two existing enrollment tests were adapted since the no-face/multi-face
+    rejection now happens earlier (at POST /applications, asserting a 422
+    and that GET /applications returns [] afterward, i.e. nothing was
+    persisted), and fixture images were regenerated at 2x scale so the
+    detected face clears the new 80px minimum size threshold. 7 new unit
+    tests for assess_photo_quality against synthetic images. 123/123
+    backend tests passing.)
 
 - [~] 5. Police Verification & Violation Detection
   - [x] 5.1 Officer face-scan + QR-scan verification endpoints and mobile screens
@@ -484,6 +508,19 @@ TypeScript mobile app, Next.js + TypeScript admin web — per the [ADR](design.m
 - [ ] 9. Testing, Evaluation & Report Writing
   - [ ] 9.1 Face recognition evaluation on a properly sized, held-out test set (avoid the
     small-dataset overfitting risk flagged in requirements.md); report Accuracy/FAR/FRR/EER
+    (The evaluation harness itself now exists and is unit-tested:
+    app/core/face_evaluation.py (compute_far_frr, sweep_thresholds,
+    find_equal_error_rate — pure math, no I/O; 6 tests in
+    test_face_evaluation.py) and scripts/evaluate_face_threshold.py, a CLI
+    that takes a --dataset-dir of images named <identity>_<n>.<ext>, builds
+    genuine/impostor score pairs, and prints Accuracy/FAR/FRR at both the
+    current face_match_threshold (0.42, unvalidated) and the empirically-
+    found EER point. Running it against real numbers is still blocked on
+    an evaluation-dataset decision that has not been made yet — no public
+    dataset, real-usage collection, or purpose-built dataset exists for
+    this project today; see the plan doc's "Open Decision: Evaluation
+    Dataset" for the options under discussion. This task stays open until
+    that decision is made and the harness is actually run.)
     - _Requirements: REQ-5_
     - _Dependencies: 4.3_
   - [ ] 9.2 Violation detector evaluation (mAP50, precision/recall) against the JPJ dataset split

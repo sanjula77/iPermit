@@ -25,19 +25,6 @@ def _reset_rate_limits():
 
 
 @pytest.fixture(autouse=True)
-def isolated_upload_dir(tmp_path, monkeypatch):
-    """Redirect uploads to a temp dir per test so tests never touch real
-    storage and never leak files between runs. Also relax quality gate
-    thresholds for test fixtures that predate the submission-time quality
-    check."""
-    monkeypatch.setattr(settings, "upload_dir", str(tmp_path))
-    # Test fixtures were created before the quality gate was enforced at
-    # submission time; they may not meet production thresholds. Relax for tests.
-    monkeypatch.setattr(settings, "face_min_face_size_px", 40)
-    monkeypatch.setattr(settings, "face_min_sharpness", 50.0)
-
-
-@pytest.fixture(autouse=True)
 def isolated_face_store(tmp_path, monkeypatch):
     """face_templates.db is a real SQLite file (not the in-memory Postgres
     substitute), and the FAISS index is a module-level singleton -- both

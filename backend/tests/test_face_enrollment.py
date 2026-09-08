@@ -13,6 +13,11 @@ from app.repositories import user_repository
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
 
+@pytest.fixture(autouse=True)
+def isolated_upload_dir(tmp_path, monkeypatch):
+    monkeypatch.setattr(settings, "upload_dir", str(tmp_path))
+
+
 def _solid_color_bytes() -> bytes:
     buffer = io.BytesIO()
     Image.new("RGB", (300, 300), color="blue").save(buffer, format="JPEG")
@@ -117,6 +122,10 @@ def test_approve_fails_when_a_photo_has_no_face(client, db_session):
     assert response.status_code == 422
     assert "No face detected" in response.json()["detail"]
 
+    # Nothing should have been silently created despite the 422.
+    driver_applications = client.get("/applications", headers=driver_headers)
+    assert driver_applications.json() == []
+
 
 def test_approve_fails_when_a_photo_has_multiple_faces(client, db_session):
     # REQ-2 AC2: enrollment-photo quality gate now rejects bad photos at
@@ -130,6 +139,10 @@ def test_approve_fails_when_a_photo_has_multiple_faces(client, db_session):
 
     assert response.status_code == 422
     assert "Multiple faces detected" in response.json()["detail"]
+
+    # Nothing should have been silently created despite the 422.
+    driver_applications = client.get("/applications", headers=driver_headers)
+    assert driver_applications.json() == []
 
 
 def test_face_status_endpoint_discloses_liveness_is_disabled(client):

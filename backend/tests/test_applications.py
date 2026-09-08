@@ -7,6 +7,13 @@ from PIL import Image
 from app.core.config import settings
 
 
+@pytest.fixture(autouse=True)
+def isolated_upload_dir(tmp_path, monkeypatch):
+    """Redirect uploads to a temp dir per test so tests never touch real
+    storage and never leak files between runs."""
+    monkeypatch.setattr(settings, "upload_dir", str(tmp_path))
+
+
 def _register_and_login(client, email="driver@example.com", nic="991234567V"):
     client.post(
         "/auth/register",

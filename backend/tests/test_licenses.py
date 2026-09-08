@@ -13,6 +13,11 @@ from app.repositories import user_repository
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
 
+@pytest.fixture(autouse=True)
+def isolated_upload_dir(tmp_path, monkeypatch):
+    monkeypatch.setattr(settings, "upload_dir", str(tmp_path))
+
+
 def _fake_image_bytes() -> bytes:
     buffer = io.BytesIO()
     Image.new("RGB", (300, 300), color="blue").save(buffer, format="JPEG")

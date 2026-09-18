@@ -83,7 +83,7 @@ const styles = StyleSheet.create({
     gap: Spacing.one,
   },
   preview: {
-    height: 96,
+    height: 140,
     borderRadius: Spacing.two,
     alignItems: 'center',
     justifyContent: 'center',

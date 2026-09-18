@@ -12,6 +12,14 @@ import { useTheme } from '@/hooks/use-theme';
 import { pickDocument, pickImageFromLibrary, takePhoto, type PickedFile } from '@/lib/file-upload';
 
 const PHOTO_COUNT = 4;
+const REQUIRED_FILE_COUNT = PHOTO_COUNT + 3;
+
+const PHOTO_TIPS = [
+  'One clear face per photo -- no one else in frame',
+  'Good, even lighting -- not too dark or too bright',
+  "Hold the phone at arm's length, face filling most of the frame",
+  'Keep the phone steady to avoid blur',
+];
 
 export default function ApplyScreen() {
   const theme = useTheme();
@@ -43,8 +51,12 @@ export default function ApplyScreen() {
     if (file) setter(file);
   }
 
-  const allFilesSelected =
-    facePhotos.every((p) => p !== null) && nicDocument && medicalCert && birthCert;
+  const filesReadyCount =
+    facePhotos.filter((p) => p !== null).length +
+    (nicDocument ? 1 : 0) +
+    (medicalCert ? 1 : 0) +
+    (birthCert ? 1 : 0);
+  const allFilesSelected = filesReadyCount === REQUIRED_FILE_COUNT;
 
   async function handleSubmit() {
     if (!allFilesSelected || !nicDocument || !medicalCert || !birthCert) {
@@ -80,9 +92,24 @@ export default function ApplyScreen() {
           certificate. All 7 files are required.
         </ThemedText>
 
+        <ThemedText type="smallBold" testID="apply-progress">
+          {filesReadyCount} of {REQUIRED_FILE_COUNT} files ready
+        </ThemedText>
+
         <ThemedText type="subtitle" style={styles.sectionTitle}>
           Face Photos
         </ThemedText>
+
+        <ThemedView type="backgroundElement" style={styles.tipsCard} testID="apply-photo-tips">
+          <ThemedText type="smallBold">Tips for a good photo</ThemedText>
+          {PHOTO_TIPS.map((tip) => (
+            <ThemedText key={tip} type="small" themeColor="textSecondary">
+              {'• '}
+              {tip}
+            </ThemedText>
+          ))}
+        </ThemedView>
+
         {facePhotos.map((photo, index) => (
           <FileSlot
             key={index}
@@ -117,9 +144,14 @@ export default function ApplyScreen() {
         />
 
         {error ? (
-          <ThemedText type="small" themeColor="danger" selectable testID="apply-error">
-            {error}
-          </ThemedText>
+          <ThemedView style={[styles.errorBanner, { borderColor: theme.danger }]}>
+            <ThemedText type="smallBold" themeColor="danger" selectable testID="apply-error">
+              {error}
+            </ThemedText>
+            <ThemedText type="small" themeColor="danger">
+              Check each face photo against the tips above and try again.
+            </ThemedText>
+          </ThemedView>
         ) : null}
 
         <Pressable
@@ -156,6 +188,17 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     marginTop: Spacing.two,
+  },
+  tipsCard: {
+    borderRadius: Spacing.three,
+    padding: Spacing.three,
+    gap: Spacing.half,
+  },
+  errorBanner: {
+    borderWidth: 1,
+    borderRadius: Spacing.two,
+    padding: Spacing.three,
+    gap: Spacing.half,
   },
   button: {
     borderRadius: Spacing.two,

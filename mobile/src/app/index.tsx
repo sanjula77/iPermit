@@ -15,5 +15,5 @@ export default function RootIndex() {
     );
   }
 
-  return <Redirect href={user ? '/(app)' : '/(auth)/login'} />;
+  return <Redirect href={user ? '/(app)/(tabs)' : '/(auth)/login'} />;
 }

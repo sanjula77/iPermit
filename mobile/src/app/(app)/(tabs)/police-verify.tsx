@@ -98,7 +98,6 @@ export default function PoliceVerifyScreen() {
       contentInsetAdjustmentBehavior="automatic"
     >
       <ThemedView style={styles.form}>
-        <ThemedText type="title">Verify Driver</ThemedText>
         <ThemedText type="small" themeColor="textSecondary">
           A face-scan match must still be manually confirmed when the AI is not
           confident -- it assists identification, it does not replace your judgment.

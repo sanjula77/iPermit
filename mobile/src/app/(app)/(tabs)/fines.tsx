@@ -45,7 +45,6 @@ export default function FinesScreen() {
       contentInsetAdjustmentBehavior="automatic"
     >
       <ThemedView style={styles.form}>
-        <ThemedText type="title">Fines</ThemedText>
         <ThemedText type="subtitle" testID="outstanding-total">
           Outstanding: LKR {outstandingTotal}
         </ThemedText>

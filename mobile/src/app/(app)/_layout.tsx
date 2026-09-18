@@ -23,22 +23,12 @@ export default function AppLayout() {
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="index" />
+      <Stack.Screen name="(tabs)" />
       <Stack.Screen name="apply" options={{ headerShown: true, title: 'Apply for License' }} />
-      <Stack.Screen
-        name="police-verify"
-        options={{ headerShown: true, title: 'Verify Driver' }}
-      />
       <Stack.Screen
         name="police-driver"
         options={{ headerShown: true, title: 'Driver Details' }}
       />
-      <Stack.Screen name="fines" options={{ headerShown: true, title: 'Fines' }} />
-      <Stack.Screen
-        name="notifications"
-        options={{ headerShown: true, title: 'Notifications' }}
-      />
-      <Stack.Screen name="incidents" options={{ headerShown: true, title: 'Road Incidents' }} />
     </Stack>
   );
 }

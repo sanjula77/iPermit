@@ -62,8 +62,6 @@ export default function PoliceDriverScreen() {
       contentInsetAdjustmentBehavior="automatic"
     >
       <ThemedView style={styles.form}>
-        <ThemedText type="title">Driver Details</ThemedText>
-
         <ThemedView type="backgroundElement" style={styles.card}>
           <ThemedText type="smallBold" selectable>
             {driver.email}

@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Link } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet } from 'react-native';
@@ -56,40 +57,12 @@ function PoliceHomeScreen() {
           </ThemedText>
         </ThemedView>
 
-        <Link href="/(app)/police-verify" asChild>
-          <Pressable
-            style={StyleSheet.flatten([styles.button, { backgroundColor: theme.primary }])}
-            testID="police-verify-link"
-          >
-            <ThemedText type="smallBold" themeColor="onPrimary">
-              Verify Driver
-            </ThemedText>
-          </Pressable>
-        </Link>
-
-        <Link href="/(app)/incidents" asChild>
-          <Pressable
-            style={StyleSheet.flatten([styles.button, { backgroundColor: theme.backgroundSelected }])}
-            testID="incidents-link"
-          >
-            <ThemedText type="smallBold">Road Incidents</ThemedText>
-          </Pressable>
-        </Link>
-
-        <Link href="/(app)/notifications" asChild>
-          <Pressable
-            style={StyleSheet.flatten([styles.button, { backgroundColor: theme.backgroundSelected }])}
-            testID="notifications-link"
-          >
-            <ThemedText type="smallBold">Notifications</ThemedText>
-          </Pressable>
-        </Link>
-
         <Pressable
           style={[styles.button, { backgroundColor: theme.danger }]}
           onPress={logout}
           testID="logout-button"
         >
+          <Ionicons name="log-out-outline" size={18} color={theme.onPrimary} />
           <ThemedText type="smallBold" themeColor="onPrimary">
             Log out
           </ThemedText>
@@ -226,6 +199,7 @@ function DriverHomeScreen() {
               style={StyleSheet.flatten([styles.button, { backgroundColor: theme.primary }])}
               testID="apply-link"
             >
+              <Ionicons name="add-circle-outline" size={18} color={theme.onPrimary} />
               <ThemedText type="smallBold" themeColor="onPrimary">
                 Apply for License
               </ThemedText>
@@ -233,38 +207,12 @@ function DriverHomeScreen() {
           </Link>
         </ThemedView>
 
-        <Link href="/(app)/fines" asChild>
-          <Pressable
-            style={StyleSheet.flatten([styles.button, { backgroundColor: theme.backgroundSelected }])}
-            testID="fines-link"
-          >
-            <ThemedText type="smallBold">Fines &amp; Appeals</ThemedText>
-          </Pressable>
-        </Link>
-
-        <Link href="/(app)/incidents" asChild>
-          <Pressable
-            style={StyleSheet.flatten([styles.button, { backgroundColor: theme.backgroundSelected }])}
-            testID="incidents-link"
-          >
-            <ThemedText type="smallBold">Road Incidents</ThemedText>
-          </Pressable>
-        </Link>
-
-        <Link href="/(app)/notifications" asChild>
-          <Pressable
-            style={StyleSheet.flatten([styles.button, { backgroundColor: theme.backgroundSelected }])}
-            testID="notifications-link"
-          >
-            <ThemedText type="smallBold">Notifications</ThemedText>
-          </Pressable>
-        </Link>
-
         <Pressable
           style={[styles.button, { backgroundColor: theme.danger }]}
           onPress={logout}
           testID="logout-button"
         >
+          <Ionicons name="log-out-outline" size={18} color={theme.onPrimary} />
           <ThemedText type="smallBold" themeColor="onPrimary">
             Log out
           </ThemedText>
@@ -302,8 +250,11 @@ const styles = StyleSheet.create({
     gap: Spacing.half,
   },
   button: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: Spacing.two,
     borderRadius: Spacing.two,
     paddingVertical: Spacing.three,
-    alignItems: 'center',
   },
 });

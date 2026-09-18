@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
@@ -36,10 +37,21 @@ const SEVERITIES: RoadIncidentSeverity[] = ['LOW', 'MEDIUM', 'HIGH'];
 // denied or unavailable, so the screen still functions for a demo/preview.
 const FALLBACK_LOCATION = { lat: 6.9271, lng: 79.8612 };
 
-const SEVERITY_COLOR: Record<RoadIncidentSeverity, 'danger' | 'primary' | 'textSecondary'> = {
+const SEVERITY_COLOR: Record<RoadIncidentSeverity, 'danger' | 'warning' | 'textSecondary'> = {
   HIGH: 'danger',
-  MEDIUM: 'primary',
+  MEDIUM: 'warning',
   LOW: 'textSecondary',
+};
+
+const TYPE_ICON: Record<RoadIncidentType, keyof typeof Ionicons.glyphMap> = {
+  ACCIDENT: 'car-sport',
+  TRAFFIC: 'trail-sign',
+  ROAD_BLOCK: 'hand-left',
+  FLOOD: 'water',
+  CONSTRUCTION: 'construct',
+  BREAKDOWN: 'build',
+  HAZARD: 'alert-circle',
+  OTHER: 'ellipsis-horizontal-circle-outline',
 };
 
 export default function IncidentsScreen() {
@@ -130,7 +142,6 @@ export default function IncidentsScreen() {
       contentInsetAdjustmentBehavior="automatic"
     >
       <ThemedView style={styles.form}>
-        <ThemedText type="title">Road Incidents</ThemedText>
         {locationNote ? (
           <ThemedText type="small" themeColor="textSecondary" testID="location-note">
             {locationNote}
@@ -158,6 +169,11 @@ export default function IncidentsScreen() {
                 ]}
                 testID={`type-${type}`}
               >
+                <Ionicons
+                  name={TYPE_ICON[type]}
+                  size={14}
+                  color={reportType === type ? theme.onPrimary : theme.text}
+                />
                 <ThemedText type="small" themeColor={reportType === type ? 'onPrimary' : 'text'}>
                   {type.replace('_', ' ')}
                 </ThemedText>
@@ -220,7 +236,10 @@ export default function IncidentsScreen() {
               style={styles.card}
               testID={`incident-${incident.id}`}
             >
-              <ThemedText type="smallBold">{incident.type.replace('_', ' ')}</ThemedText>
+              <View style={styles.typeRow}>
+                <Ionicons name={TYPE_ICON[incident.type]} size={16} color={theme.text} />
+                <ThemedText type="smallBold">{incident.type.replace('_', ' ')}</ThemedText>
+              </View>
               <ThemedText type="small" themeColor={SEVERITY_COLOR[incident.severity]}>
                 {incident.severity} severity
               </ThemedText>
@@ -278,9 +297,17 @@ const styles = StyleSheet.create({
     gap: Spacing.one,
   },
   chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.half,
     borderRadius: Spacing.two,
     paddingHorizontal: Spacing.two,
     paddingVertical: Spacing.one,
+  },
+  typeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
   },
   actionsRow: {
     flexDirection: 'row',

@@ -1,5 +1,6 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { getMyNotifications, markNotificationRead } from '@/api/notifications';
 import { extractErrorMessage } from '@/api/client';
@@ -19,6 +20,18 @@ const TYPE_LABEL: Record<AppNotification['type'], string> = {
   APPEAL_OVERTURNED: 'Appeal Overturned',
   BADGE_CHANGED: 'Standing Changed',
   NEARBY_INCIDENT: 'Nearby Incident',
+};
+
+const TYPE_ICON: Record<AppNotification['type'], keyof typeof Ionicons.glyphMap> = {
+  LICENSE_APPROVED: 'checkmark-circle',
+  LICENSE_REJECTED: 'close-circle',
+  FINE_ISSUED: 'cash',
+  LICENSE_SUSPENDED: 'ban',
+  PAYMENT_CONFIRMED: 'card',
+  APPEAL_UPHELD: 'document-text',
+  APPEAL_OVERTURNED: 'arrow-undo-circle',
+  BADGE_CHANGED: 'medal-outline',
+  NEARBY_INCIDENT: 'location',
 };
 
 export default function NotificationsScreen() {
@@ -59,8 +72,6 @@ export default function NotificationsScreen() {
       contentInsetAdjustmentBehavior="automatic"
     >
       <ThemedView style={styles.form}>
-        <ThemedText type="title">Notifications</ThemedText>
-
         {loadError ? (
           <ThemedText type="small" themeColor="danger" selectable testID="notifications-error">
             {loadError}
@@ -85,7 +96,10 @@ export default function NotificationsScreen() {
                   !notification.read_at && { borderLeftWidth: 3, borderLeftColor: theme.primary },
                 ]}
               >
-                <ThemedText type="smallBold">{TYPE_LABEL[notification.type]}</ThemedText>
+                <View style={styles.typeRow}>
+                  <Ionicons name={TYPE_ICON[notification.type]} size={16} color={theme.text} />
+                  <ThemedText type="smallBold">{TYPE_LABEL[notification.type]}</ThemedText>
+                </View>
                 <ThemedText type="small">{notification.message}</ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">
                   {new Date(notification.created_at).toLocaleString()}
@@ -117,5 +131,10 @@ const styles = StyleSheet.create({
     borderRadius: Spacing.three,
     padding: Spacing.three,
     gap: Spacing.half,
+  },
+  typeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
   },
 });

@@ -60,7 +60,7 @@ export default function ApplyScreen() {
         medicalCert,
         birthCert,
       });
-      router.replace('/(app)');
+      router.replace('/(app)/(tabs)');
     } catch (err) {
       setError(extractErrorMessage(err));
     } finally {
@@ -75,7 +75,6 @@ export default function ApplyScreen() {
       contentInsetAdjustmentBehavior="automatic"
     >
       <ThemedView style={styles.form}>
-        <ThemedText type="title">Apply for License</ThemedText>
         <ThemedText type="small" themeColor="textSecondary">
           Provide 4 clear face photos and your NIC, medical certificate, and birth
           certificate. All 7 files are required.

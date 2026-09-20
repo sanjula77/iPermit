@@ -50,6 +50,79 @@ copied in:
 **Fix:** swap the figure and paste in the replacement paragraph text; remove
 the old confusion-matrix figure and its surrounding paragraph entirely.
 
+### 1a. Other sections still say "no evaluation has been done" — now factually wrong
+
+The new evaluation results don't just replace Figure 2 — several other
+sentences in the paper explicitly say no real evaluation was performed,
+which stopped being true once the LFW/Bollywood run completed. Each needs a
+small, targeted edit (not a rewrite) to stay internally consistent with the
+new Section 5.1.
+
+**Abstract** — current: *"...while a driver-behavior badge formula and a
+FAR/FRR/EER evaluation harness were implemented to support transparent,
+auditable classification and future performance validation."*
+
+Replace with: *"...while a driver-behavior badge formula was implemented to
+support transparent, auditable classification, and a FAR/FRR/EER evaluation
+was conducted against two labeled face-verification datasets to assess
+recognition performance. The evaluation found near-zero false-acceptance
+rates on both datasets but a notably higher false-rejection rate on a
+South-Asian-representative dataset than on a Western-celebrity benchmark,
+underscoring the need for population-specific validation before
+deployment."*
+
+**Section 3.5 (Testing Strategy), final paragraph** — current: *"...The
+evaluation functions were unit-tested using synthetic score distributions;
+however, evaluation against a representative held-out dataset has not yet
+been performed because a sufficiently sized project-specific evaluation
+dataset is not currently available. Consequently, no FAR, FRR, or EER
+performance claim is made for the implemented system."*
+
+Replace the last two sentences with: *"The evaluation functions were
+unit-tested using synthetic score distributions and subsequently applied to
+two labeled face-verification datasets — LFW (Western/celebrity, 217
+identities) and a Bollywood celebrity collection (South Asian, 100
+identities) — processed through the system's actual detection-and-embedding
+pipeline. Results are reported in Section 5.1, with caveats regarding sample
+size, dataset composition, and generalizability to Sri Lankan drivers stated
+explicitly rather than presented as definitive real-world performance."*
+
+**Section 3.6 (Verification Discipline and Documentation Practice)** — after
+the existing sentence documenting that the 0.42 face-match threshold is
+unvalidated, add: *"Subsequent evaluation (Section 5.1) found that an
+empirically-derived equal-error-rate threshold of approximately 0.22 would
+better balance false-acceptance and false-rejection rates than the current
+default of 0.42 on the tested datasets. This is reported as an evaluation
+finding, not a proposed threshold change, since it has not yet been
+validated against Sri Lankan driver photographs specifically."*
+
+**Section 3.7 (Limitations of the Adopted Methodology)** — add a new
+sentence/paragraph: *"The face-recognition evaluation (Section 5.1) also
+observed a measurable difference in false-rejection rate between a
+Western-celebrity dataset and a South-Asian-celebrity dataset processed
+through the identical pipeline, consistent with demographic performance
+disparities documented elsewhere in the face-recognition literature (see
+References [4], [17]). This has not yet been evaluated against genuine Sri
+Lankan driver photographs, and the observed gap should not be interpreted as
+a precise measurement of real-world bias without further population-specific
+testing."*
+
+**Section 6 (Conclusion and Future Work)** — current: *"Future enhancements
+include improving facial recognition accuracy using larger Sri Lankan
+datasets..."*
+
+Strengthen to ground it in the new evidence: *"Future enhancements include
+validating and improving facial recognition accuracy using a dedicated Sri
+Lankan driver dataset — motivated directly by the demographic performance
+gap observed during evaluation (Section 5.1) — alongside integrating
+advanced driver behavior analysis and drowsiness detection..."* (continue
+with the rest of the existing sentence unchanged).
+
+**Fix:** Apply all five edits above alongside the Figure 2 replacement (item
+1) — they're all part of the same underlying change and should land in the
+same revision pass, since leaving any one of them unfixed would create a new
+internal contradiction identical in spirit to the original Figure 2 problem.
+
 ## Critical — Must Fix Before Submission
 
 ### 2. Reference [12] is an incomplete placeholder

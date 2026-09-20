@@ -1,32 +1,54 @@
 # iPermit Paper — Revision Checklist
 
-Tracks known issues in `Project_Paper.docx` (the academic paper draft, kept
-outside this repo) and the fixes needed before submission. Found via a
-research-skills review cross-checked against this project's own
+Tracks known issues in `Project_Paper.docx`/`Project_Paper.pdf` (the academic
+paper draft, kept outside this repo) and the fixes needed before submission.
+Found via a research-skills review cross-checked against this project's own
 `docs/methodology.md`, `docs/tasks.md`, and a sample citation-verification
-pass against original sources.
+pass against original sources. Last verified against the actual PDF on
+2026-09-20.
 
-## Already Fixed
+## Already Fixed (confirmed in the current PDF)
 
 - [x] **Figure 1 (Architecture Diagram)** — regenerated via Eraser.io. All
   labels now accurate — no "Deploytment" typo, no garbled "LOGICAL SYSTEM
   FLOLY" text, "Public Route" no longer mislabeled as a "Gateway Layer",
   Violation Detection clearly marked "Planned, not yet built."
 
-- [x] **Figure 2 (Confusion Matrix) contradicted the Methodology section** —
-  replaced entirely with a real FAR/FRR/EER evaluation run against two
+- [x] **Missing Abstract and Keywords** — added. Well-written: honest,
+  appropriately scoped, explicitly notes limitations rather than
+  overclaiming.
+
+- [x] **Formatting artifact** — the stray double-spacing in "AI-based driver
+  verification" (Results and Evaluation section) is gone.
+
+## Drafted and ready, but NOT yet pasted into the paper
+
+### 1. Figure 2 (Confusion Matrix) still contradicts the Methodology section
+
+**As of the 2026-09-20 PDF, this is still the original flawed figure** — the
+ameesha/keshan/lakshan/oshanda/pasindu/ravishan confusion matrix and its
+surrounding text in "5.1 Facial Recognition Evaluation" are unchanged. The
+replacement was already produced in a prior session and just needs to be
+copied in:
+
+- **New figure**: `docs/diagrams/face-recognition-far-frr-curve.png` — a
+  FAR/FRR-vs-threshold curve (the methodologically correct visualization for
+  a verification task) computed from a real evaluation run against two
   labeled datasets (LFW: 217 identities, 3,984 usable images; a Bollywood
-  celebrity set: 100 identities, 1,374 usable images), both processed through
-  the actual RetinaFace + ArcFace pipeline. Result: FAR near zero for both
-  (0.01% LFW, 0.00% Bollywood at the 0.42 threshold), but FRR much higher for
-  the Bollywood set (6.31% vs 0.39%) and EER roughly 5x higher (0.81% vs
-  0.16%) — reported as an indicative, honestly-caveated finding (small
-  Bollywood sample size, possible ArcFace training-data familiarity effect
-  favoring LFW, differing photo styles between the two sets), not a
-  definitive bias measurement. New Figure 2 is a FAR/FRR-vs-threshold curve
-  for both datasets (the methodologically correct visualization for a
-  verification task, unlike a confusion matrix). See the drafted Results
-  paragraph and figure caption for the exact text to paste in.
+  celebrity set: 100 identities, 1,374 usable images), both processed
+  through the actual RetinaFace + ArcFace pipeline.
+- **Result**: FAR near zero for both (0.01% LFW, 0.00% Bollywood at the 0.42
+  threshold), but FRR much higher for the Bollywood set (6.31% vs 0.39%) and
+  EER roughly 5x higher (0.81% vs 0.16%) — reported as an indicative,
+  honestly-caveated finding (small Bollywood sample size, possible ArcFace
+  training-data familiarity effect favoring LFW, differing photo styles
+  between the two sets), not a definitive bias measurement.
+- **Replacement paragraph text and figure caption**: already drafted in this
+  project's conversation history — ask for it again if it's been lost, or
+  reconstruct from the bullet points above.
+
+**Fix:** swap the figure and paste in the replacement paragraph text; remove
+the old confusion-matrix figure and its surrounding paragraph entirely.
 
 ## Critical — Must Fix Before Submission
 
@@ -77,22 +99,7 @@ submitting. Do not trust a citation just because the topic sounds right.
 
 ## Important — Should Fix
 
-### 5. Missing Abstract and Index Terms / Keywords
-
-The paper goes straight from the title into "INTRODUCTION" with no Abstract
-or Keywords section — both are normally required for a conference/journal
-submission.
-
-**Fix:** Add an Abstract (150-250 words) covering: the problem (manual,
-fragmented traffic/license management in Sri Lanka), the proposed approach
-(iPermit — facial recognition, point-based violations, mobile/web platform),
-what was actually built and verified, and an honest note on what hasn't been
-evaluated yet (face-recognition accuracy, automated violation detection).
-Add 4-6 Index Terms/Keywords below it (e.g., digital licensing, facial
-recognition, traffic enforcement, driver behavior analytics, Sri Lanka,
-smart transportation).
-
-### 6. System Design section is too thin
+### 5. System Design section is too thin
 
 The section is one paragraph plus Figure 1, but claims "the system design
 includes UML models, user interface designs, database structures, and REST
@@ -103,7 +110,7 @@ diagram, a short table of key API endpoints, or a sequence diagram for one
 core flow like license approval), or remove the sentence claiming these
 exist and describe only what's actually shown.
 
-### 7. Results and Evaluation section lacks quantitative evidence
+### 6. Results and Evaluation section lacks quantitative evidence
 
 The usability evaluation is described only as "conducted with drivers,
 police officers, and administrators" with no participant count, method, or
@@ -117,15 +124,15 @@ yet, say so directly instead of describing it as completed.
 
 ## Minor — Polish
 
-### 8. Grammar
+### 7. Grammar
 
 *"The number of registered vehicles and road users increases, there is a
 greater need..."* — missing "As" at the start of the sentence. Should read
 *"As the number of registered vehicles and road users increases, there is a
 greater need..."*
 
-### 9. Formatting artifact
+### 8. Inconsistent heading style
 
-*"AI-based driver            verification"* has stray extra spaces
-(leftover from editing) in the Results and Evaluation section — search and
-remove.
+Sections 1 ("INTRODUCTION") and 2 ("LITERATURE REVIEW") are in all-caps,
+while Sections 3–7 ("Methodology", "System Design", etc.) are in title case.
+Pick one style and apply it throughout.

@@ -13,30 +13,22 @@ pass against original sources.
   FLOLY" text, "Public Route" no longer mislabeled as a "Gateway Layer",
   Violation Detection clearly marked "Planned, not yet built."
 
+- [x] **Figure 2 (Confusion Matrix) contradicted the Methodology section** —
+  replaced entirely with a real FAR/FRR/EER evaluation run against two
+  labeled datasets (LFW: 217 identities, 3,984 usable images; a Bollywood
+  celebrity set: 100 identities, 1,374 usable images), both processed through
+  the actual RetinaFace + ArcFace pipeline. Result: FAR near zero for both
+  (0.01% LFW, 0.00% Bollywood at the 0.42 threshold), but FRR much higher for
+  the Bollywood set (6.31% vs 0.39%) and EER roughly 5x higher (0.81% vs
+  0.16%) — reported as an indicative, honestly-caveated finding (small
+  Bollywood sample size, possible ArcFace training-data familiarity effect
+  favoring LFW, differing photo styles between the two sets), not a
+  definitive bias measurement. New Figure 2 is a FAR/FRR-vs-threshold curve
+  for both datasets (the methodologically correct visualization for a
+  verification task, unlike a confusion matrix). See the drafted Results
+  paragraph and figure caption for the exact text to paste in.
+
 ## Critical — Must Fix Before Submission
-
-### 1. Figure 2 (Confusion Matrix) contradicts the Methodology section
-
-The Methodology section states "no FAR, FRR, or EER performance claim is
-made for the implemented system" because a proper evaluation dataset isn't
-available yet. But the Results section then shows a confusion matrix with 6
-named individuals (~10 test samples) implying ~70% accuracy — exactly the
-kind of tiny-sample overfitting result the paper itself warns against two
-paragraphs earlier ("100% train / 60% test on a six-person, sixty-eight-image
-dataset").
-
-**Fix — pick one, don't leave it unresolved:**
-
-- **Option A (recommended if this was just a quick informal test):** Remove
-  Figure 2 and the confusion-matrix paragraph entirely. Keep the honest
-  statement that formal evaluation hasn't been done yet, and list it as
-  future work.
-- **Option B (if you want to keep it):** Reframe it explicitly as a small,
-  non-representative pilot/sanity check — NOT a performance evaluation.
-  State exactly how many individuals and samples were used, why this sample
-  size cannot support a generalization claim, and that it exists only to
-  confirm the pipeline runs end-to-end, not to measure accuracy. Do not
-  report an accuracy percentage from it anywhere.
 
 ### 2. Reference [12] is an incomplete placeholder
 

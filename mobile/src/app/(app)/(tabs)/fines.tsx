@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
@@ -9,11 +10,32 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import type { Appeal, FineWithViolation, PaymentMethod } from '@/types/fine';
+import type { Appeal, FineStatus, FineWithViolation, PaymentMethod } from '@/types/fine';
+import type { ViolationType } from '@/types/police';
 
 const PAYMENT_METHODS: PaymentMethod[] = ['CARD', 'BANK', 'WALLET'];
 
+const VIOLATION_ICON: Record<ViolationType, keyof typeof Ionicons.glyphMap> = {
+  WHITE_LINE: 'remove-circle-outline',
+  SPEEDING: 'speedometer-outline',
+  RED_LIGHT: 'stop-circle-outline',
+  DRUNK_DRIVING: 'alert-circle',
+};
+
+const STATUS_ICON: Record<FineStatus, keyof typeof Ionicons.glyphMap> = {
+  UNPAID: 'time-outline',
+  PAID: 'checkmark-circle',
+  REVERSED: 'arrow-undo-circle',
+};
+
+const PAYMENT_METHOD_ICON: Record<PaymentMethod, keyof typeof Ionicons.glyphMap> = {
+  CARD: 'card-outline',
+  BANK: 'business-outline',
+  WALLET: 'wallet-outline',
+};
+
 export default function FinesScreen() {
+  const theme = useTheme();
   const [fines, setFines] = useState<FineWithViolation[] | null>(null);
   const [appeals, setAppeals] = useState<Appeal[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -37,6 +59,7 @@ export default function FinesScreen() {
   const outstandingTotal = (fines ?? [])
     .filter((f) => f.status === 'UNPAID')
     .reduce((sum, f) => sum + f.amount, 0);
+  const isAllClear = fines !== null && outstandingTotal === 0;
 
   return (
     <ScrollView
@@ -45,9 +68,31 @@ export default function FinesScreen() {
       contentInsetAdjustmentBehavior="automatic"
     >
       <ThemedView style={styles.form}>
-        <ThemedText type="subtitle" testID="outstanding-total">
-          Outstanding: LKR {outstandingTotal}
-        </ThemedText>
+        <ThemedView
+          type="backgroundElement"
+          style={[
+            styles.summaryCard,
+            { borderColor: isAllClear ? theme.success : theme.danger },
+          ]}
+        >
+          <Ionicons
+            name={isAllClear ? 'checkmark-circle' : 'alert-circle'}
+            size={28}
+            color={isAllClear ? theme.success : theme.danger}
+          />
+          <View style={styles.summaryText}>
+            <ThemedText type="small" themeColor="textSecondary">
+              Outstanding Balance
+            </ThemedText>
+            <ThemedText
+              type="subtitle"
+              themeColor={isAllClear ? 'success' : 'danger'}
+              testID="outstanding-total"
+            >
+              LKR {outstandingTotal.toLocaleString()}
+            </ThemedText>
+          </View>
+        </ThemedView>
 
         {loadError ? (
           <ThemedText type="small" themeColor="danger" selectable testID="fines-error">
@@ -89,6 +134,7 @@ function FineCard({
   const [appealReason, setAppealReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [justPaid, setJustPaid] = useState(false);
 
   async function handlePay() {
     setError(null);
@@ -96,6 +142,7 @@ function FineCard({
     try {
       await payFine(fine.id, paymentMethod);
       setMode('none');
+      setJustPaid(true);
       onChanged();
     } catch (err) {
       setError(extractErrorMessage(err));
@@ -124,24 +171,35 @@ function FineCard({
   }
 
   const canActOnFine = fine.status === 'UNPAID' && (!appeal || appeal.status !== 'PENDING');
+  const statusColor =
+    fine.status === 'UNPAID' ? 'danger' : fine.status === 'PAID' ? 'primary' : 'textSecondary';
 
   return (
     <ThemedView type="backgroundElement" style={styles.card} testID={`fine-${fine.id}`}>
-      <ThemedText type="smallBold">{fine.violation.type.replace('_', ' ')}</ThemedText>
+      <View style={styles.headerRow}>
+        <Ionicons name={VIOLATION_ICON[fine.violation.type]} size={16} color={theme.text} />
+        <ThemedText type="smallBold">{fine.violation.type.replace('_', ' ')}</ThemedText>
+      </View>
       <ThemedText type="small" themeColor="textSecondary">
         {new Date(fine.violation.confirmed_at).toLocaleDateString()} · {fine.violation.points_deducted} pts
       </ThemedText>
-      <ThemedText type="smallBold">LKR {fine.amount}</ThemedText>
-      <ThemedText
-        type="small"
-        themeColor={
-          fine.status === 'UNPAID' ? 'danger' : fine.status === 'PAID' ? 'primary' : 'textSecondary'
-        }
-        testID="fine-status"
-      >
-        {fine.status}
-        {fine.status === 'PAID' && fine.payment_method ? ` via ${fine.payment_method}` : ''}
-      </ThemedText>
+      <ThemedText type="smallBold">LKR {fine.amount.toLocaleString()}</ThemedText>
+      <View style={styles.headerRow}>
+        <Ionicons name={STATUS_ICON[fine.status]} size={14} color={theme[statusColor]} />
+        <ThemedText type="small" themeColor={statusColor} testID="fine-status">
+          {fine.status}
+          {fine.status === 'PAID' && fine.payment_method ? ` via ${fine.payment_method}` : ''}
+        </ThemedText>
+      </View>
+
+      {justPaid ? (
+        <View style={styles.successRow}>
+          <Ionicons name="checkmark-circle" size={14} color={theme.success} />
+          <ThemedText type="small" themeColor="success">
+            Payment confirmed
+          </ThemedText>
+        </View>
+      ) : null}
 
       {appeal ? (
         <ThemedText type="small" themeColor="textSecondary" testID="fine-appeal-status">
@@ -169,6 +227,11 @@ function FineCard({
                   ]}
                   testID={`pay-method-${method}`}
                 >
+                  <Ionicons
+                    name={PAYMENT_METHOD_ICON[method]}
+                    size={14}
+                    color={paymentMethod === method ? theme.onPrimary : theme.text}
+                  />
                   <ThemedText
                     type="small"
                     themeColor={paymentMethod === method ? 'onPrimary' : 'text'}
@@ -247,10 +310,31 @@ const styles = StyleSheet.create({
     maxWidth: 800,
     gap: Spacing.three,
   },
+  summaryCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+    borderRadius: Spacing.three,
+    borderWidth: 1.5,
+    padding: Spacing.four,
+  },
+  summaryText: {
+    gap: Spacing.half,
+  },
   card: {
     borderRadius: Spacing.three,
     padding: Spacing.three,
     gap: Spacing.one,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.half,
+  },
+  successRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.half,
   },
   actionsRow: {
     flexDirection: 'row',
@@ -267,9 +351,12 @@ const styles = StyleSheet.create({
   },
   methodChip: {
     flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: Spacing.half,
     borderRadius: Spacing.two,
     paddingVertical: Spacing.two,
-    alignItems: 'center',
   },
   flexButton: { flex: 1 },
   button: {

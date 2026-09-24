@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { router } from 'expo-router';
 import { useState } from 'react';
@@ -15,6 +16,12 @@ import { takePhoto } from '@/lib/file-upload';
 import type { FaceMatchCandidate } from '@/types/police';
 
 type Mode = 'face' | 'qr' | 'lookup';
+
+const TAB_ICON: Record<Mode, keyof typeof Ionicons.glyphMap> = {
+  face: 'scan-outline',
+  qr: 'qr-code-outline',
+  lookup: 'card-outline',
+};
 
 export default function PoliceVerifyScreen() {
   const theme = useTheme();
@@ -118,6 +125,11 @@ export default function PoliceVerifyScreen() {
               ]}
               testID={`police-tab-${m}`}
             >
+              <Ionicons
+                name={TAB_ICON[m]}
+                size={16}
+                color={mode === m ? theme.onPrimary : theme.text}
+              />
               <ThemedText
                 type="smallBold"
                 themeColor={mode === m ? 'onPrimary' : 'text'}
@@ -179,6 +191,7 @@ function FaceScanPanel({ onScan, isLoading }: { onScan: () => void; isLoading: b
         disabled={isLoading}
         testID="police-face-scan-button"
       >
+        <Ionicons name="camera-outline" size={18} color={theme.onPrimary} />
         <ThemedText type="smallBold" themeColor="onPrimary">
           {isLoading ? 'Verifying…' : 'Capture Driver Photo'}
         </ThemedText>
@@ -226,6 +239,7 @@ function QrScanPanel({
           }}
           testID="police-qr-start-button"
         >
+          <Ionicons name="qr-code-outline" size={18} color={theme.onPrimary} />
           <ThemedText type="smallBold" themeColor="onPrimary">
             Scan License QR
           </ThemedText>
@@ -290,6 +304,7 @@ function LookupPanel({
         disabled={!(nic || licenseNo) || isLoading}
         testID="police-lookup-submit"
       >
+        <Ionicons name="search-outline" size={18} color={theme.onPrimary} />
         <ThemedText type="smallBold" themeColor="onPrimary">
           {isLoading ? 'Looking up…' : 'Look Up Driver'}
         </ThemedText>
@@ -317,9 +332,12 @@ const styles = StyleSheet.create({
   },
   tab: {
     flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'center',
     borderRadius: Spacing.two,
     paddingVertical: Spacing.two,
     alignItems: 'center',
+    gap: Spacing.half,
   },
   panel: {
     gap: Spacing.two,
@@ -333,9 +351,12 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   button: {
+    flexDirection: 'row',
+    justifyContent: 'center',
     borderRadius: Spacing.two,
     paddingVertical: Spacing.three,
     alignItems: 'center',
+    gap: Spacing.two,
   },
   buttonDisabled: { opacity: 0.5 },
 });

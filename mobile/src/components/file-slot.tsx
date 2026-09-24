@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { Pressable, StyleSheet, View } from 'react-native';
 
@@ -52,6 +53,7 @@ export function FileSlot({
             onPress={onTakePhoto}
             testID={testID && `${testID}-camera`}
           >
+            <Ionicons name="camera-outline" size={14} color={theme.text} />
             <ThemedText type="small">Camera</ThemedText>
           </Pressable>
         ) : null}
@@ -61,6 +63,7 @@ export function FileSlot({
             onPress={onPickLibrary}
             testID={testID && `${testID}-library`}
           >
+            <Ionicons name="images-outline" size={14} color={theme.text} />
             <ThemedText type="small">Library</ThemedText>
           </Pressable>
         ) : null}
@@ -70,6 +73,7 @@ export function FileSlot({
             onPress={onPickDocument}
             testID={testID && `${testID}-document`}
           >
+            <Ionicons name="document-attach-outline" size={14} color={theme.text} />
             <ThemedText type="small">Choose File</ThemedText>
           </Pressable>
         ) : null}
@@ -99,6 +103,9 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.half,
     borderWidth: 1,
     borderRadius: Spacing.two,
     paddingVertical: Spacing.one,

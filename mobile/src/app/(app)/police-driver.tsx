@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
@@ -12,6 +13,13 @@ import { useTheme } from '@/hooks/use-theme';
 import type { DriverSummary, ViolationRead, ViolationType } from '@/types/police';
 
 const VIOLATION_TYPES: ViolationType[] = ['WHITE_LINE', 'SPEEDING', 'RED_LIGHT', 'DRUNK_DRIVING'];
+
+const VIOLATION_ICON: Record<ViolationType, keyof typeof Ionicons.glyphMap> = {
+  WHITE_LINE: 'remove-circle-outline',
+  SPEEDING: 'speedometer-outline',
+  RED_LIGHT: 'stop-circle-outline',
+  DRUNK_DRIVING: 'alert-circle',
+};
 
 export default function PoliceDriverScreen() {
   const theme = useTheme();
@@ -44,7 +52,7 @@ export default function PoliceDriverScreen() {
       setEvidenceRef('');
       setSuccessMessage(
         `Recorded ${result.violation.type} -- ${result.violation.points_deducted} points, ` +
-          `fine LKR ${result.fine.amount}.${
+          `fine LKR ${result.fine.amount.toLocaleString()}.${
             result.license_status === 'SUSPENDED' ? ' License is now SUSPENDED.' : ''
           }`,
       );
@@ -63,9 +71,12 @@ export default function PoliceDriverScreen() {
     >
       <ThemedView style={styles.form}>
         <ThemedView type="backgroundElement" style={styles.card}>
-          <ThemedText type="smallBold" selectable>
-            {driver.email}
-          </ThemedText>
+          <View style={styles.headerRow}>
+            <Ionicons name="person-circle-outline" size={20} color={theme.text} />
+            <ThemedText type="smallBold" selectable>
+              {driver.email}
+            </ThemedText>
+          </View>
           <ThemedText type="small" themeColor="textSecondary" selectable>
             NIC: {driver.nic}
           </ThemedText>
@@ -74,18 +85,28 @@ export default function PoliceDriverScreen() {
               <ThemedText type="small" selectable>
                 License: {driver.license_no}
               </ThemedText>
-              <ThemedText
-                type="smallBold"
-                themeColor={driver.license_status === 'ACTIVE' ? 'primary' : 'danger'}
-                testID="driver-license-status"
-              >
-                {driver.license_status} · {driver.points} pts
-              </ThemedText>
+              <View style={styles.statusRow}>
+                <Ionicons
+                  name={driver.license_status === 'ACTIVE' ? 'checkmark-circle' : 'ban'}
+                  size={14}
+                  color={driver.license_status === 'ACTIVE' ? theme.primary : theme.danger}
+                />
+                <ThemedText
+                  type="smallBold"
+                  themeColor={driver.license_status === 'ACTIVE' ? 'primary' : 'danger'}
+                  testID="driver-license-status"
+                >
+                  {driver.license_status} · {driver.points} pts
+                </ThemedText>
+              </View>
             </>
           ) : (
-            <ThemedText type="small" themeColor="danger">
-              No license issued -- a violation cannot be recorded
-            </ThemedText>
+            <View style={styles.statusRow}>
+              <Ionicons name="alert-circle-outline" size={14} color={theme.danger} />
+              <ThemedText type="small" themeColor="danger">
+                No license issued -- a violation cannot be recorded
+              </ThemedText>
+            </View>
           )}
         </ThemedView>
 
@@ -97,7 +118,10 @@ export default function PoliceDriverScreen() {
         ) : (
           driver.violations.map((violation: ViolationRead) => (
             <ThemedView key={violation.id} type="backgroundElement" style={styles.violationCard}>
-              <ThemedText type="smallBold">{violation.type}</ThemedText>
+              <View style={styles.headerRow}>
+                <Ionicons name={VIOLATION_ICON[violation.type]} size={16} color={theme.text} />
+                <ThemedText type="smallBold">{violation.type}</ThemedText>
+              </View>
               <ThemedText type="small" themeColor="textSecondary">
                 {new Date(violation.confirmed_at).toLocaleString()} ·{' '}
                 {violation.points_deducted} pts
@@ -128,6 +152,11 @@ export default function PoliceDriverScreen() {
                   ]}
                   testID={`violation-type-${type}`}
                 >
+                  <Ionicons
+                    name={VIOLATION_ICON[type]}
+                    size={14}
+                    color={violationType === type ? theme.onPrimary : theme.text}
+                  />
                   <ThemedText
                     type="small"
                     themeColor={violationType === type ? 'onPrimary' : 'text'}
@@ -145,14 +174,28 @@ export default function PoliceDriverScreen() {
             />
 
             {error ? (
-              <ThemedText type="small" themeColor="danger" selectable testID="record-violation-error">
-                {error}
-              </ThemedText>
+              <ThemedView style={[styles.banner, { borderColor: theme.danger }]}>
+                <ThemedText
+                  type="small"
+                  themeColor="danger"
+                  selectable
+                  testID="record-violation-error"
+                >
+                  {error}
+                </ThemedText>
+              </ThemedView>
             ) : null}
             {successMessage ? (
-              <ThemedText type="small" themeColor="primary" selectable testID="record-violation-success">
-                {successMessage}
-              </ThemedText>
+              <ThemedView style={[styles.banner, { borderColor: theme.primary }]}>
+                <ThemedText
+                  type="small"
+                  themeColor="primary"
+                  selectable
+                  testID="record-violation-success"
+                >
+                  {successMessage}
+                </ThemedText>
+              </ThemedView>
             ) : null}
 
             <Pressable
@@ -194,6 +237,16 @@ const styles = StyleSheet.create({
     padding: Spacing.four,
     gap: Spacing.one,
   },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
+  },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.half,
+  },
   violationCard: {
     borderRadius: Spacing.three,
     padding: Spacing.three,
@@ -209,9 +262,17 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   typeChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.half,
     borderRadius: Spacing.two,
     paddingVertical: Spacing.two,
     paddingHorizontal: Spacing.three,
+  },
+  banner: {
+    borderWidth: 1,
+    borderRadius: Spacing.two,
+    padding: Spacing.three,
   },
   button: {
     borderRadius: Spacing.two,

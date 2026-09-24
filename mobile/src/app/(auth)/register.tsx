@@ -1,6 +1,7 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Link } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { extractErrorMessage } from '@/api/client';
 import { ThemedText } from '@/components/themed-text';
@@ -13,6 +14,30 @@ import { useTheme } from '@/hooks/use-theme';
 // Mirrors backend/app/schemas/auth.py RegisterRequest — keep in sync.
 const MIN_PASSWORD_LENGTH = 8;
 
+type Field = 'email' | 'nic' | 'password' | 'confirmPassword';
+
+function emailError(value: string): string | undefined {
+  if (!value.includes('@')) return 'Enter a valid email address.';
+  return undefined;
+}
+
+function nicError(value: string): string | undefined {
+  if (value.trim().length < 5) return 'Enter a valid NIC.';
+  return undefined;
+}
+
+function passwordError(value: string): string | undefined {
+  if (value.length < MIN_PASSWORD_LENGTH) {
+    return `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`;
+  }
+  return undefined;
+}
+
+function confirmPasswordError(value: string, password: string): string | undefined {
+  if (value !== password) return 'Passwords do not match.';
+  return undefined;
+}
+
 export default function RegisterScreen() {
   const { register } = useAuth();
   const theme = useTheme();
@@ -20,23 +45,30 @@ export default function RegisterScreen() {
   const [nic, setNic] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [touched, setTouched] = useState<Record<Field, boolean>>({
+    email: false,
+    nic: false,
+    password: false,
+    confirmPassword: false,
+  });
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  function validate(): string | null {
-    if (!email.includes('@')) return 'Enter a valid email address.';
-    if (nic.trim().length < 5) return 'Enter a valid NIC.';
-    if (password.length < MIN_PASSWORD_LENGTH) {
-      return `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`;
-    }
-    if (password !== confirmPassword) return 'Passwords do not match.';
-    return null;
+  function markTouched(field: Field) {
+    setTouched((prev) => ({ ...prev, [field]: true }));
   }
 
+  const fieldErrors = {
+    email: emailError(email),
+    nic: nicError(nic),
+    password: passwordError(password),
+    confirmPassword: confirmPasswordError(confirmPassword, password),
+  };
+  const hasAnyFieldError = Object.values(fieldErrors).some((e) => e !== undefined);
+
   async function handleSubmit() {
-    const validationError = validate();
-    if (validationError) {
-      setError(validationError);
+    setTouched({ email: true, nic: true, password: true, confirmPassword: true });
+    if (hasAnyFieldError) {
       return;
     }
     setError(null);
@@ -58,6 +90,9 @@ export default function RegisterScreen() {
       keyboardShouldPersistTaps="handled"
     >
       <ThemedView style={styles.form}>
+        <View style={[styles.badge, { backgroundColor: theme.primary }]}>
+          <Ionicons name="shield-checkmark" size={36} color={theme.onPrimary} />
+        </View>
         <ThemedText type="title" style={styles.title}>
           iPermit
         </ThemedText>
@@ -67,14 +102,25 @@ export default function RegisterScreen() {
           label="Email"
           value={email}
           onChangeText={setEmail}
+          onBlur={() => markTouched('email')}
+          error={touched.email ? fieldErrors.email : undefined}
           keyboardType="email-address"
           testID="register-email"
         />
-        <TextField label="NIC" value={nic} onChangeText={setNic} testID="register-nic" />
+        <TextField
+          label="NIC"
+          value={nic}
+          onChangeText={setNic}
+          onBlur={() => markTouched('nic')}
+          error={touched.nic ? fieldErrors.nic : undefined}
+          testID="register-nic"
+        />
         <TextField
           label="Password"
           value={password}
           onChangeText={setPassword}
+          onBlur={() => markTouched('password')}
+          error={touched.password ? fieldErrors.password : undefined}
           secureTextEntry
           testID="register-password"
         />
@@ -82,6 +128,8 @@ export default function RegisterScreen() {
           label="Confirm password"
           value={confirmPassword}
           onChangeText={setConfirmPassword}
+          onBlur={() => markTouched('confirmPassword')}
+          error={touched.confirmPassword ? fieldErrors.confirmPassword : undefined}
           secureTextEntry
           testID="register-confirm-password"
         />
@@ -124,6 +172,15 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: MaxContentWidth,
     gap: Spacing.three,
+  },
+  badge: {
+    alignSelf: 'center',
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.one,
   },
   title: { textAlign: 'center' },
   button: {

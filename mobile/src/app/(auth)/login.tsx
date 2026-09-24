@@ -1,6 +1,7 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Link } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { extractErrorMessage } from '@/api/client';
 import { ThemedText } from '@/components/themed-text';
@@ -40,6 +41,9 @@ export default function LoginScreen() {
       keyboardShouldPersistTaps="handled"
     >
       <ThemedView style={styles.form}>
+        <View style={[styles.badge, { backgroundColor: theme.primary }]}>
+          <Ionicons name="shield-checkmark" size={36} color={theme.onPrimary} />
+        </View>
         <ThemedText type="title" style={styles.title}>
           iPermit
         </ThemedText>
@@ -102,6 +106,15 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: MaxContentWidth,
     gap: Spacing.three,
+  },
+  badge: {
+    alignSelf: 'center',
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.one,
   },
   title: { textAlign: 'center' },
   button: {

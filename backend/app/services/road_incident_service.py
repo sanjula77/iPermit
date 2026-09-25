@@ -1,10 +1,10 @@
-import math
 import uuid
 from datetime import datetime, timedelta
 
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.geo import haversine_km
 from app.models.road_incident import (
     RoadIncident,
     RoadIncidentSeverity,
@@ -13,24 +13,9 @@ from app.models.road_incident import (
 )
 from app.repositories import road_incident_repository
 
-_EARTH_RADIUS_KM = 6371.0
-
 
 class NotFoundError(Exception):
     pass
-
-
-def _haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
-    """Great-circle distance between two points, in km. Pure function (no
-    I/O) -- no PostGIS/new geo dependency needed at this project's scale."""
-    phi1, phi2 = math.radians(lat1), math.radians(lat2)
-    d_phi = math.radians(lat2 - lat1)
-    d_lambda = math.radians(lng2 - lng1)
-    a = (
-        math.sin(d_phi / 2) ** 2
-        + math.cos(phi1) * math.cos(phi2) * math.sin(d_lambda / 2) ** 2
-    )
-    return 2 * _EARTH_RADIUS_KM * math.asin(math.sqrt(a))
 
 
 def _expire_if_stale(db: Session, incident: RoadIncident) -> RoadIncident:
@@ -87,7 +72,7 @@ def list_nearby(
     ]
 
     within_radius = [
-        (incident, _haversine_km(lat, lng, incident.lat, incident.lng))
+        (incident, haversine_km(lat, lng, incident.lat, incident.lng))
         for incident in candidates
         if incident.status == RoadIncidentStatus.ACTIVE
     ]

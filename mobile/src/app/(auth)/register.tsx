@@ -1,9 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Link } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { extractErrorMessage } from '@/api/client';
+import { Button } from '@/components/button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { TextField } from '@/components/text-field';
@@ -140,16 +141,16 @@ export default function RegisterScreen() {
           </ThemedText>
         ) : null}
 
-        <Pressable
-          style={[styles.button, { backgroundColor: theme.primary }, isSubmitting && styles.buttonDisabled]}
-          onPress={handleSubmit}
+        <Button
+          variant="primary"
           disabled={isSubmitting}
+          onPress={handleSubmit}
           testID="register-submit"
         >
           <ThemedText type="smallBold" themeColor="onPrimary">
             {isSubmitting ? 'Creating account…' : 'Register'}
           </ThemedText>
-        </Pressable>
+        </Button>
 
         <Link href="/(auth)/login" testID="register-go-login">
           <ThemedText type="link">Already have an account? Log in</ThemedText>
@@ -183,10 +184,4 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.one,
   },
   title: { textAlign: 'center' },
-  button: {
-    borderRadius: Spacing.two,
-    paddingVertical: Spacing.three,
-    alignItems: 'center',
-  },
-  buttonDisabled: { opacity: 0.5 },
 });

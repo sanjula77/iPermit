@@ -52,6 +52,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.two,
     borderRadius: Radius.medium,
+    borderCurve: 'continuous',
     paddingVertical: Spacing.three,
   },
   disabled: { opacity: 0.4 },

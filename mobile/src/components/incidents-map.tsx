@@ -1,6 +1,7 @@
-import MapView, { Marker } from 'react-native-maps';
+import MapView, { Circle, Marker } from 'react-native-maps';
 import { StyleSheet } from 'react-native';
 
+import type { DangerZone } from '@/types/danger-zone';
 import type { RoadIncident } from '@/types/road-incident';
 
 const SEVERITY_PIN_COLOR: Record<RoadIncident['severity'], string> = {
@@ -12,9 +13,11 @@ const SEVERITY_PIN_COLOR: Record<RoadIncident['severity'], string> = {
 export function IncidentsMap({
   center,
   incidents,
+  zones = [],
 }: {
   center: { lat: number; lng: number };
   incidents: RoadIncident[];
+  zones?: DangerZone[];
 }) {
   return (
     <MapView
@@ -27,6 +30,16 @@ export function IncidentsMap({
       }}
       testID="incidents-map"
     >
+      {zones.map((zone) => (
+        <Circle
+          key={zone.id}
+          center={{ latitude: zone.lat, longitude: zone.lng }}
+          radius={zone.radius_m}
+          strokeColor={SEVERITY_PIN_COLOR[zone.severity]}
+          fillColor={`${SEVERITY_PIN_COLOR[zone.severity]}33`}
+          strokeWidth={2}
+        />
+      ))}
       {incidents.map((incident) => (
         <Marker
           key={incident.id}

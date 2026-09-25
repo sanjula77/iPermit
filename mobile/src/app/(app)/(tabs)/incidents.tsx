@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 
 import { extractErrorMessage } from '@/api/client';
+import { clearDangerZone, listNearbyDangerZones, markDangerZone } from '@/api/danger-zones';
 import {
   clearIncident,
   confirmIncident,
@@ -19,10 +20,12 @@ import {
   reportIncident,
 } from '@/api/road-incidents';
 import { IncidentsMap } from '@/components/incidents-map';
+import { TextField } from '@/components/text-field';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import type { DangerZone } from '@/types/danger-zone';
 import type {
   RoadIncident,
   RoadIncidentSeverity,
@@ -40,6 +43,12 @@ const INCIDENT_TYPES: RoadIncidentType[] = [
   'OTHER',
 ];
 const SEVERITIES: RoadIncidentSeverity[] = ['LOW', 'MEDIUM', 'HIGH'];
+const RADIUS_OPTIONS: { label: string; value: number }[] = [
+  { label: '100m', value: 100 },
+  { label: '250m', value: 250 },
+  { label: '500m', value: 500 },
+  { label: '1km', value: 1000 },
+];
 
 // Colombo, Sri Lanka -- fallback only, used when location permission is
 // denied or unavailable, so the screen still functions for a demo/preview.
@@ -67,11 +76,17 @@ export default function IncidentsScreen() {
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locationNote, setLocationNote] = useState<string | null>(null);
   const [incidents, setIncidents] = useState<RoadIncident[] | null>(null);
+  const [zones, setZones] = useState<DangerZone[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [reportType, setReportType] = useState<RoadIncidentType>('HAZARD');
   const [reportSeverity, setReportSeverity] = useState<RoadIncidentSeverity>('MEDIUM');
   const [isReporting, setIsReporting] = useState(false);
   const [reportError, setReportError] = useState<string | null>(null);
+  const [zoneRadius, setZoneRadius] = useState(250);
+  const [zoneSeverity, setZoneSeverity] = useState<RoadIncidentSeverity>('MEDIUM');
+  const [zoneReason, setZoneReason] = useState('');
+  const [isMarkingZone, setIsMarkingZone] = useState(false);
+  const [zoneError, setZoneError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
 
@@ -105,7 +120,12 @@ export default function IncidentsScreen() {
 
   const loadIncidents = useCallback(async (lat: number, lng: number) => {
     try {
-      setIncidents(await listNearbyIncidents(lat, lng));
+      const [incidentsData, zonesData] = await Promise.all([
+        listNearbyIncidents(lat, lng),
+        listNearbyDangerZones(lat, lng),
+      ]);
+      setIncidents(incidentsData);
+      setZones(zonesData);
       setLoadError(null);
     } catch (err) {
       setLoadError(extractErrorMessage(err));
@@ -159,6 +179,37 @@ export default function IncidentsScreen() {
     setActionMessage('Incident cleared.');
   }
 
+  async function handleMarkZone() {
+    if (!location) return;
+    setZoneError(null);
+    setActionMessage(null);
+    setIsMarkingZone(true);
+    try {
+      await markDangerZone(
+        location.lat,
+        location.lng,
+        zoneRadius,
+        zoneSeverity,
+        zoneReason.trim() || undefined,
+      );
+      await loadIncidents(location.lat, location.lng);
+      setZoneReason('');
+      setActionMessage('Danger zone marked.');
+    } catch (err) {
+      setZoneError(extractErrorMessage(err));
+    } finally {
+      setIsMarkingZone(false);
+    }
+  }
+
+  async function handleClearZone(id: string) {
+    if (!location) return;
+    setActionMessage(null);
+    await clearDangerZone(id);
+    await loadIncidents(location.lat, location.lng);
+    setActionMessage('Danger zone cleared.');
+  }
+
   return (
     <ScrollView
       style={styles.container}
@@ -187,7 +238,7 @@ export default function IncidentsScreen() {
             Map view is only available on the native app -- showing the list below.
           </ThemedText>
         ) : location ? (
-          <IncidentsMap center={location} incidents={incidents ?? []} />
+          <IncidentsMap center={location} incidents={incidents ?? []} zones={zones ?? []} />
         ) : null}
 
         <ThemedView type="backgroundElement" style={styles.card}>
@@ -251,6 +302,71 @@ export default function IncidentsScreen() {
           </Pressable>
         </ThemedView>
 
+        <ThemedView type="backgroundElement" style={styles.card}>
+          <ThemedText type="smallBold">Mark a Danger Zone</ThemedText>
+          <View style={styles.chipRow}>
+            {RADIUS_OPTIONS.map((option) => (
+              <Pressable
+                key={option.value}
+                onPress={() => setZoneRadius(option.value)}
+                style={[
+                  styles.chip,
+                  { backgroundColor: zoneRadius === option.value ? theme.primary : theme.background },
+                ]}
+                testID={`zone-radius-${option.value}`}
+              >
+                <ThemedText
+                  type="small"
+                  themeColor={zoneRadius === option.value ? 'onPrimary' : 'text'}
+                >
+                  {option.label}
+                </ThemedText>
+              </Pressable>
+            ))}
+          </View>
+          <View style={styles.chipRow}>
+            {SEVERITIES.map((severity) => (
+              <Pressable
+                key={severity}
+                onPress={() => setZoneSeverity(severity)}
+                style={[
+                  styles.chip,
+                  { backgroundColor: zoneSeverity === severity ? theme.primary : theme.background },
+                ]}
+                testID={`zone-severity-${severity}`}
+              >
+                <ThemedText
+                  type="small"
+                  themeColor={zoneSeverity === severity ? 'onPrimary' : 'text'}
+                >
+                  {severity}
+                </ThemedText>
+              </Pressable>
+            ))}
+          </View>
+          <TextField
+            label="Reason (optional)"
+            value={zoneReason}
+            onChangeText={setZoneReason}
+            testID="zone-reason-input"
+          />
+          {zoneError ? (
+            <ThemedText type="small" themeColor="danger" selectable>
+              {zoneError}
+            </ThemedText>
+          ) : null}
+          <Pressable
+            style={[styles.button, { backgroundColor: theme.primary }]}
+            onPress={handleMarkZone}
+            disabled={!location || isMarkingZone}
+            testID="mark-zone-button"
+          >
+            <ThemedText type="smallBold" themeColor="onPrimary">
+              {isMarkingZone ? 'Marking…' : 'Mark Danger Zone at My Location'}
+            </ThemedText>
+          </Pressable>
+        </ThemedView>
+
         <ThemedText type="subtitle">Nearby Active Incidents</ThemedText>
         {loadError ? (
           <ThemedText type="small" themeColor="danger" selectable testID="incidents-error">
@@ -295,6 +411,49 @@ export default function IncidentsScreen() {
                   style={[styles.button, styles.flexButton, { backgroundColor: theme.backgroundSelected }]}
                   onPress={() => handleClear(incident.id)}
                   testID={`clear-${incident.id}`}
+                >
+                  <ThemedText type="smallBold">Clear</ThemedText>
+                </Pressable>
+              </View>
+            </ThemedView>
+          ))
+        )}
+
+        <ThemedText type="subtitle">Nearby Danger Zones</ThemedText>
+        {zones === null ? (
+          <ActivityIndicator testID="zones-loading" />
+        ) : zones.length === 0 ? (
+          <ThemedText type="small" themeColor="textSecondary" testID="zones-empty">
+            No danger zones marked nearby.
+          </ThemedText>
+        ) : (
+          zones.map((zone) => (
+            <ThemedView
+              key={zone.id}
+              type="backgroundElement"
+              style={styles.card}
+              testID={`zone-${zone.id}`}
+            >
+              <View style={styles.typeRow}>
+                <Ionicons name="alert-circle" size={16} color={theme[SEVERITY_COLOR[zone.severity]]} />
+                <ThemedText type="smallBold" themeColor={SEVERITY_COLOR[zone.severity]}>
+                  {zone.severity} risk · {zone.radius_m}m radius
+                </ThemedText>
+              </View>
+              {zone.reason ? (
+                <ThemedText type="small" selectable>
+                  {zone.reason}
+                </ThemedText>
+              ) : null}
+              <ThemedText type="small" themeColor="textSecondary">
+                Confirmed by {zone.confirmation_count}{' '}
+                {zone.confirmation_count === 1 ? 'driver' : 'drivers'}
+              </ThemedText>
+              <View style={styles.actionsRow}>
+                <Pressable
+                  style={[styles.button, styles.flexButton, { backgroundColor: theme.backgroundSelected }]}
+                  onPress={() => handleClearZone(zone.id)}
+                  testID={`clear-zone-${zone.id}`}
                 >
                   <ThemedText type="smallBold">Clear</ThemedText>
                 </Pressable>

@@ -10,6 +10,7 @@ from app.models import (  # noqa: F401 -- ensures all models are registered on B
     Application,
     ApplicationDocument,
     Badge,
+    DangerZone,
     Fine,
     License,
     Notification,

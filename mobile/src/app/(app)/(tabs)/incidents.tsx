@@ -1,7 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Platform,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  View,
+} from 'react-native';
 
 import { extractErrorMessage } from '@/api/client';
 import {
@@ -64,6 +72,8 @@ export default function IncidentsScreen() {
   const [reportSeverity, setReportSeverity] = useState<RoadIncidentSeverity>('MEDIUM');
   const [isReporting, setIsReporting] = useState(false);
   const [reportError, setReportError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -96,6 +106,7 @@ export default function IncidentsScreen() {
   const loadIncidents = useCallback(async (lat: number, lng: number) => {
     try {
       setIncidents(await listNearbyIncidents(lat, lng));
+      setLoadError(null);
     } catch (err) {
       setLoadError(extractErrorMessage(err));
     }
@@ -109,13 +120,22 @@ export default function IncidentsScreen() {
     }
   }, [location, loadIncidents]);
 
+  async function handleRefresh() {
+    if (!location) return;
+    setRefreshing(true);
+    await loadIncidents(location.lat, location.lng);
+    setRefreshing(false);
+  }
+
   async function handleReport() {
     if (!location) return;
     setReportError(null);
+    setActionMessage(null);
     setIsReporting(true);
     try {
       await reportIncident(reportType, reportSeverity, location.lat, location.lng);
       await loadIncidents(location.lat, location.lng);
+      setActionMessage('Incident reported.');
     } catch (err) {
       setReportError(extractErrorMessage(err));
     } finally {
@@ -125,14 +145,18 @@ export default function IncidentsScreen() {
 
   async function handleConfirm(id: string) {
     if (!location) return;
+    setActionMessage(null);
     await confirmIncident(id);
     await loadIncidents(location.lat, location.lng);
+    setActionMessage('Incident confirmed -- thanks for the update.');
   }
 
   async function handleClear(id: string) {
     if (!location) return;
+    setActionMessage(null);
     await clearIncident(id);
     await loadIncidents(location.lat, location.lng);
+    setActionMessage('Incident cleared.');
   }
 
   return (
@@ -140,8 +164,18 @@ export default function IncidentsScreen() {
       style={styles.container}
       contentContainerStyle={styles.content}
       contentInsetAdjustmentBehavior="automatic"
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
     >
       <ThemedView style={styles.form}>
+        {actionMessage ? (
+          <View style={styles.successRow} testID="incident-action-message">
+            <Ionicons name="checkmark-circle" size={16} color={theme.success} />
+            <ThemedText type="small" themeColor="success">
+              {actionMessage}
+            </ThemedText>
+          </View>
+        ) : null}
+
         {locationNote ? (
           <ThemedText type="small" themeColor="textSecondary" testID="location-note">
             {locationNote}
@@ -285,6 +319,11 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 800,
     gap: Spacing.three,
+  },
+  successRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.half,
   },
   card: {
     borderRadius: Spacing.three,

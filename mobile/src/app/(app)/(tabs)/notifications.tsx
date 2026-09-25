@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 
 import { getMyNotifications, markNotificationRead } from '@/api/notifications';
 import { extractErrorMessage } from '@/api/client';
@@ -38,10 +38,12 @@ export default function NotificationsScreen() {
   const theme = useTheme();
   const [notifications, setNotifications] = useState<AppNotification[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
     try {
       setNotifications(await getMyNotifications());
+      setLoadError(null);
     } catch (err) {
       setLoadError(extractErrorMessage(err));
     }
@@ -52,6 +54,12 @@ export default function NotificationsScreen() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, [load]);
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    await load();
+    setRefreshing(false);
+  }
 
   async function handlePress(notification: AppNotification) {
     if (notification.read_at) return;
@@ -70,6 +78,7 @@ export default function NotificationsScreen() {
       style={styles.container}
       contentContainerStyle={styles.content}
       contentInsetAdjustmentBehavior="automatic"
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
     >
       <ThemedView style={styles.form}>
         {loadError ? (

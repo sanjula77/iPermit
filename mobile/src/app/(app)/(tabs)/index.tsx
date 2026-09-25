@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Link } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet } from 'react-native';
 
 import { getMyBadge } from '@/api/badges';
 import { listApplications } from '@/api/applications';
@@ -80,58 +80,71 @@ function DriverHomeScreen() {
   const [license, setLicense] = useState<License | null>(null);
   const [licenseError, setLicenseError] = useState<string | null>(null);
   const [badge, setBadge] = useState<Badge | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    listApplications()
-      .then((data) => {
-        if (!cancelled) setApplications(data);
-      })
-      .catch((err) => {
-        if (!cancelled) setLoadError(extractErrorMessage(err));
-      });
-    return () => {
-      cancelled = true;
-    };
+  const loadApplications = useCallback(async () => {
+    try {
+      setApplications(await listApplications());
+      setLoadError(null);
+    } catch (err) {
+      setLoadError(extractErrorMessage(err));
+    }
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
-    getMyLicense()
-      .then((data) => {
-        if (!cancelled) setLicense(data);
-      })
-      .catch((err) => {
-        // No license yet is expected (not every driver has one) -- only
-        // surface genuine errors, not the routine 404.
-        if (!cancelled && !(err instanceof ApiError && err.status === 404)) {
-          setLicenseError(extractErrorMessage(err));
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
+  const loadLicense = useCallback(async () => {
+    try {
+      setLicense(await getMyLicense());
+      setLicenseError(null);
+    } catch (err) {
+      // No license yet is expected (not every driver has one) -- only
+      // surface genuine errors, not the routine 404.
+      if (err instanceof ApiError && err.status === 404) {
+        setLicense(null);
+        setLicenseError(null);
+      } else {
+        setLicenseError(extractErrorMessage(err));
+      }
+    }
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
+  const loadBadge = useCallback(async () => {
     // No badge yet (e.g. no license) is a routine 404 -- fail silently,
     // the chip just doesn't render, same tolerance as the license fetch above.
-    getMyBadge()
-      .then((data) => {
-        if (!cancelled) setBadge(data);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
+    try {
+      setBadge(await getMyBadge());
+    } catch {
+      // keep whatever badge value was already there rather than flashing it away
+    }
   }, []);
+
+  useEffect(() => {
+    // Fetch-on-mount, not a state sync.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadApplications();
+  }, [loadApplications]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadLicense();
+  }, [loadLicense]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadBadge();
+  }, [loadBadge]);
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    await Promise.all([loadApplications(), loadLicense(), loadBadge()]);
+    setRefreshing(false);
+  }
 
   return (
     <ScrollView
       style={styles.container}
       contentContainerStyle={styles.content}
       contentInsetAdjustmentBehavior="automatic"
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
     >
       <ThemedView style={styles.form}>
         <ThemedText type="title">Welcome</ThemedText>

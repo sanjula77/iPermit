@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 
 import { getMyAppeals, submitAppeal } from '@/api/appeals';
 import { extractErrorMessage } from '@/api/client';
@@ -39,12 +39,14 @@ export default function FinesScreen() {
   const [fines, setFines] = useState<FineWithViolation[] | null>(null);
   const [appeals, setAppeals] = useState<Appeal[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
     try {
       const [finesData, appealsData] = await Promise.all([getMyFines(), getMyAppeals()]);
       setFines(finesData);
       setAppeals(appealsData);
+      setLoadError(null);
     } catch (err) {
       setLoadError(extractErrorMessage(err));
     }
@@ -56,6 +58,12 @@ export default function FinesScreen() {
     load();
   }, [load]);
 
+  async function handleRefresh() {
+    setRefreshing(true);
+    await load();
+    setRefreshing(false);
+  }
+
   const outstandingTotal = (fines ?? [])
     .filter((f) => f.status === 'UNPAID')
     .reduce((sum, f) => sum + f.amount, 0);
@@ -66,6 +74,7 @@ export default function FinesScreen() {
       style={styles.container}
       contentContainerStyle={styles.content}
       contentInsetAdjustmentBehavior="automatic"
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
     >
       <ThemedView style={styles.form}>
         <ThemedView
@@ -135,6 +144,7 @@ function FineCard({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [justPaid, setJustPaid] = useState(false);
+  const [justAppealed, setJustAppealed] = useState(false);
 
   async function handlePay() {
     setError(null);
@@ -162,6 +172,7 @@ function FineCard({
       await submitAppeal(fine.id, appealReason.trim());
       setMode('none');
       setAppealReason('');
+      setJustAppealed(true);
       onChanged();
     } catch (err) {
       setError(extractErrorMessage(err));
@@ -197,6 +208,15 @@ function FineCard({
           <Ionicons name="checkmark-circle" size={14} color={theme.success} />
           <ThemedText type="small" themeColor="success">
             Payment confirmed
+          </ThemedText>
+        </View>
+      ) : null}
+
+      {justAppealed ? (
+        <View style={styles.successRow}>
+          <Ionicons name="checkmark-circle" size={14} color={theme.success} />
+          <ThemedText type="small" themeColor="success">
+            Appeal submitted
           </ThemedText>
         </View>
       ) : null}

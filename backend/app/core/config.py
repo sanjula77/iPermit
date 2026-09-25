@@ -59,5 +59,10 @@ class Settings(BaseSettings):
     # REQ-13 AC2: default search radius for "nearby" active incidents.
     road_incident_default_radius_km: float = 5.0
 
+    # Default search radius for "nearby" active danger zones -- same
+    # convention as road_incident_default_radius_km above, no
+    # traffic-authority-sourced value to derive this from.
+    danger_zone_default_radius_km: float = 5.0
+
 
 settings = Settings()

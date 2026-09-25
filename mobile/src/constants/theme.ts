@@ -71,5 +71,14 @@ export const Spacing = {
   six: 64,
 } as const;
 
+export const Radius = {
+  small: Spacing.two, // 8 -- chips, inputs, small controls
+  medium: Spacing.three, // 16 -- cards, buttons
+} as const;
+
+export const Shadows = {
+  card: '0 1px 3px rgba(0, 0, 0, 0.08)',
+} as const;
+
 export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
 export const MaxContentWidth = 800;

@@ -12,7 +12,12 @@ import {
 } from 'react-native';
 
 import { extractErrorMessage } from '@/api/client';
-import { clearDangerZone, listNearbyDangerZones, markDangerZone } from '@/api/danger-zones';
+import {
+  clearDangerZone,
+  confirmDangerZone,
+  listNearbyDangerZones,
+  markDangerZone,
+} from '@/api/danger-zones';
 import {
   clearIncident,
   confirmIncident,
@@ -78,6 +83,7 @@ export default function IncidentsScreen() {
   const [incidents, setIncidents] = useState<RoadIncident[] | null>(null);
   const [zones, setZones] = useState<DangerZone[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [zonesLoadError, setZonesLoadError] = useState<string | null>(null);
   const [reportType, setReportType] = useState<RoadIncidentType>('HAZARD');
   const [reportSeverity, setReportSeverity] = useState<RoadIncidentSeverity>('MEDIUM');
   const [isReporting, setIsReporting] = useState(false);
@@ -119,16 +125,23 @@ export default function IncidentsScreen() {
   }, []);
 
   const loadIncidents = useCallback(async (lat: number, lng: number) => {
-    try {
-      const [incidentsData, zonesData] = await Promise.all([
-        listNearbyIncidents(lat, lng),
-        listNearbyDangerZones(lat, lng),
-      ]);
-      setIncidents(incidentsData);
-      setZones(zonesData);
+    // allSettled, not all -- a failure in one list must not block or clear
+    // the other; they load together but report their own errors.
+    const [incidentsResult, zonesResult] = await Promise.allSettled([
+      listNearbyIncidents(lat, lng),
+      listNearbyDangerZones(lat, lng),
+    ]);
+    if (incidentsResult.status === 'fulfilled') {
+      setIncidents(incidentsResult.value);
       setLoadError(null);
-    } catch (err) {
-      setLoadError(extractErrorMessage(err));
+    } else {
+      setLoadError(extractErrorMessage(incidentsResult.reason));
+    }
+    if (zonesResult.status === 'fulfilled') {
+      setZones(zonesResult.value);
+      setZonesLoadError(null);
+    } else {
+      setZonesLoadError(extractErrorMessage(zonesResult.reason));
     }
   }, []);
 
@@ -200,6 +213,14 @@ export default function IncidentsScreen() {
     } finally {
       setIsMarkingZone(false);
     }
+  }
+
+  async function handleConfirmZone(id: string) {
+    if (!location) return;
+    setActionMessage(null);
+    await confirmDangerZone(id);
+    await loadIncidents(location.lat, location.lng);
+    setActionMessage('Danger zone confirmed -- thanks for the update.');
   }
 
   async function handleClearZone(id: string) {
@@ -420,7 +441,11 @@ export default function IncidentsScreen() {
         )}
 
         <ThemedText type="subtitle">Nearby Danger Zones</ThemedText>
-        {zones === null ? (
+        {zonesLoadError ? (
+          <ThemedText type="small" themeColor="danger" selectable testID="zones-error">
+            {zonesLoadError}
+          </ThemedText>
+        ) : zones === null ? (
           <ActivityIndicator testID="zones-loading" />
         ) : zones.length === 0 ? (
           <ThemedText type="small" themeColor="textSecondary" testID="zones-empty">
@@ -447,9 +472,18 @@ export default function IncidentsScreen() {
               ) : null}
               <ThemedText type="small" themeColor="textSecondary">
                 Confirmed by {zone.confirmation_count}{' '}
-                {zone.confirmation_count === 1 ? 'driver' : 'drivers'}
+                {zone.confirmation_count === 1 ? 'person' : 'people'}
               </ThemedText>
               <View style={styles.actionsRow}>
+                <Pressable
+                  style={[styles.button, styles.flexButton, { backgroundColor: theme.primary }]}
+                  onPress={() => handleConfirmZone(zone.id)}
+                  testID={`confirm-zone-${zone.id}`}
+                >
+                  <ThemedText type="smallBold" themeColor="onPrimary">
+                    Confirm
+                  </ThemedText>
+                </Pressable>
                 <Pressable
                   style={[styles.button, styles.flexButton, { backgroundColor: theme.backgroundSelected }]}
                   onPress={() => handleClearZone(zone.id)}

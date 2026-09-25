@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet } from 'react-native';
@@ -164,6 +165,7 @@ export default function ApplyScreen() {
           disabled={!allFilesSelected || isSubmitting}
           testID="apply-submit"
         >
+          <Ionicons name="paper-plane-outline" size={18} color={theme.onPrimary} />
           <ThemedText type="smallBold" themeColor="onPrimary">
             {isSubmitting ? 'Submitting…' : 'Submit Application'}
           </ThemedText>
@@ -201,9 +203,12 @@ const styles = StyleSheet.create({
     gap: Spacing.half,
   },
   button: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: Spacing.two,
     borderRadius: Spacing.two,
     paddingVertical: Spacing.three,
-    alignItems: 'center',
   },
   buttonDisabled: { opacity: 0.5 },
 });

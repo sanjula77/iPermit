@@ -37,20 +37,30 @@ export function LicenseCard({ license, badge }: { license: License; badge?: Badg
   return (
     <ThemedView type="backgroundElement" style={styles.card} testID="license-card">
       <View style={styles.details}>
-        <ThemedText type="smallBold">Digital License</ThemedText>
+        <View style={styles.headerRow}>
+          <Ionicons name="id-card-outline" size={16} color={theme.text} />
+          <ThemedText type="smallBold">Digital License</ThemedText>
+        </View>
         <ThemedText selectable testID="license-number">
           {license.license_no}
         </ThemedText>
         <ThemedText type="small" themeColor="textSecondary">
           Expires {expiry.toLocaleDateString()}
         </ThemedText>
-        <ThemedText
-          type="smallBold"
-          themeColor={license.status === 'ACTIVE' ? 'primary' : 'danger'}
-          testID="license-status"
-        >
-          {license.status}
-        </ThemedText>
+        <View style={styles.statusRow}>
+          <Ionicons
+            name={license.status === 'ACTIVE' ? 'checkmark-circle' : 'ban'}
+            size={14}
+            color={license.status === 'ACTIVE' ? theme.primary : theme.danger}
+          />
+          <ThemedText
+            type="smallBold"
+            themeColor={license.status === 'ACTIVE' ? 'primary' : 'danger'}
+            testID="license-status"
+          >
+            {license.status}
+          </ThemedText>
+        </View>
         <ThemedText type="small" themeColor="textSecondary" testID="license-points">
           {license.points} demerit points
         </ThemedText>
@@ -90,6 +100,16 @@ const styles = StyleSheet.create({
     borderRadius: Spacing.two,
   },
   badgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.half,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.half,
+  },
+  statusRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.half,

@@ -9,15 +9,23 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - ipermit_pgdata:/var/lib/postgresql/data
+      # Bind mounts (not named volumes) so data survives Docker prunes/resets.
+      - ./.data/pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ipermit"]
+      # -h 127.0.0.1: on first init the entrypoint runs a temporary socket-only
+      # server; a socket check reports it ready before the real one is up.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U ipermit"]
       interval: 5s
       timeout: 5s
       retries: 5
 
   backend:
-    build: ./backend
+    build:
+      context: ./backend
+      # Local wheelhouse (see Dockerfile) -- passed as a separate build
+      # context so the large wheel files aren't sent with ./backend.
+      additional_contexts:
+        wheels: ./backend-wheels
     restart: unless-stopped
     env_file:
       - ./backend/.env
@@ -28,8 +36,4 @@ services:
       - "8000:8000"
     volumes:
       - ./backend:/app
-      - ipermit_face_models:/root/.insightface
-
-volumes:
-  ipermit_pgdata:
-  ipermit_face_models:
+      - ./.data/insightface:/root/.insightface

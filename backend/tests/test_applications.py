@@ -243,3 +243,12 @@ def test_submit_application_face_engine_failure_is_503_not_a_photo_error(
     assert isinstance(response.json()["detail"], str)
     # The photo saved before the engine failed must not be left on disk.
     assert [p for p in tmp_path.rglob("*") if p.is_file()] == []
+
+
+def test_submit_runs_face_inference_off_the_event_loop(client, face_inference_threads):
+    headers = _register_and_login(client)
+
+    response = client.post("/applications", headers=headers, files=_valid_files())
+
+    assert response.status_code == 201
+    assert face_inference_threads == ["worker-thread"] * 4

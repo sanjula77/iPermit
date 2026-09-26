@@ -6,7 +6,7 @@ import numpy as np
 
 from app.core import face_index, face_preprocessing, face_template_store
 from app.core.config import settings
-from app.core.face_engine import FaceEngineError, cosine_similarity, detect_faces
+from app.core.face_engine import cosine_similarity, detect_faces
 from app.models.application import Application, DocumentType
 
 REQUIRED_FACE_PHOTOS = 4
@@ -36,12 +36,8 @@ def _extract_single_embedding(path: Path, photo_index: int) -> np.ndarray:
             f"Could not read enrollment photo {photo_index}"
         ) from exc
 
-    try:
-        detections = detect_faces(image_bytes)
-    except FaceEngineError as exc:
-        raise FaceEnrollmentError(
-            f"Face detection failed on photo {photo_index}: {exc}"
-        ) from exc
+    # FaceEngineError propagates: a model failure isn't a bad photo.
+    detections = detect_faces(image_bytes)
 
     if len(detections) == 0:
         raise FaceEnrollmentError(f"No face detected in photo {photo_index}")
@@ -81,7 +77,9 @@ def assess_enrollment_photo_quality(image_bytes: bytes) -> None:
         image, bbox=detection.bbox, det_score=detection.det_score
     )
     if not quality.passes:
-        raise FaceEnrollmentError("Photo quality is too low: " + "; ".join(quality.reasons))
+        raise FaceEnrollmentError(
+            "Photo quality is too low: " + "; ".join(quality.reasons)
+        )
 
 
 def check_pairwise_consistency(embeddings: list[np.ndarray], threshold: float) -> None:
@@ -122,5 +120,5 @@ def store_template(driver_id: str, embedding: np.ndarray) -> None:
     """Persists to SQLite (source of truth) and the FAISS index (derived
     cache). Called only after the application's approval has already
     committed in Postgres -- see application_service.approve_application."""
-    rowid = face_template_store.save_template(driver_id, embedding)
-    face_index.add_to_index(rowid, embedding)
+    rowid, replaced_rowids = face_template_store.save_template(driver_id, embedding)
+    face_index.add_to_index(rowid, embedding, replaced_rowids)

@@ -1,4 +1,5 @@
 import io
+import uuid
 from pathlib import Path
 
 import pytest
@@ -6,8 +7,9 @@ from PIL import Image
 
 from app.core.config import settings
 from app.core.security import hash_password
+from app.models.license import License
 from app.models.user import UserRole
-from app.repositories import user_repository
+from app.repositories import application_repository, user_repository
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
@@ -195,3 +197,88 @@ def test_driver_sees_updated_status_after_admin_decision(client, db_session):
     driver_view = client.get(f"/applications/{created['id']}", headers=driver_headers)
     assert driver_view.json()["status"] == "REJECTED"
     assert driver_view.json()["reason"] == "Missing document"
+
+
+def test_cannot_apply_while_an_application_is_pending(client):
+    driver = _register_and_login(client)
+    assert _submit_application(client, driver).status_code == 201
+
+    second = _submit_application(client, driver)
+
+    assert second.status_code == 409
+
+
+def test_cannot_apply_again_once_licensed(client, db_session):
+    # Re-applying would let approval replace the enrolled face with
+    # someone else's and issue a second license.
+    admin_headers = _create_admin_and_login(client, db_session)
+    driver = _register_and_login(client)
+    created = _submit_application(client, driver).json()
+    client.post(f"/admin/applications/{created['id']}/approve", headers=admin_headers)
+
+    second = _submit_application(client, driver)
+
+    assert second.status_code == 409
+
+
+def test_can_apply_again_after_rejection(client, db_session):
+    admin_headers = _create_admin_and_login(client, db_session)
+    driver = _register_and_login(client)
+    created = _submit_application(client, driver).json()
+    client.post(
+        f"/admin/applications/{created['id']}/reject",
+        headers=admin_headers,
+        json={"reason": "Blurry NIC scan"},
+    )
+
+    second = _submit_application(client, driver)
+
+    assert second.status_code == 201
+
+
+def test_approve_refuses_a_driver_who_already_has_a_license(client, db_session):
+    # Two pending applications can still exist if both were submitted at
+    # once; approval must not issue a second license or swap the face.
+    admin_headers = _create_admin_and_login(client, db_session)
+    driver = _register_and_login(client)
+    first = _submit_application(client, driver).json()
+    first_app = application_repository.get_by_id(db_session, uuid.UUID(first["id"]))
+    duplicate = application_repository.create(
+        db_session,
+        driver_id=first_app.driver_id,
+        documents=[(d.doc_type, d.file_path) for d in first_app.documents],
+    )
+    client.post(f"/admin/applications/{first['id']}/approve", headers=admin_headers)
+
+    response = client.post(
+        f"/admin/applications/{duplicate.id}/approve", headers=admin_headers
+    )
+
+    assert response.status_code == 409
+    assert db_session.query(License).count() == 1
+
+
+def test_approve_face_engine_failure_is_503_and_leaves_application_pending(
+    client, db_session, monkeypatch
+):
+    # A model failure is the server's fault, not a bad enrollment photo.
+    from app.core.face_engine import FaceEngineError
+    from app.services import face_service
+
+    admin_headers = _create_admin_and_login(client, db_session)
+    driver = _register_and_login(client)
+    created = _submit_application(client, driver).json()
+
+    def broken_detect_faces(_image_bytes):
+        raise FaceEngineError("onnxruntime session crashed")
+
+    monkeypatch.setattr(face_service, "detect_faces", broken_detect_faces)
+
+    response = client.post(
+        f"/admin/applications/{created['id']}/approve", headers=admin_headers
+    )
+
+    assert response.status_code == 503
+    assert "onnxruntime" not in response.json()["detail"]
+    application = application_repository.get_by_id(db_session, uuid.UUID(created["id"]))
+    assert application.status.value == "PENDING"

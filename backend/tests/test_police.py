@@ -321,3 +321,85 @@ def test_record_violation_for_driver_without_license_returns_404(client, db_sess
     )
 
     assert response.status_code == 404
+
+
+def test_verify_face_runs_inference_off_the_event_loop(
+    client, db_session, face_inference_threads
+):
+    officer_headers = _create_officer_and_login(client, db_session)
+
+    response = client.post(
+        "/police/verify-face",
+        headers=officer_headers,
+        files={"photo": ("photo.jpg", _single_face_bytes(), "image/jpeg")},
+    )
+
+    assert response.status_code == 200
+    assert face_inference_threads == ["worker-thread"]
+
+
+def _verify_face(client, headers, content: bytes, content_type="image/jpeg"):
+    return client.post(
+        "/police/verify-face",
+        headers=headers,
+        files={"photo": ("photo.jpg", content, content_type)},
+    )
+
+
+def test_verify_face_engine_failure_is_503_without_internal_details(
+    client, db_session, monkeypatch
+):
+    from app.core.face_engine import FaceEngineError
+    from app.services import police_service
+
+    def broken_detect_faces(_image_bytes):
+        raise FaceEngineError("onnxruntime session crashed at /root/.insightface")
+
+    monkeypatch.setattr(police_service, "detect_faces", broken_detect_faces)
+    officer_headers = _create_officer_and_login(client, db_session)
+
+    response = _verify_face(client, officer_headers, _single_face_bytes())
+
+    assert response.status_code == 503
+    assert "onnxruntime" not in response.json()["detail"]
+
+
+def test_verify_face_rejects_non_image_upload(client, db_session):
+    officer_headers = _create_officer_and_login(client, db_session)
+
+    response = _verify_face(client, officer_headers, b"not an image", "text/plain")
+
+    assert response.status_code == 422
+
+
+def test_verify_face_rejects_oversized_upload(client, db_session, monkeypatch):
+    monkeypatch.setattr(settings, "max_upload_size_bytes", 1024)
+    officer_headers = _create_officer_and_login(client, db_session)
+
+    response = _verify_face(client, officer_headers, _single_face_bytes())
+
+    assert response.status_code == 422
+
+
+def test_verify_face_rejects_image_with_too_many_pixels(
+    client, db_session, monkeypatch
+):
+    # A small compressed file can still decode to a huge bitmap.
+    monkeypatch.setattr(settings, "max_image_pixels", 100_000)
+    officer_headers = _create_officer_and_login(client, db_session)
+
+    response = _verify_face(client, officer_headers, _single_face_bytes())
+
+    assert response.status_code == 422
+
+
+def test_verify_face_is_rate_limited(client, db_session):
+    officer_headers = _create_officer_and_login(client, db_session)
+
+    statuses = [
+        _verify_face(client, officer_headers, b"x", "text/plain").status_code
+        for _ in range(31)
+    ]
+
+    assert statuses[:30] == [422] * 30
+    assert statuses[30] == 429

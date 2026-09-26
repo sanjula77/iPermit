@@ -45,11 +45,37 @@ def _validate_image_quality(raw: bytes, filename: str) -> None:
     except UnidentifiedImageError as exc:
         raise UploadValidationError(f"{filename} is not a valid image") from exc
 
+    if width * height > settings.max_image_pixels:
+        raise UploadValidationError(
+            f"{filename} is too large ({width}x{height}px) -- maximum is "
+            f"{settings.max_image_pixels} pixels"
+        )
     if width < MIN_PHOTO_DIMENSION_PX or height < MIN_PHOTO_DIMENSION_PX:
         raise UploadValidationError(
             f"{filename} is too small ({width}x{height}px) — minimum is "
             f"{MIN_PHOTO_DIMENSION_PX}x{MIN_PHOTO_DIMENSION_PX}px"
         )
+
+
+def _validate_size(raw: bytes, filename: str | None) -> None:
+    if not raw:
+        raise UploadValidationError(f"{filename} is empty")
+    if len(raw) > settings.max_upload_size_bytes:
+        raise UploadValidationError(
+            f"{filename} exceeds the {settings.max_upload_size_bytes} byte limit"
+        )
+
+
+def read_image_upload(file: UploadFile) -> bytes:
+    """Validates an uploaded photo that's used and discarded rather than
+    stored (police face verification). Sync, for sync route handlers; reads
+    at most one byte past the limit so an oversized upload is never loaded
+    whole."""
+    _validate_content_type(file, IMAGE_CONTENT_TYPES)
+    raw = file.file.read(settings.max_upload_size_bytes + 1)
+    _validate_size(raw, file.filename)
+    _validate_image_quality(raw, file.filename or "upload")
+    return raw
 
 
 async def save_upload(
@@ -67,12 +93,7 @@ async def save_upload(
     _validate_content_type(file, allowed_types)
 
     raw = await file.read()
-    if not raw:
-        raise UploadValidationError(f"{file.filename} is empty")
-    if len(raw) > settings.max_upload_size_bytes:
-        raise UploadValidationError(
-            f"{file.filename} exceeds the {settings.max_upload_size_bytes} byte limit"
-        )
+    _validate_size(raw, file.filename)
 
     if require_image:
         _validate_image_quality(raw, file.filename or "upload")

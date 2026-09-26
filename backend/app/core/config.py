@@ -20,6 +20,9 @@ class Settings(BaseSettings):
 
     upload_dir: str = "uploads"
     max_upload_size_bytes: int = 10 * 1024 * 1024  # 10 MB per file
+    # Decoded size cap: a small compressed file can expand to a huge bitmap.
+    # 50 MP is above any phone camera's default photo size.
+    max_image_pixels: int = 50_000_000
 
     license_validity_years: int = 5
 

@@ -1,7 +1,9 @@
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db, require_role
+from app.core.file_storage import UploadValidationError, read_image_upload
+from app.core.rate_limit import limiter
 from app.models.user import User, UserRole
 from app.schemas.police import (
     DriverSummary,
@@ -18,17 +20,27 @@ def _police_only(current_user: User = Depends(require_role(UserRole.POLICE))) ->
     return current_user
 
 
+# Sync on purpose: FastAPI runs it in a worker thread, keeping the blocking
+# face inference off the event loop. Rate-limited because each call runs
+# CPU-heavy inference and returns other drivers' details.
 @router.post("/verify-face", response_model=VerifyFaceResponse)
-async def verify_face(
+@limiter.limit("30/minute")
+def verify_face(
+    request: Request,  # noqa: ARG001 -- required by slowapi's limiter decorator
     photo: UploadFile = File(...),
     db: Session = Depends(get_db),
     _officer: User = Depends(_police_only),
 ):
     try:
-        return police_service.verify_face(db, image_bytes=await photo.read())
-    except police_service.FaceVerificationError as exc:
+        image_bytes = read_image_upload(photo)
+        return police_service.verify_face(db, image_bytes=image_bytes)
+    except (UploadValidationError, police_service.FaceVerificationError) as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
+        ) from exc
+    except police_service.ServiceUnavailableError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)
         ) from exc
 
 

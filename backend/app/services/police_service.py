@@ -21,6 +21,11 @@ class FaceVerificationError(Exception):
     failure."""
 
 
+class ServiceUnavailableError(Exception):
+    """The face engine failed -- the photo may be fine, so the officer should
+    retry later or fall back to QR/NIC lookup."""
+
+
 class NotFoundError(Exception):
     pass
 
@@ -52,7 +57,9 @@ def verify_face(db: Session, *, image_bytes: bytes) -> VerifyFaceResponse:
     try:
         detections = detect_faces(image_bytes)
     except FaceEngineError as exc:
-        raise FaceVerificationError(f"Face detection failed: {exc}") from exc
+        raise ServiceUnavailableError(
+            "Face matching is temporarily unavailable. Use QR or NIC lookup."
+        ) from exc
 
     if len(detections) == 0:
         raise FaceVerificationError("No face detected in the submitted photo")

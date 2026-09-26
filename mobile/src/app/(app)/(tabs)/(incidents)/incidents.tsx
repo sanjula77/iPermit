@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Stack, router, useFocusEffect } from 'expo-router';
-import { Fragment, useCallback, useRef, useState } from 'react';
+import { Stack, router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 
 import { extractErrorMessage } from '@/api/client';
@@ -43,6 +43,27 @@ export default function IncidentsScreen() {
   // Only the newest load may write state (focus reloads and pull-to-refresh
   // can overlap).
   const latestLoad = useRef(0);
+  const scrollRef = useRef<ScrollView>(null);
+  // Rows with an action in flight: the server counts every Confirm call, so a
+  // double tap must not send two.
+  const busyIds = useRef(new Set<string>());
+  const { reported } = useLocalSearchParams<{ reported?: 'incident' | 'zone' }>();
+
+  useEffect(() => {
+    // Set by the Report screen on success; show it once, then clear the param.
+    if (reported) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setNotice({ kind: 'success', text: reported === 'zone' ? 'Danger zone marked.' : 'Incident reported.' });
+      setTab(reported === 'zone' ? 'zones' : 'incidents');
+      router.setParams({ reported: undefined });
+    }
+  }, [reported]);
+
+  function showOnMap(point: LatLng) {
+    setFocus(point);
+    // The map is at the top of the scroll view; bring it into view.
+    scrollRef.current?.scrollTo({ y: 0, animated: true });
+  }
 
   const load = useCallback(async (at: LatLng) => {
     const request = ++latestLoad.current;
@@ -81,8 +102,9 @@ export default function IncidentsScreen() {
     setRefreshing(false);
   }
 
-  async function runAction(action: () => Promise<unknown>, success: string) {
-    if (!location) return;
+  async function runAction(id: string, action: () => Promise<unknown>, success: string) {
+    if (!location || busyIds.current.has(id)) return;
+    busyIds.current.add(id);
     setNotice(null);
     try {
       await action();
@@ -90,14 +112,23 @@ export default function IncidentsScreen() {
       setNotice({ kind: 'success', text: success });
     } catch (err) {
       setNotice({ kind: 'error', text: extractErrorMessage(err) });
+    } finally {
+      busyIds.current.delete(id);
     }
   }
 
-  function confirmClear(what: string, clear: () => Promise<unknown>) {
+  function confirmClear(id: string, what: string, clear: () => Promise<unknown>) {
     // Clearing removes it for every driver, so ask first.
-    Alert.alert(`Mark ${what} as cleared?`, 'It will be removed from the map for everyone.', [
+    const title = `Mark ${what.toLowerCase()} as cleared?`;
+    const message = 'It will be removed from the map for everyone.';
+    if (Platform.OS === 'web') {
+      // react-native-web's Alert.alert is a no-op.
+      if (window.confirm(`${title}\n${message}`)) runAction(id, clear, `${what} cleared.`);
+      return;
+    }
+    Alert.alert(title, message, [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Mark cleared', style: 'destructive', onPress: () => runAction(clear, `${what} cleared.`) },
+      { text: 'Mark cleared', style: 'destructive', onPress: () => runAction(id, clear, `${what} cleared.`) },
     ]);
   }
 
@@ -110,6 +141,7 @@ export default function IncidentsScreen() {
       contentContainerStyle={styles.content}
       contentInsetAdjustmentBehavior="automatic"
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
+      ref={scrollRef}
     >
       <Stack.Screen
         options={{
@@ -191,11 +223,11 @@ export default function IncidentsScreen() {
                         severity={incident.severity}
                         title={INCIDENT_LABEL[incident.type]}
                         detail={`${SEVERITY_LABEL[incident.severity]} · ${confirmations(incident.confirmation_count)} · ${relativeTime(incident.created_at)}`}
-                        onPress={() => setFocus({ lat: incident.lat, lng: incident.lng })}
+                        onPress={() => showOnMap({ lat: incident.lat, lng: incident.lng })}
                         onConfirm={() =>
-                          runAction(() => confirmIncident(incident.id), 'Incident confirmed. Thanks for the update.')
+                          runAction(incident.id, () => confirmIncident(incident.id), 'Incident confirmed. Thanks for the update.')
                         }
-                        onClear={() => confirmClear('Incident', () => clearIncident(incident.id))}
+                        onClear={() => confirmClear(incident.id, 'Incident', () => clearIncident(incident.id))}
                         confirmTestID={`confirm-${incident.id}`}
                         clearTestID={`clear-${incident.id}`}
                       />
@@ -210,11 +242,11 @@ export default function IncidentsScreen() {
                         severity={zone.severity}
                         title={zone.reason || `${SEVERITY_LABEL[zone.severity]} risk area`}
                         detail={`${SEVERITY_LABEL[zone.severity]} · ${formatRadius(zone.radius_m)} · ${confirmations(zone.confirmation_count)}`}
-                        onPress={() => setFocus({ lat: zone.lat, lng: zone.lng })}
+                        onPress={() => showOnMap({ lat: zone.lat, lng: zone.lng })}
                         onConfirm={() =>
-                          runAction(() => confirmDangerZone(zone.id), 'Danger zone confirmed. Thanks for the update.')
+                          runAction(zone.id, () => confirmDangerZone(zone.id), 'Danger zone confirmed. Thanks for the update.')
                         }
-                        onClear={() => confirmClear('Danger zone', () => clearDangerZone(zone.id))}
+                        onClear={() => confirmClear(zone.id, 'Danger zone', () => clearDangerZone(zone.id))}
                         confirmTestID={`confirm-zone-${zone.id}`}
                         clearTestID={`clear-zone-${zone.id}`}
                       />

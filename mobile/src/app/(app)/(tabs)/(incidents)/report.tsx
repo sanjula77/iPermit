@@ -30,7 +30,9 @@ const SEVERITY_OPTIONS = SEVERITIES.map((s) => ({ label: SEVERITY_LABEL[s], valu
 
 export default function ReportScreen() {
   const theme = useTheme();
-  const { location, note: locationNote } = useCurrentLocation();
+  // A report records where it happened, so the Colombo fallback must never be
+  // submitted as the driver's position.
+  const { location, isFallback } = useCurrentLocation();
   const [kind, setKind] = useState<Kind>('incident');
   const [incidentType, setIncidentType] = useState<RoadIncidentType | null>(null);
   const [severity, setSeverity] = useState<RoadIncidentSeverity>('MEDIUM');
@@ -41,10 +43,11 @@ export default function ReportScreen() {
   // Blocks a same-frame double tap before isSubmitting has re-rendered.
   const submittingRef = useRef(false);
 
-  const canSubmit = !!location && !isSubmitting && (kind === 'zone' || incidentType !== null);
+  const canSubmit =
+    !!location && !isFallback && !isSubmitting && (kind === 'zone' || incidentType !== null);
 
   async function handleSubmit() {
-    if (!location || submittingRef.current) return;
+    if (!location || isFallback || submittingRef.current) return;
     if (kind === 'incident' && !incidentType) return;
     submittingRef.current = true;
     setError(null);
@@ -55,8 +58,12 @@ export default function ReportScreen() {
       } else {
         await markDangerZone(location.lat, location.lng, radius, severity, reason.trim() || undefined);
       }
-      // The Incidents screen reloads on focus, so the new report appears there.
-      router.back();
+      // Return to the list (which reloads on focus) and tell it what was sent,
+      // so it can confirm the report.
+      router.navigate({
+        pathname: '/(app)/(tabs)/(incidents)/incidents',
+        params: { reported: kind },
+      });
     } catch (err) {
       setError(extractErrorMessage(err));
     } finally {
@@ -161,9 +168,11 @@ export default function ReportScreen() {
         <View style={styles.locationRow}>
           <Ionicons name="location-outline" size={18} color={theme.textSecondary} />
           <ThemedText type="small" themeColor="textSecondary" style={styles.locationText}>
-            {location
-              ? locationNote ?? 'Uses your current location.'
-              : 'Finding your location…'}
+            {!location
+              ? 'Finding your location…'
+              : isFallback
+                ? 'Turn on location access to report from where you are.'
+                : 'Uses your current location.'}
           </ThemedText>
         </View>
 

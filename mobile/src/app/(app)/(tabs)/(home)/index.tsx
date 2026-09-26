@@ -36,9 +36,6 @@ export default function HomeScreen() {
 }
 
 function PoliceHomeScreen() {
-  const { user, logout } = useAuth();
-  const theme = useTheme();
-
   return (
     <ScrollView
       style={styles.container}
@@ -46,32 +43,15 @@ function PoliceHomeScreen() {
       contentInsetAdjustmentBehavior="automatic"
     >
       <ThemedView style={styles.form}>
-        <ThemedText type="title">Officer Console</ThemedText>
-
-        <Card>
-          <ThemedText type="smallBold">Email</ThemedText>
-          <ThemedText testID="home-email" selectable>
-            {user?.email}
-          </ThemedText>
-          <ThemedText type="smallBold">Role</ThemedText>
-          <ThemedText testID="home-role" selectable>
-            {user?.role}
-          </ThemedText>
-        </Card>
-
-        <Button variant="danger" onPress={logout} testID="logout-button">
-          <Ionicons name="log-out-outline" size={18} color={theme.onPrimary} />
-          <ThemedText type="smallBold" themeColor="onPrimary">
-            Log out
-          </ThemedText>
-        </Button>
+        <ThemedText themeColor="textSecondary">
+          Use the Verify tab to check a driver&apos;s license by face or QR code.
+        </ThemedText>
       </ThemedView>
     </ScrollView>
   );
 }
 
 function DriverHomeScreen() {
-  const { user, logout } = useAuth();
   const theme = useTheme();
   const [applications, setApplications] = useState<Application[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -145,23 +125,6 @@ function DriverHomeScreen() {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
     >
       <ThemedView style={styles.form}>
-        <ThemedText type="title">Welcome</ThemedText>
-
-        <Card>
-          <ThemedText type="smallBold">Email</ThemedText>
-          <ThemedText testID="home-email" selectable>
-            {user?.email}
-          </ThemedText>
-          <ThemedText type="smallBold">NIC</ThemedText>
-          <ThemedText testID="home-nic" selectable>
-            {user?.nic}
-          </ThemedText>
-          <ThemedText type="smallBold">Role</ThemedText>
-          <ThemedText testID="home-role" selectable>
-            {user?.role}
-          </ThemedText>
-        </Card>
-
         {license ? (
           <LicenseCard license={license} badge={badge} />
         ) : licenseError ? (
@@ -212,13 +175,6 @@ function DriverHomeScreen() {
             </ThemedText>
           </Button>
         </ThemedView>
-
-        <Button variant="danger" onPress={logout} testID="logout-button">
-          <Ionicons name="log-out-outline" size={18} color={theme.onPrimary} />
-          <ThemedText type="smallBold" themeColor="onPrimary">
-            Log out
-          </ThemedText>
-        </Button>
       </ThemedView>
     </ScrollView>
   );
@@ -230,7 +186,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     alignItems: 'center',
     paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.five,
+    paddingTop: Spacing.three,
     paddingBottom: Spacing.five,
   },
   form: {

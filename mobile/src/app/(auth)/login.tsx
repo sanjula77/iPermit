@@ -83,7 +83,9 @@ export default function LoginScreen() {
         </Button>
 
         <Link href="/(auth)/register" testID="login-go-register">
-          <ThemedText type="link">Don&apos;t have an account? Register</ThemedText>
+          <ThemedText type="link">
+            Don&apos;t have an account? <ThemedText type="linkPrimary">Register</ThemedText>
+          </ThemedText>
         </Link>
       </ThemedView>
     </ScrollView>

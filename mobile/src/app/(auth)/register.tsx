@@ -153,7 +153,9 @@ export default function RegisterScreen() {
         </Button>
 
         <Link href="/(auth)/login" testID="register-go-login">
-          <ThemedText type="link">Already have an account? Log in</ThemedText>
+          <ThemedText type="link">
+            Already have an account? <ThemedText type="linkPrimary">Log in</ThemedText>
+          </ThemedText>
         </Link>
       </ThemedView>
     </ScrollView>

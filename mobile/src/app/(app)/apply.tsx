@@ -75,7 +75,7 @@ export default function ApplyScreen() {
         medicalCert,
         birthCert,
       });
-      router.replace('/(app)/(tabs)');
+      router.replace('/(app)/(tabs)/(home)');
     } catch (err) {
       setError(extractErrorMessage(err));
     } finally {

@@ -1,73 +1,30 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { router } from 'expo-router';
+import { Fragment, useState } from 'react';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 
-import { getMyAppeals, submitAppeal } from '@/api/appeals';
-import { extractErrorMessage } from '@/api/client';
-import { getMyFines, payFine } from '@/api/fines';
-import { TextField } from '@/components/text-field';
+import { Card } from '@/components/card';
+import { EmptyState } from '@/components/empty-state';
+import { ScreenState } from '@/components/screen-state';
+import { StatusBadge } from '@/components/status-badge';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { VIOLATION_ICON, VIOLATION_LABEL } from '@/constants/violations';
+import { useMyFines } from '@/hooks/use-my-fines';
 import { useTheme } from '@/hooks/use-theme';
-import type { Appeal, FineStatus, FineWithViolation, PaymentMethod } from '@/types/fine';
-import type { ViolationType } from '@/types/police';
-
-const PAYMENT_METHODS: PaymentMethod[] = ['CARD', 'BANK', 'WALLET'];
-
-const VIOLATION_ICON: Record<ViolationType, keyof typeof Ionicons.glyphMap> = {
-  WHITE_LINE: 'remove-circle-outline',
-  SPEEDING: 'speedometer-outline',
-  RED_LIGHT: 'stop-circle-outline',
-  DRUNK_DRIVING: 'alert-circle',
-};
-
-const STATUS_ICON: Record<FineStatus, keyof typeof Ionicons.glyphMap> = {
-  UNPAID: 'time-outline',
-  PAID: 'checkmark-circle',
-  REVERSED: 'arrow-undo-circle',
-};
-
-const PAYMENT_METHOD_ICON: Record<PaymentMethod, keyof typeof Ionicons.glyphMap> = {
-  CARD: 'card-outline',
-  BANK: 'business-outline',
-  WALLET: 'wallet-outline',
-};
+import { appealForFine, fineBadge, formatLkr } from '@/lib/fine-status';
+import type { Appeal, FineWithViolation } from '@/types/fine';
 
 export default function FinesScreen() {
-  const theme = useTheme();
-  const [fines, setFines] = useState<FineWithViolation[] | null>(null);
-  const [appeals, setAppeals] = useState<Appeal[]>([]);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const { fines, appeals, error, isLoading, reload } = useMyFines();
   const [refreshing, setRefreshing] = useState(false);
-
-  const load = useCallback(async () => {
-    try {
-      const [finesData, appealsData] = await Promise.all([getMyFines(), getMyAppeals()]);
-      setFines(finesData);
-      setAppeals(appealsData);
-      setLoadError(null);
-    } catch (err) {
-      setLoadError(extractErrorMessage(err));
-    }
-  }, []);
-
-  useEffect(() => {
-    // Fetch-on-mount, not a state sync.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    load();
-  }, [load]);
 
   async function handleRefresh() {
     setRefreshing(true);
-    await load();
+    await reload();
     setRefreshing(false);
   }
-
-  const outstandingTotal = (fines ?? [])
-    .filter((f) => f.status === 'UNPAID')
-    .reduce((sum, f) => sum + f.amount, 0);
-  const isAllClear = fines !== null && outstandingTotal === 0;
 
   return (
     <ScrollView
@@ -77,243 +34,123 @@ export default function FinesScreen() {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
     >
       <ThemedView style={styles.form}>
-        <ThemedView
-          type="backgroundElement"
-          style={[
-            styles.summaryCard,
-            { borderColor: isAllClear ? theme.success : theme.danger },
-          ]}
-        >
-          <Ionicons
-            name={isAllClear ? 'checkmark-circle' : 'alert-circle'}
-            size={28}
-            color={isAllClear ? theme.success : theme.danger}
-          />
-          <View style={styles.summaryText}>
-            <ThemedText type="small" themeColor="textSecondary">
-              Outstanding Balance
-            </ThemedText>
-            <ThemedText
-              type="subtitle"
-              themeColor={isAllClear ? 'success' : 'danger'}
-              testID="outstanding-total"
-            >
-              LKR {outstandingTotal.toLocaleString()}
-            </ThemedText>
-          </View>
-        </ThemedView>
-
-        {loadError ? (
-          <ThemedText type="small" themeColor="danger" selectable testID="fines-error">
-            {loadError}
+        {fines !== null && error ? (
+          // Keep showing the last good data, but say the refresh failed.
+          <ThemedText type="small" themeColor="danger" selectable testID="fines-refresh-error">
+            Couldn&apos;t refresh: {error}
           </ThemedText>
-        ) : fines === null ? (
-          <ActivityIndicator testID="fines-loading" />
+        ) : null}
+        {fines === null ? (
+          // Spinner while retrying replaces the stale error (and its Retry button).
+          <ScreenState error={isLoading ? null : error} onRetry={handleRefresh} testID="fines" />
         ) : fines.length === 0 ? (
-          <ThemedText type="small" themeColor="textSecondary" testID="fines-empty">
-            No fines on record.
-          </ThemedText>
+          <EmptyState
+            testID="fines-empty"
+            icon="shield-checkmark-outline"
+            title="No fines"
+            message="You have no traffic fines. Keep driving safely."
+          />
         ) : (
-          fines.map((fine) => (
-            <FineCard
-              key={fine.id}
-              fine={fine}
-              appeal={appeals.find((a) => a.fine.id === fine.id) ?? null}
-              onChanged={load}
-            />
-          ))
+          <FinesContent fines={fines} appeals={appeals} />
         )}
       </ThemedView>
     </ScrollView>
   );
 }
 
-function FineCard({
-  fine,
-  appeal,
-  onChanged,
-}: {
-  fine: FineWithViolation;
-  appeal: Appeal | null;
-  onChanged: () => void;
-}) {
-  const theme = useTheme();
-  const [mode, setMode] = useState<'none' | 'pay' | 'appeal'>('none');
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CARD');
-  const [appealReason, setAppealReason] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [justPaid, setJustPaid] = useState(false);
-  const [justAppealed, setJustAppealed] = useState(false);
-
-  async function handlePay() {
-    setError(null);
-    setIsSubmitting(true);
-    try {
-      await payFine(fine.id, paymentMethod);
-      setMode('none');
-      setJustPaid(true);
-      onChanged();
-    } catch (err) {
-      setError(extractErrorMessage(err));
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
-
-  async function handleAppeal() {
-    if (!appealReason.trim()) {
-      setError('Please explain why you are appealing this fine.');
-      return;
-    }
-    setError(null);
-    setIsSubmitting(true);
-    try {
-      await submitAppeal(fine.id, appealReason.trim());
-      setMode('none');
-      setAppealReason('');
-      setJustAppealed(true);
-      onChanged();
-    } catch (err) {
-      setError(extractErrorMessage(err));
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
-
-  const canActOnFine = fine.status === 'UNPAID' && (!appeal || appeal.status !== 'PENDING');
-  const statusColor =
-    fine.status === 'UNPAID' ? 'danger' : fine.status === 'PAID' ? 'primary' : 'textSecondary';
+function FinesContent({ fines, appeals }: { fines: FineWithViolation[]; appeals: Appeal[] }) {
+  const unpaid = fines.filter((f) => f.status === 'UNPAID');
+  const history = fines.filter((f) => f.status !== 'UNPAID');
+  const outstandingTotal = unpaid.reduce((sum, f) => sum + f.amount, 0);
 
   return (
-    <ThemedView type="backgroundElement" style={styles.card} testID={`fine-${fine.id}`}>
-      <View style={styles.headerRow}>
-        <Ionicons name={VIOLATION_ICON[fine.violation.type]} size={16} color={theme.text} />
-        <ThemedText type="smallBold">{fine.violation.type.replace('_', ' ')}</ThemedText>
-      </View>
-      <ThemedText type="small" themeColor="textSecondary">
-        {new Date(fine.violation.confirmed_at).toLocaleDateString()} · {fine.violation.points_deducted} pts
-      </ThemedText>
-      <ThemedText type="smallBold">LKR {fine.amount.toLocaleString()}</ThemedText>
-      <View style={styles.headerRow}>
-        <Ionicons name={STATUS_ICON[fine.status]} size={14} color={theme[statusColor]} />
-        <ThemedText type="small" themeColor={statusColor} testID="fine-status">
-          {fine.status}
-          {fine.status === 'PAID' && fine.payment_method ? ` via ${fine.payment_method}` : ''}
+    <>
+      <Card style={styles.summary}>
+        <ThemedText type="small" themeColor="textSecondary">
+          Outstanding balance
         </ThemedText>
-      </View>
-
-      {justPaid ? (
-        <View style={styles.successRow}>
-          <Ionicons name="checkmark-circle" size={14} color={theme.success} />
-          <ThemedText type="small" themeColor="success">
-            Payment confirmed
+        <ThemedText
+          type="title"
+          themeColor={unpaid.length ? 'danger' : 'text'}
+          testID="outstanding-total"
+          style={styles.tabular}
+        >
+          {formatLkr(outstandingTotal)}
+        </ThemedText>
+        {unpaid.length ? (
+          <ThemedText themeColor="textSecondary">
+            {unpaid.length} unpaid {unpaid.length === 1 ? 'fine' : 'fines'}
           </ThemedText>
-        </View>
-      ) : null}
-
-      {justAppealed ? (
-        <View style={styles.successRow}>
-          <Ionicons name="checkmark-circle" size={14} color={theme.success} />
-          <ThemedText type="small" themeColor="success">
-            Appeal submitted
-          </ThemedText>
-        </View>
-      ) : null}
-
-      {appeal ? (
-        <ThemedText type="small" themeColor="textSecondary" testID="fine-appeal-status">
-          Appeal: {appeal.status}
-        </ThemedText>
-      ) : null}
-
-      {error ? (
-        <ThemedText type="small" themeColor="danger" selectable>
-          {error}
-        </ThemedText>
-      ) : null}
-
-      {canActOnFine ? (
-        mode === 'pay' ? (
-          <View style={styles.actionPanel}>
-            <View style={styles.methodRow}>
-              {PAYMENT_METHODS.map((method) => (
-                <Pressable
-                  key={method}
-                  onPress={() => setPaymentMethod(method)}
-                  style={[
-                    styles.methodChip,
-                    { backgroundColor: paymentMethod === method ? theme.primary : theme.background },
-                  ]}
-                  testID={`pay-method-${method}`}
-                >
-                  <Ionicons
-                    name={PAYMENT_METHOD_ICON[method]}
-                    size={14}
-                    color={paymentMethod === method ? theme.onPrimary : theme.text}
-                  />
-                  <ThemedText
-                    type="small"
-                    themeColor={paymentMethod === method ? 'onPrimary' : 'text'}
-                  >
-                    {method}
-                  </ThemedText>
-                </Pressable>
-              ))}
-            </View>
-            <Pressable
-              style={[styles.button, { backgroundColor: theme.primary }]}
-              onPress={handlePay}
-              disabled={isSubmitting}
-              testID="confirm-pay-button"
-            >
-              <ThemedText type="smallBold" themeColor="onPrimary">
-                {isSubmitting ? 'Paying…' : 'Confirm Payment'}
-              </ThemedText>
-            </Pressable>
-          </View>
-        ) : mode === 'appeal' ? (
-          <View style={styles.actionPanel}>
-            <TextField
-              label="Reason for appeal"
-              value={appealReason}
-              onChangeText={setAppealReason}
-              multiline
-              testID="appeal-reason-input"
-            />
-            <Pressable
-              style={[styles.button, { backgroundColor: theme.primary }]}
-              onPress={handleAppeal}
-              disabled={isSubmitting}
-              testID="confirm-appeal-button"
-            >
-              <ThemedText type="smallBold" themeColor="onPrimary">
-                {isSubmitting ? 'Submitting…' : 'Submit Appeal'}
-              </ThemedText>
-            </Pressable>
-          </View>
         ) : (
-          <View style={styles.actionsRow}>
-            <Pressable
-              style={[styles.button, styles.flexButton, { backgroundColor: theme.primary }]}
-              onPress={() => setMode('pay')}
-              testID={`pay-button-${fine.id}`}
-            >
-              <ThemedText type="smallBold" themeColor="onPrimary">
-                Pay
-              </ThemedText>
-            </Pressable>
-            <Pressable
-              style={[styles.button, styles.flexButton, { backgroundColor: theme.backgroundSelected }]}
-              onPress={() => setMode('appeal')}
-              testID={`appeal-button-${fine.id}`}
-            >
-              <ThemedText type="smallBold">Appeal</ThemedText>
-            </Pressable>
-          </View>
-        )
-      ) : null}
-    </ThemedView>
+          <StatusBadge tone="success" icon="checkmark-circle" label="All clear" />
+        )}
+      </Card>
+
+      <FineSection title="Unpaid" fines={unpaid} appeals={appeals} />
+      <FineSection title="History" fines={history} appeals={appeals} />
+    </>
+  );
+}
+
+function FineSection({
+  title,
+  fines,
+  appeals,
+}: {
+  title: string;
+  fines: FineWithViolation[];
+  appeals: Appeal[];
+}) {
+  const theme = useTheme();
+  if (fines.length === 0) return null;
+
+  return (
+    <View style={styles.section}>
+      <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionLabel}>
+        {title}
+      </ThemedText>
+      <Card style={styles.list}>
+        {fines.map((fine, i) => (
+          <Fragment key={fine.id}>
+            {i > 0 ? <View style={[styles.separator, { backgroundColor: theme.backgroundSelected }]} /> : null}
+            <FineRow fine={fine} appeal={appealForFine(appeals, fine.id)} />
+          </Fragment>
+        ))}
+      </Card>
+    </View>
+  );
+}
+
+function FineRow({ fine, appeal }: { fine: FineWithViolation; appeal: Appeal | null }) {
+  const theme = useTheme();
+  const badge = fineBadge(fine, appeal);
+  const label = VIOLATION_LABEL[fine.violation.type];
+
+  return (
+    <Pressable
+      onPress={() => router.push({ pathname: '/(app)/(tabs)/(fines)/fine/[id]', params: { id: fine.id } })}
+      testID={`fine-${fine.id}`}
+      accessibilityRole="button"
+      accessibilityLabel={`${label}, ${formatLkr(fine.amount)}, ${badge.label}`}
+      style={({ pressed }) => [styles.row, { opacity: pressed ? 0.6 : 1 }]}
+    >
+      <View style={[styles.iconCircle, { backgroundColor: theme.background }]}>
+        <Ionicons name={VIOLATION_ICON[fine.violation.type]} size={20} color={theme.text} />
+      </View>
+      <View style={styles.rowText}>
+        <ThemedText>{label}</ThemedText>
+        <ThemedText type="small" themeColor="textSecondary">
+          {new Date(fine.violation.confirmed_at).toLocaleDateString()} · {fine.violation.points_deducted} pts
+        </ThemedText>
+      </View>
+      <View style={styles.rowEnd}>
+        <ThemedText type="smallBold" style={styles.tabular}>
+          {formatLkr(fine.amount)}
+        </ThemedText>
+        <StatusBadge testID={`fine-status-${fine.id}`} tone={badge.tone} icon={badge.icon} label={badge.label} />
+      </View>
+      <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
+    </Pressable>
   );
 }
 
@@ -323,65 +160,50 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     alignItems: 'center',
     paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.five,
+    paddingVertical: Spacing.four,
   },
   form: {
+    flexGrow: 1,
     width: '100%',
-    maxWidth: 800,
-    gap: Spacing.three,
+    maxWidth: MaxContentWidth,
+    gap: Spacing.four,
   },
-  summaryCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.three,
-    borderRadius: Spacing.three,
-    borderWidth: 1.5,
+  summary: {
     padding: Spacing.four,
-  },
-  summaryText: {
-    gap: Spacing.half,
-  },
-  card: {
-    borderRadius: Spacing.three,
-    padding: Spacing.three,
     gap: Spacing.one,
   },
-  headerRow: {
+  tabular: { fontVariant: ['tabular-nums'] },
+  section: { gap: Spacing.two },
+  sectionLabel: {
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  list: {
+    paddingVertical: 0,
+    gap: 0,
+  },
+  separator: {
+    height: StyleSheet.hairlineWidth,
+  },
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.half,
+    gap: Spacing.three,
+    paddingVertical: Spacing.three,
   },
-  successRow: {
-    flexDirection: 'row',
+  iconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
-    gap: Spacing.half,
-  },
-  actionsRow: {
-    flexDirection: 'row',
-    gap: Spacing.two,
-    marginTop: Spacing.one,
-  },
-  actionPanel: {
-    gap: Spacing.two,
-    marginTop: Spacing.one,
-  },
-  methodRow: {
-    flexDirection: 'row',
-    gap: Spacing.two,
-  },
-  methodChip: {
-    flex: 1,
-    flexDirection: 'row',
     justifyContent: 'center',
-    alignItems: 'center',
-    gap: Spacing.half,
-    borderRadius: Spacing.two,
-    paddingVertical: Spacing.two,
   },
-  flexButton: { flex: 1 },
-  button: {
-    borderRadius: Spacing.two,
-    paddingVertical: Spacing.two,
-    alignItems: 'center',
+  rowText: {
+    flex: 1,
+    gap: Spacing.half,
+  },
+  rowEnd: {
+    alignItems: 'flex-end',
+    gap: Spacing.one,
   },
 });

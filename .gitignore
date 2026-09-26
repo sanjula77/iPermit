@@ -19,6 +19,10 @@ backend/uploads/
 backend/face_templates.db
 backend/*.onnx
 
+# Face recognition evaluation dataset (real people's photos -- never commit)
+backend/data/face_eval/*
+!backend/data/face_eval/.gitkeep
+
 # Node / Expo / Next.js
 node_modules/
 .expo/

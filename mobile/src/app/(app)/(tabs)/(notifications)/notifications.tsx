@@ -1,59 +1,88 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { router, useFocusEffect, type Href } from 'expo-router';
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 
-import { getMyNotifications, markNotificationRead } from '@/api/notifications';
 import { extractErrorMessage } from '@/api/client';
+import { getMyNotifications, markNotificationRead } from '@/api/notifications';
+import { Card } from '@/components/card';
+import { EmptyState } from '@/components/empty-state';
+import { ScreenState } from '@/components/screen-state';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { MaxContentWidth, Spacing, type ThemeColor } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import type { AppNotification } from '@/types/notification';
+import { relativeTime } from '@/lib/relative-time';
+import { setUnreadCount } from '@/lib/unread-count';
+import type { AppNotification, NotificationType } from '@/types/notification';
 
-const TYPE_LABEL: Record<AppNotification['type'], string> = {
-  LICENSE_APPROVED: 'License Approved',
-  LICENSE_REJECTED: 'License Rejected',
-  FINE_ISSUED: 'Fine Issued',
-  LICENSE_SUSPENDED: 'License Suspended',
-  PAYMENT_CONFIRMED: 'Payment Confirmed',
-  APPEAL_UPHELD: 'Appeal Upheld',
-  APPEAL_OVERTURNED: 'Appeal Overturned',
-  BADGE_CHANGED: 'Standing Changed',
-  NEARBY_INCIDENT: 'Nearby Incident',
+type Kind = 'good' | 'bad' | 'info';
+
+// UPHELD means the fine stands (appeal rejected); OVERTURNED means it was
+// reversed -- same plain wording as the Fine details screen.
+const TYPE_INFO: Record<
+  NotificationType,
+  { title: string; icon: keyof typeof Ionicons.glyphMap; kind: Kind; target: Href }
+> = {
+  LICENSE_APPROVED: { title: 'License approved', icon: 'checkmark-circle', kind: 'good', target: '/(app)/(tabs)/(home)' },
+  LICENSE_REJECTED: { title: 'Application not approved', icon: 'close-circle', kind: 'bad', target: '/(app)/(tabs)/(home)' },
+  FINE_ISSUED: { title: 'Fine issued', icon: 'receipt-outline', kind: 'bad', target: '/(app)/(tabs)/(fines)/fines' },
+  LICENSE_SUSPENDED: { title: 'License suspended', icon: 'ban', kind: 'bad', target: '/(app)/(tabs)/(home)' },
+  PAYMENT_CONFIRMED: { title: 'Payment confirmed', icon: 'card', kind: 'good', target: '/(app)/(tabs)/(fines)/fines' },
+  APPEAL_UPHELD: { title: 'Appeal rejected', icon: 'close-circle', kind: 'bad', target: '/(app)/(tabs)/(fines)/fines' },
+  APPEAL_OVERTURNED: { title: 'Appeal accepted', icon: 'arrow-undo-circle', kind: 'good', target: '/(app)/(tabs)/(fines)/fines' },
+  BADGE_CHANGED: { title: 'Standing changed', icon: 'medal-outline', kind: 'info', target: '/(app)/(tabs)/(home)' },
+  NEARBY_INCIDENT: { title: 'Nearby incident', icon: 'location', kind: 'info', target: '/(app)/(tabs)/(incidents)/incidents' },
 };
 
-const TYPE_ICON: Record<AppNotification['type'], keyof typeof Ionicons.glyphMap> = {
-  LICENSE_APPROVED: 'checkmark-circle',
-  LICENSE_REJECTED: 'close-circle',
-  FINE_ISSUED: 'cash',
-  LICENSE_SUSPENDED: 'ban',
-  PAYMENT_CONFIRMED: 'card',
-  APPEAL_UPHELD: 'document-text',
-  APPEAL_OVERTURNED: 'arrow-undo-circle',
-  BADGE_CHANGED: 'medal-outline',
-  NEARBY_INCIDENT: 'location',
-};
+const KIND_COLOR: Record<Kind, ThemeColor> = { good: 'success', bad: 'danger', info: 'primary' };
+
+function dayGroup(iso: string, now: number): 'Today' | 'Yesterday' | 'Earlier' {
+  const today = new Date(now);
+  const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+  const time = Date.parse(iso);
+  if (time >= startOfToday) return 'Today';
+  if (time >= startOfToday - 24 * 60 * 60 * 1000) return 'Yesterday';
+  return 'Earlier';
+}
 
 export default function NotificationsScreen() {
-  const theme = useTheme();
   const [notifications, setNotifications] = useState<AppNotification[] | null>(null);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  // "Now" for relative times and day groups. Held in state and refreshed on
+  // every load: computed inline, the React Compiler would cache each row's
+  // "5 min ago" forever (the screen stays mounted across tab switches).
+  const [now, setNow] = useState(() => Date.now());
+  // Only the newest load may write state (focus reloads and pull-to-refresh
+  // can overlap).
+  const latestLoad = useRef(0);
 
   const load = useCallback(async () => {
+    const request = ++latestLoad.current;
     try {
-      setNotifications(await getMyNotifications());
-      setLoadError(null);
+      const data = await getMyNotifications();
+      if (request !== latestLoad.current) return;
+      setNotifications(data);
+      setNow(Date.now());
+      setError(null);
     } catch (err) {
-      setLoadError(extractErrorMessage(err));
+      if (request !== latestLoad.current) return;
+      setError(extractErrorMessage(err));
     }
   }, []);
 
+  // Keep the tab badge in step with what this screen shows (outside the state
+  // updaters, which must stay free of side effects).
   useEffect(() => {
-    // Fetch-on-mount, not a state sync.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    load();
-  }, [load]);
+    if (notifications) setUnreadCount(notifications.filter((n) => !n.read_at).length);
+  }, [notifications]);
+
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load]),
+  );
 
   async function handleRefresh() {
     setRefreshing(true);
@@ -61,17 +90,25 @@ export default function NotificationsScreen() {
     setRefreshing(false);
   }
 
-  async function handlePress(notification: AppNotification) {
+  function handlePress(notification: AppNotification) {
+    router.navigate(TYPE_INFO[notification.type].target);
     if (notification.read_at) return;
-    try {
-      const updated = await markNotificationRead(notification.id);
-      setNotifications((current) =>
-        (current ?? []).map((n) => (n.id === updated.id ? updated : n)),
-      );
-    } catch {
-      // Marking as read is a courtesy, not critical -- fail silently.
-    }
+    // Mark read in the background: it's a courtesy, not worth blocking on.
+    markNotificationRead(notification.id)
+      .then((updated) => {
+        setNotifications((current) => (current ?? []).map((n) => (n.id === updated.id ? updated : n)));
+      })
+      .catch(() => {
+        // Marking as read is a courtesy, not critical -- fail silently.
+      });
   }
+
+  const groups = (['Today', 'Yesterday', 'Earlier'] as const)
+    .map((label) => ({
+      label,
+      items: (notifications ?? []).filter((n) => dayGroup(n.created_at, now) === label),
+    }))
+    .filter((group) => group.items.length > 0);
 
   return (
     <ScrollView
@@ -81,45 +118,98 @@ export default function NotificationsScreen() {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
     >
       <ThemedView style={styles.form}>
-        {loadError ? (
+        {notifications !== null && error ? (
           <ThemedText type="small" themeColor="danger" selectable testID="notifications-error">
-            {loadError}
+            Couldn&apos;t refresh: {error}
           </ThemedText>
-        ) : notifications === null ? (
-          <ActivityIndicator testID="notifications-loading" />
+        ) : null}
+        {notifications === null ? (
+          <ScreenState error={refreshing ? null : error} onRetry={handleRefresh} testID="notifications" />
         ) : notifications.length === 0 ? (
-          <ThemedText type="small" themeColor="textSecondary" testID="notifications-empty">
-            No notifications yet.
-          </ThemedText>
+          <EmptyState
+            testID="notifications-empty"
+            icon="notifications-outline"
+            title="No notifications yet"
+            message="We'll let you know about your license, fines and appeals here."
+          />
         ) : (
-          notifications.map((notification) => (
-            <Pressable
-              key={notification.id}
-              onPress={() => handlePress(notification)}
-              testID={`notification-${notification.id}`}
-            >
-              <ThemedView
-                type="backgroundElement"
-                style={[
-                  styles.card,
-                  !notification.read_at && { borderLeftWidth: 3, borderLeftColor: theme.primary },
-                ]}
+          groups.map((group) => (
+            <View key={group.label} style={styles.section}>
+              <ThemedText
+                type="smallBold"
+                themeColor="textSecondary"
+                style={styles.sectionLabel}
+                accessibilityRole="header"
               >
-                <View style={styles.typeRow}>
-                  <Ionicons name={TYPE_ICON[notification.type]} size={16} color={theme.text} />
-                  <ThemedText type="smallBold">{TYPE_LABEL[notification.type]}</ThemedText>
-                </View>
-                <ThemedText type="small">{notification.message}</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">
-                  {new Date(notification.created_at).toLocaleString()}
-                  {notification.read_at ? '' : ' · unread'}
-                </ThemedText>
-              </ThemedView>
-            </Pressable>
+                {group.label}
+              </ThemedText>
+              <Card style={styles.list}>
+                {group.items.map((notification, i) => (
+                  <Fragment key={notification.id}>
+                    {i > 0 ? <Separator /> : null}
+                    <NotificationRow
+                      notification={notification}
+                      now={now}
+                      onPress={() => handlePress(notification)}
+                    />
+                  </Fragment>
+                ))}
+              </Card>
+            </View>
           ))
         )}
       </ThemedView>
     </ScrollView>
+  );
+}
+
+function Separator() {
+  const theme = useTheme();
+  return <View style={[styles.separator, { backgroundColor: theme.backgroundSelected }]} />;
+}
+
+function NotificationRow({
+  notification,
+  now,
+  onPress,
+}: {
+  notification: AppNotification;
+  now: number;
+  onPress: () => void;
+}) {
+  const theme = useTheme();
+  const age = relativeTime(notification.created_at, now);
+  const info = TYPE_INFO[notification.type];
+  const color = theme[KIND_COLOR[info.kind]];
+  const unread = !notification.read_at;
+
+  return (
+    <Pressable
+      onPress={onPress}
+      testID={`notification-${notification.id}`}
+      accessibilityRole="button"
+      accessibilityHint="Opens the related screen"
+      accessibilityLabel={`${unread ? 'Unread. ' : ''}${info.title}. ${notification.message}. ${age}`}
+      style={({ pressed }) => [styles.row, { opacity: pressed ? 0.6 : 1 }]}
+    >
+      <View style={[styles.iconCircle, { backgroundColor: `${color}1F` }]}>
+        <Ionicons name={info.icon} size={20} color={color} />
+      </View>
+      <View style={styles.rowText}>
+        <View style={styles.titleRow}>
+          <ThemedText type={unread ? 'smallBold' : 'small'} style={styles.title} numberOfLines={1}>
+            {info.title}
+          </ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            {age}
+          </ThemedText>
+        </View>
+        <ThemedText type="small" themeColor={unread ? 'text' : 'textSecondary'} numberOfLines={3}>
+          {notification.message}
+        </ThemedText>
+      </View>
+      {unread ? <View style={[styles.unreadDot, { backgroundColor: theme.primary }]} testID="notification-unread" /> : null}
+    </Pressable>
   );
 }
 
@@ -129,21 +219,53 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     alignItems: 'center',
     paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.five,
+    paddingVertical: Spacing.three,
   },
   form: {
+    flexGrow: 1,
     width: '100%',
-    maxWidth: 800,
-    gap: Spacing.three,
+    maxWidth: MaxContentWidth,
+    gap: Spacing.four,
   },
-  card: {
-    borderRadius: Spacing.three,
-    padding: Spacing.three,
+  section: { gap: Spacing.two },
+  sectionLabel: {
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  list: {
+    paddingVertical: 0,
+    gap: 0,
+  },
+  separator: {
+    height: StyleSheet.hairlineWidth,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.three,
+    paddingVertical: Spacing.three,
+  },
+  iconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rowText: {
+    flex: 1,
     gap: Spacing.half,
   },
-  typeRow: {
+  titleRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.one,
+    alignItems: 'baseline',
+    gap: Spacing.two,
+  },
+  title: { flex: 1 },
+  unreadDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginTop: Spacing.two,
   },
 });

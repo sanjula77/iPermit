@@ -94,9 +94,11 @@ def resolve_appeal(
             else NotificationType.APPEAL_UPHELD
         ),
         message=(
-            "Your appeal was upheld -- the fine has been reversed."
+            # Say "accepted"/"rejected" rather than "upheld": UPHELD refers to
+            # the fine standing, so "your appeal was upheld" reads backwards.
+            "Your appeal was accepted -- the fine has been reversed."
             if resolution == AppealResolution.OVERTURNED
-            else "Your appeal was reviewed and the fine was upheld."
+            else "Your appeal was reviewed and rejected -- the fine still stands."
         ),
     )
 

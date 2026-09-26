@@ -521,6 +521,15 @@ TypeScript mobile app, Next.js + TypeScript admin web — per the [ADR](design.m
     this project today; see the plan doc's "Open Decision: Evaluation
     Dataset" for the options under discussion. This task stays open until
     that decision is made and the harness is actually run.)
+    **Enrollment quality gate is too strict for real phone photos (found
+    2026-09-26):** a clear, well-lit selfie from a physical Android phone
+    scored sharpness (Laplacian variance) ~23 against the default
+    `face_min_sharpness = 100.0`, so every photo was rejected and the
+    application could not be submitted. Local testing currently overrides
+    it with `FACE_MIN_SHARPNESS=15` in `backend/.env` (not committed).
+    Before UAT (9.5), calibrate `face_min_sharpness` (and re-check the
+    brightness/size/detection gates) on real phone photos, otherwise real
+    drivers cannot apply.
     - _Requirements: REQ-5_
     - _Dependencies: 4.3_
   - [ ] 9.2 Violation detector evaluation (mAP50, precision/recall) against the JPJ dataset split

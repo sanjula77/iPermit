@@ -18,6 +18,18 @@ export class ApiError extends Error {
   }
 }
 
+// FastAPI errors carry `detail` as a string, as { field, index, message } for
+// inputs a client can highlight (application uploads), or -- for FastAPI's own
+// request validation -- as a list of { loc, msg } objects.
+function messageFromDetail(detail: unknown, status: number): string {
+  if (typeof detail === 'string') return detail;
+  if (Array.isArray(detail) && typeof detail[0]?.msg === 'string') return detail[0].msg;
+  if (detail && typeof detail === 'object' && typeof (detail as { message?: unknown }).message === 'string') {
+    return (detail as { message: string }).message;
+  }
+  return `HTTP ${status}`;
+}
+
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const token = await getToken();
   const headers: Record<string, string> = {
@@ -31,8 +43,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (!response.ok) {
     const body = await response.json().catch(() => null);
     const detail = body?.detail;
-    const message = typeof detail === 'string' ? detail : `HTTP ${response.status}`;
-    throw new ApiError(message, response.status, detail);
+    throw new ApiError(messageFromDetail(detail, response.status), response.status, detail);
   }
 
   if (response.status === 204) {
@@ -68,8 +79,7 @@ async function requestForm<T>(path: string, formData: FormData): Promise<T> {
         return;
       }
       const detail = body?.detail;
-      const message = typeof detail === 'string' ? detail : `HTTP ${xhr.status}`;
-      reject(new ApiError(message, xhr.status, detail));
+      reject(new ApiError(messageFromDetail(detail, xhr.status), xhr.status, detail));
     };
     xhr.onerror = () => reject(new Error('Network request failed'));
     xhr.ontimeout = () => reject(new Error('Upload timed out'));

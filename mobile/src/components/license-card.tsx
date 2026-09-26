@@ -3,6 +3,7 @@ import QRCode from 'react-native-qrcode-svg';
 import { StyleSheet, View } from 'react-native';
 
 import { Card } from '@/components/card';
+import { ProgressBar } from '@/components/progress-bar';
 import { StatusBadge, type StatusTone } from '@/components/status-badge';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
@@ -56,7 +57,6 @@ export function LicenseCard({ license, badge }: { license: License; badge?: Badg
   const theme = useTheme();
   const isActive = license.status === 'ACTIVE';
   const pointsColor = theme[pointsColorKey(license.points)];
-  const pointsFill = `${Math.min(license.points / SUSPENSION_POINTS, 1) * 100}%` as const;
 
   return (
     <Card testID="license-card" style={styles.card}>
@@ -108,9 +108,7 @@ export function LicenseCard({ license, badge }: { license: License; badge?: Badg
             {license.points} / {SUSPENSION_POINTS}
           </ThemedText>
         </View>
-        <View style={[styles.track, { backgroundColor: theme.backgroundSelected }]}>
-          <View style={[styles.fill, { width: pointsFill, backgroundColor: pointsColor }]} />
-        </View>
+        <ProgressBar value={license.points} max={SUSPENSION_POINTS} color={pointsColor} />
       </View>
 
       {badge ? (
@@ -166,13 +164,4 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   tabular: { fontVariant: ['tabular-nums'] },
-  track: {
-    height: 6,
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  fill: {
-    height: '100%',
-    borderRadius: 3,
-  },
 });

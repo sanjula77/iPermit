@@ -19,6 +19,15 @@ backend/uploads/
 backend/face_templates.db
 backend/*.onnx
 
+# Local persistent Docker data (Postgres, insightface models) and the
+# pip wheelhouse -- machine-local, never commit
+.data/
+backend-wheels/
+
+# Face recognition evaluation dataset (real people's photos -- never commit)
+backend/data/face_eval/*
+!backend/data/face_eval/.gitkeep
+
 # Node / Expo / Next.js
 node_modules/
 .expo/

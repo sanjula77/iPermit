@@ -60,11 +60,12 @@ def assess_enrollment_photo_quality(image_bytes: bytes) -> None:
     until admin approval to discover a bad photo. Approval-time enrollment
     (build_enrollment_embedding) still re-runs detection and the
     pairwise-consistency check independently; this function only adds an
-    earlier, cheaper rejection point."""
-    try:
-        detections = detect_faces(image_bytes)
-    except FaceEngineError as exc:
-        raise FaceEnrollmentError(f"Face detection failed: {exc}") from exc
+    earlier, cheaper rejection point.
+
+    A FaceEngineError (model/inference failure) propagates unchanged: it is
+    the server's fault, not the photo's, so it must not surface as a
+    rejection the driver is told to fix."""
+    detections = detect_faces(image_bytes)
 
     if len(detections) == 0:
         raise FaceEnrollmentError("No face detected in this photo")

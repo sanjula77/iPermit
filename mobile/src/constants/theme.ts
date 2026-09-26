@@ -15,6 +15,8 @@ export const Colors = {
     backgroundSelected: '#E0E1E6',
     textSecondary: '#60646C',
     primary: '#208AEF',
+    success: '#12805c',
+    warning: '#b54708',
     danger: '#d92d20',
     onPrimary: '#ffffff',
   },
@@ -25,6 +27,8 @@ export const Colors = {
     backgroundSelected: '#2E3135',
     textSecondary: '#B0B4BA',
     primary: '#4DA3F5',
+    success: '#3dd68c',
+    warning: '#f79009',
     danger: '#f04438',
     onPrimary: '#ffffff',
   },
@@ -65,6 +69,15 @@ export const Spacing = {
   four: 24,
   five: 32,
   six: 64,
+} as const;
+
+export const Radius = {
+  small: Spacing.two, // 8 -- chips, inputs, small controls
+  medium: Spacing.three, // 16 -- cards, buttons
+} as const;
+
+export const Shadows = {
+  card: '0 1px 3px rgba(0, 0, 0, 0.08)',
 } as const;
 
 export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;

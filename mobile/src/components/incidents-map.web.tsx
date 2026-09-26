@@ -1,3 +1,4 @@
+import type { DangerZone } from '@/types/danger-zone';
 import type { RoadIncident } from '@/types/road-incident';
 
 /**
@@ -9,6 +10,7 @@ import type { RoadIncident } from '@/types/road-incident';
 export function IncidentsMap(_props: {
   center: { lat: number; lng: number };
   incidents: RoadIncident[];
+  zones?: DangerZone[];
 }) {
   return null;
 }

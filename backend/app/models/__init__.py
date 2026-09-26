@@ -6,6 +6,7 @@ from app.models.application import (
     DocumentType,
 )
 from app.models.badge import Badge, BadgeTier
+from app.models.danger_zone import DangerZone, DangerZoneSeverity, DangerZoneStatus
 from app.models.fine import VIOLATION_FINE_AMOUNT, Fine, FineStatus, PaymentMethod
 from app.models.license import License, LicenseStatus
 from app.models.notification import Notification, NotificationType
@@ -38,6 +39,9 @@ __all__ = [
     "AppealStatus",
     "Badge",
     "BadgeTier",
+    "DangerZone",
+    "DangerZoneSeverity",
+    "DangerZoneStatus",
     "Notification",
     "NotificationType",
     "RoadIncident",

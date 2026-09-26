@@ -5,6 +5,7 @@ from fastapi import UploadFile
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.face_engine import FaceEngineError
 from app.core.file_storage import (
     DOCUMENT_CONTENT_TYPES,
     IMAGE_CONTENT_TYPES,
@@ -25,11 +26,25 @@ REQUIRED_FACE_PHOTOS = 4
 
 
 class ApplicationError(Exception):
-    pass
+    """A problem the client must fix. `field` names the offending form field and
+    `index` the position within a multi-file field (face_photos), so clients can
+    highlight the exact input to redo instead of parsing the message."""
+
+    def __init__(
+        self, message: str, *, field: str | None = None, index: int | None = None
+    ) -> None:
+        super().__init__(message)
+        self.field = field
+        self.index = index
 
 
 class NotFoundError(Exception):
     pass
+
+
+class ServiceUnavailableError(Exception):
+    """A dependency (the face engine) failed -- the submission itself may be
+    fine, so the client should retry later rather than change its input."""
 
 
 class ForbiddenError(Exception):
@@ -57,14 +72,18 @@ async def submit_application(
     if len(face_photos) != REQUIRED_FACE_PHOTOS:
         raise ApplicationError(
             f"Exactly {REQUIRED_FACE_PHOTOS} face photos are required, "
-            f"got {len(face_photos)}"
+            f"got {len(face_photos)}",
+            field="face_photos",
         )
 
     subdir = f"applications/{uuid.uuid4()}"
     saved: list[tuple[DocumentType, str]] = []
+    # Which input is being processed, so a failure can name it.
+    current_field, current_index = "face_photos", None
 
     try:
-        for photo in face_photos:
+        for index, photo in enumerate(face_photos):
+            current_field, current_index = "face_photos", index
             # First validate the file format (mime type, is valid image)
             path = await save_upload(
                 photo,
@@ -78,11 +97,12 @@ async def submit_application(
             raw_photo = saved_path.read_bytes()
             face_service.assess_enrollment_photo_quality(raw_photo)
 
-        for doc_type, upload in (
-            (DocumentType.NIC, nic_document),
-            (DocumentType.MEDICAL_CERT, medical_cert),
-            (DocumentType.BIRTH_CERT, birth_cert),
+        for field, doc_type, upload in (
+            ("nic_document", DocumentType.NIC, nic_document),
+            ("medical_cert", DocumentType.MEDICAL_CERT, medical_cert),
+            ("birth_cert", DocumentType.BIRTH_CERT, birth_cert),
         ):
+            current_field, current_index = field, None
             path = await save_upload(
                 upload,
                 subdir=subdir,
@@ -92,7 +112,17 @@ async def submit_application(
             saved.append((doc_type, path))
     except (UploadValidationError, face_service.FaceEnrollmentError) as exc:
         _delete_saved_files(saved)
-        raise ApplicationError(str(exc)) from exc
+        message = str(exc)
+        if current_index is not None:
+            message = f"Photo {current_index + 1}: {message}"
+        raise ApplicationError(
+            message, field=current_field, index=current_index
+        ) from exc
+    except FaceEngineError as exc:
+        _delete_saved_files(saved)
+        raise ServiceUnavailableError(
+            "Photo checks are temporarily unavailable. Please try again later."
+        ) from exc
 
     try:
         return application_repository.create(db, driver_id=driver_id, documents=saved)

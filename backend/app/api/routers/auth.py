@@ -16,8 +16,10 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> User:
             db, email=payload.email, nic=payload.nic, password=payload.password
         )
     except auth_service.AuthError as exc:
+        # Structured detail so clients can highlight the conflicting input.
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, detail=str(exc)
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"field": exc.field, "message": str(exc)},
         ) from exc
 
 

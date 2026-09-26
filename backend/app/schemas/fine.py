@@ -1,10 +1,10 @@
 import uuid
-from datetime import datetime
 
 from pydantic import BaseModel
 
 from app.models.fine import FineStatus, PaymentMethod
 from app.models.license import LicenseStatus
+from app.schemas.common import UtcDateTime
 from app.schemas.violation import ViolationRead
 
 
@@ -12,8 +12,8 @@ class FineRead(BaseModel):
     id: uuid.UUID
     amount: int
     status: FineStatus
-    created_at: datetime
-    paid_at: datetime | None
+    created_at: UtcDateTime
+    paid_at: UtcDateTime | None
     payment_method: PaymentMethod | None
 
     model_config = {"from_attributes": True}

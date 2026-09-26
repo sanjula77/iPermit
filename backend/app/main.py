@@ -10,6 +10,7 @@ from app.api.routers import (
     applications,
     auth,
     badges,
+    danger_zones,
     face,
     fines,
     licenses,
@@ -43,6 +44,7 @@ app.include_router(appeals.router)
 app.include_router(badges.router)
 app.include_router(notifications.router)
 app.include_router(road_incidents.router)
+app.include_router(danger_zones.router)
 
 
 @app.get("/health")

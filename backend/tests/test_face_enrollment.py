@@ -120,7 +120,9 @@ def test_approve_fails_when_a_photo_has_no_face(client, db_session):
     )
 
     assert response.status_code == 422
-    assert "No face detected" in response.json()["detail"]
+    detail = response.json()["detail"]
+    assert detail["index"] == 3  # the 4th photo is the bad one
+    assert "No face detected" in detail["message"]
 
     # Nothing should have been silently created despite the 422.
     driver_applications = client.get("/applications", headers=driver_headers)
@@ -138,7 +140,9 @@ def test_approve_fails_when_a_photo_has_multiple_faces(client, db_session):
     )
 
     assert response.status_code == 422
-    assert "Multiple faces detected" in response.json()["detail"]
+    detail = response.json()["detail"]
+    assert detail["index"] == 3  # the 4th photo is the bad one
+    assert "Multiple faces detected" in detail["message"]
 
     # Nothing should have been silently created despite the 422.
     driver_applications = client.get("/applications", headers=driver_headers)

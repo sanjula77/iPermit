@@ -183,7 +183,8 @@ TypeScript mobile app, Next.js + TypeScript admin web — per the [ADR](design.m
     similarity to clear face_match_threshold (default 0.42 — a commonly-
     cited ArcFace starting point, NOT validated on our own data, see
     config.py comment and requirements.md's "Benchmarks From Prior
-    Research" note about the prior 100%-on-6-people overfitting mistake),
+    Research" note about the prior 100%-on-6-people overfitting mistake;
+    since evaluated on public datasets in 9.1: FAR ~0, FRR 2.9-9.9%),
     then averages and re-normalizes into one template embedding. Wired into
     application_service.approve_application with a deliberate ordering
     across two storage systems that can't share one transaction: (1) build
@@ -234,6 +235,10 @@ TypeScript mobile app, Next.js + TypeScript admin web — per the [ADR](design.m
     commented in config.py as commonly-cited starting points, NOT
     independently validated on iPermit's own data — same honesty pattern
     as face_match_threshold, to be revisited once 9.1 has real numbers.
+    (9.1's evaluation later found CLAHE counterproductive: on LFW it more
+    than doubles FRR at 0.42 (2.95% vs 1.37%) with no FAR/EER benefit --
+    see docs/evaluation/results/clahe_ablation.md; disabling it is an open
+    decision.)
     Two existing enrollment tests were adapted since the no-face/multi-face
     rejection now happens earlier (at POST /applications, asserting a 422
     and that GET /applications returns [] afterward, i.e. nothing was
@@ -515,12 +520,24 @@ TypeScript mobile app, Next.js + TypeScript admin web — per the [ADR](design.m
     that takes a --dataset-dir of images named <identity>_<n>.<ext>, builds
     genuine/impostor score pairs, and prints Accuracy/FAR/FRR at both the
     current face_match_threshold (0.42, unvalidated) and the empirically-
-    found EER point. Running it against real numbers is still blocked on
-    an evaluation-dataset decision that has not been made yet — no public
-    dataset, real-usage collection, or purpose-built dataset exists for
-    this project today; see the plan doc's "Open Decision: Evaluation
-    Dataset" for the options under discussion. This task stays open until
-    that decision is made and the harness is actually run.)
+    found EER point.
+    **Evaluated on public datasets (2026-09-26/27):**
+    docs/evaluation/face_evaluation.ipynb (Colab) ran the backend's exact
+    pipeline (CLAHE + buffalo_l, 640x640) on LFW (96 people, 1,385 images)
+    and the Kaggle 100 Bollywood Celebrity Faces set (100 people, 1,500
+    images), up to 15 images per person, with identity-bootstrap 95% CIs.
+    At 0.42: FAR 0.0013% / 0.0025% (every false accept traced to a
+    mislabelled dataset photo), FRR 2.91% / 9.89%, EER 0.32% / 1.13%.
+    Results, figures and tables are in docs/evaluation/results/; the paper
+    text is in docs/paper-revision-checklist.md item 1. Accuracy is
+    deliberately not reported (meaningless with ~100x more impostor than
+    genuine pairs). Colab embeddings reproduce exactly in the backend
+    container. Still open: (a) a CLAHE ablation on LFW
+    (results/clahe_ablation.md) found CLAHE more than doubles FRR at 0.42
+    (2.95% vs 1.37%) with no FAR/EER benefit -- decide whether to set
+    `face_clahe_enabled = False` (existing enrolled templates would need
+    re-embedding) and update docs/design.md; (b) nothing has been measured
+    on Sri Lankan driver photos yet.)
     **Enrollment quality gate is too strict for real phone photos (found
     2026-09-26):** a clear, well-lit selfie from a physical Android phone
     scored sharpness (Laplacian variance) ~23 against the default
@@ -564,7 +581,10 @@ TypeScript mobile app, Next.js + TypeScript admin web — per the [ADR](design.m
 - **Face recognition needs real data early.** The source documents show a prior
   attempt overfit badly on 6 people/68 photos. Start collecting/sourcing a larger,
   more diverse face dataset in parallel with Phase 1, not after Phase 4 starts —
-  this is the single biggest risk to demo credibility.
+  this is the single biggest risk to demo credibility. *(Partly addressed
+  2026-09-26: evaluated on LFW + a South Asian celebrity set, see 9.1. FRR was
+  ~3x higher on the South Asian set, so Sri Lankan driver photos remain the key
+  missing evidence.)*
 - **Violation detector training time.** YOLOv8 fine-tuning on the JPJ Lane Dataset
   needs GPU time; scope Task 5.4 with a checkpoint/fallback (e.g., use the dataset's
   documented mAP50 ~0.85 as your target, not a from-scratch research goal).

@@ -177,4 +177,15 @@ These are documented, deliberate gaps in the current build (see
   requirement — see [docs/methodology.md](methodology.md) §4.7.
 - Every numeric threshold in the system (face-match similarity, photo quality
   thresholds, point/fine schedule) is an explicitly unvalidated placeholder, not a
-  tuned production value.
+  tuned production value. The one exception is the face-match threshold (0.42),
+  which has been evaluated on public celebrity datasets
+  ([docs/evaluation/](evaluation/results/results_tables.md)): near-zero false
+  accepts, 3–10% false rejects. It has not been tested on Sri Lankan driver photos.
+- The enrollment photo-quality gate is too strict for real phone photos: a clear
+  selfie scored sharpness ~23 against the default `face_min_sharpness = 100`, so
+  the application is rejected. For local testing, set `FACE_MIN_SHARPNESS=15` in
+  `backend/.env` until the gate is calibrated.
+- CLAHE preprocessing (`face_clahe_enabled`, on by default) was found to more than
+  double face false rejections with no accuracy benefit
+  ([clahe_ablation.md](evaluation/results/clahe_ablation.md)); whether to turn it
+  off is still an open decision.

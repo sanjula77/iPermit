@@ -160,8 +160,21 @@ POST /road-incidents
 ### Face Recognition Module
 
 **Responsibility:** Detect, embed, and match faces.
-**Pipeline:** RetinaFace detection → CLAHE preprocessing → ArcFace embedding (ONNX
-Runtime, 512-dim) → FAISS nearest-neighbor search (threshold-based match).
+**Pipeline:** CLAHE preprocessing → RetinaFace detection → ArcFace embedding (ONNX
+Runtime, 512-dim) → FAISS nearest-neighbor search (threshold-based match). CLAHE runs
+on the whole image before detection (`face_engine.detect_faces`), gated by
+`settings.face_clahe_enabled`.
+**Measured performance:** at the 0.42 threshold, FAR ≈ 0 and FRR 2.9% (LFW) / 9.9%
+(South Asian celebrity set) — see
+[evaluation/results/results_tables.md](evaluation/results/results_tables.md). The
+threshold is deliberately conservative: officer verification is a 1:N search, where
+false matches matter more than false rejections (handled by manual confirmation), so
+the lower EER thresholds (~0.19–0.21) are not adopted.
+**Open decision — CLAHE:** an ablation on LFW
+([evaluation/results/clahe_ablation.md](evaluation/results/clahe_ablation.md)) found
+CLAHE more than doubles FRR (2.95% vs 1.37%) with no FAR/EER benefit, likely because
+ArcFace was trained on unprocessed photos. Disabling it would require re-embedding
+already-enrolled templates.
 **Data:** face templates in SQLite; FAISS index rebuildable from SQLite at any time.
 **Known limitation:** liveness/anti-spoofing is optional and must be explicitly
 enabled — flag this in any officer-facing UI when disabled.
@@ -212,9 +225,13 @@ enforce `ON DELETE RESTRICT` — financial/enforcement history must never be orp
   reversal logic).
 - **Integration**: application → approval → license → face template pipeline;
   violation → fine → payment/appeal pipeline.
-- **AI evaluation**: face recognition (Accuracy, FAR, FRR, EER) on a held-out test set
-  large enough to avoid the overfitting seen in the 6-person pilot; violation
-  detection (mAP50, precision/recall) against the JPJ dataset split.
+- **AI evaluation**: face recognition (FAR, FRR, EER, TAR@FAR, with identity-level
+  bootstrap confidence intervals) on a held-out test set large enough to avoid the
+  overfitting seen in the 6-person pilot — done on LFW + a South Asian celebrity set
+  via [evaluation/face_evaluation.ipynb](evaluation/face_evaluation.ipynb); still to
+  do on Sri Lankan driver photos. Accuracy is not used: with ~100× more impostor
+  than genuine pairs it is uninformative. Violation detection (mAP50,
+  precision/recall) against the JPJ dataset split.
 - **UAT**: drivers, police, and admins evaluating ease of use and verification speed,
   per the original research objective 4.
 

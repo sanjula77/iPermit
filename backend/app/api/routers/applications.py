@@ -33,8 +33,14 @@ async def submit_application(
             birth_cert=birth_cert,
         )
     except application_service.ApplicationError as exc:
+        # Structured detail so clients can highlight the failing input.
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"field": exc.field, "index": exc.index, "message": str(exc)},
+        ) from exc
+    except application_service.ServiceUnavailableError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)
         ) from exc
 
 

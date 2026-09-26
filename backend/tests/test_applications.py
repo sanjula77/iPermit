@@ -81,7 +81,7 @@ def test_submit_application_wrong_photo_count(client):
     response = client.post("/applications", headers=headers, files=files)
 
     assert response.status_code == 422
-    assert "4 face photos" in response.json()["detail"]
+    assert "4 face photos" in response.json()["detail"]["message"]
 
 
 def test_submit_application_rejects_invalid_image(client):
@@ -93,7 +93,7 @@ def test_submit_application_rejects_invalid_image(client):
     response = client.post("/applications", headers=headers, files=files)
 
     assert response.status_code == 422
-    assert "not a valid image" in response.json()["detail"]
+    assert "not a valid image" in response.json()["detail"]["message"]
 
 
 def test_submit_application_rejects_wrong_content_type(client):
@@ -104,7 +104,7 @@ def test_submit_application_rejects_wrong_content_type(client):
     response = client.post("/applications", headers=headers, files=files)
 
     assert response.status_code == 422
-    assert "Unsupported file type" in response.json()["detail"]
+    assert "Unsupported file type" in response.json()["detail"]["message"]
 
 
 def test_submit_application_requires_auth(client):
@@ -182,9 +182,64 @@ def test_submit_application_rejects_blurry_face_photo(client, tmp_path):
     response = client.post("/applications", headers=driver_headers, files=files)
 
     assert response.status_code == 422
-    assert "No face detected" in response.json()["detail"] or "blurry" in response.json()["detail"]
+    message = response.json()["detail"]["message"]
+    assert "No face detected" in message or "blurry" in message
     # The rejected face photo was written to disk before the quality gate
     # ran; it must be cleaned up, not left orphaned.
     leftover = list(tmp_path.rglob("*"))
     leftover_files = [p for p in leftover if p.is_file()]
     assert leftover_files == []
+
+
+def test_submit_application_error_identifies_the_failing_photo(client):
+    """Clients highlight the exact photo to retake, so the error names it:
+    structured detail with the field and the photo's 0-based index, and a
+    human-readable message that says which photo (1-based)."""
+    headers = _register_and_login(client)
+    files = _valid_files()
+    files[2] = ("face_photos", ("photo.jpg", b"not-an-image", "image/jpeg"))
+
+    response = client.post("/applications", headers=headers, files=files)
+
+    assert response.status_code == 422
+    detail = response.json()["detail"]
+    assert detail["field"] == "face_photos"
+    assert detail["index"] == 2
+    assert detail["message"].startswith("Photo 3: ")
+    assert "not a valid image" in detail["message"]
+
+
+def test_submit_application_error_identifies_the_failing_document(client):
+    headers = _register_and_login(client)
+    files = _valid_files()
+    files[4] = ("nic_document", ("nic.txt", b"hello", "text/plain"))
+
+    response = client.post("/applications", headers=headers, files=files)
+
+    assert response.status_code == 422
+    detail = response.json()["detail"]
+    assert detail["field"] == "nic_document"
+    assert detail["index"] is None
+    assert "Unsupported file type" in detail["message"]
+
+
+def test_submit_application_face_engine_failure_is_503_not_a_photo_error(
+    client, tmp_path, monkeypatch
+):
+    """A model/inference failure is the server's fault: the driver must not be
+    told to retake a photo that was never the problem."""
+    from app.core.face_engine import FaceEngineError
+    from app.services import face_service
+
+    def broken_detect_faces(_image_bytes):
+        raise FaceEngineError("model not loaded")
+
+    monkeypatch.setattr(face_service, "detect_faces", broken_detect_faces)
+    headers = _register_and_login(client)
+
+    response = client.post("/applications", headers=headers, files=_valid_files())
+
+    assert response.status_code == 503
+    assert isinstance(response.json()["detail"], str)
+    # The photo saved before the engine failed must not be left on disk.
+    assert [p for p in tmp_path.rglob("*") if p.is_file()] == []

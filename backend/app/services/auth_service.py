@@ -6,16 +6,21 @@ from app.repositories import user_repository
 
 
 class AuthError(Exception):
-    pass
+    """`field` names the rejected input (register only), so clients can show
+    the message under it instead of parsing the text."""
+
+    def __init__(self, message: str, *, field: str | None = None) -> None:
+        super().__init__(message)
+        self.field = field
 
 
 def register_driver(db: Session, *, email: str, nic: str, password: str) -> User:
     """Self-registration always creates a DRIVER. POLICE/ADMIN are provisioned
     separately by an admin (REQ-1) — role is never taken from client input here."""
     if user_repository.get_by_email(db, email):
-        raise AuthError("Email already registered")
+        raise AuthError("Email already registered", field="email")
     if user_repository.get_by_nic(db, nic):
-        raise AuthError("NIC already registered")
+        raise AuthError("NIC already registered", field="nic")
 
     return user_repository.create(
         db,

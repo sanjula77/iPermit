@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useState, type Ref } from 'react';
 import { Pressable, StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -10,9 +10,12 @@ import { useTheme } from '@/hooks/use-theme';
 interface TextFieldProps extends TextInputProps {
   label: string;
   error?: string;
+  // Guidance shown below the input while there's no error.
+  hint?: string;
+  ref?: Ref<TextInput>;
 }
 
-export function TextField({ label, error, style, secureTextEntry, ...rest }: TextFieldProps) {
+export function TextField({ label, error, hint, ref, style, secureTextEntry, ...rest }: TextFieldProps) {
   const theme = useTheme();
   const [isRevealed, setIsRevealed] = useState(false);
   const isPasswordField = secureTextEntry === true;
@@ -22,6 +25,7 @@ export function TextField({ label, error, style, secureTextEntry, ...rest }: Tex
       <ThemedText type="smallBold">{label}</ThemedText>
       <View style={styles.inputWrapper}>
         <TextInput
+          ref={ref}
           style={[
             styles.input,
             isPasswordField && styles.inputWithToggle,
@@ -52,6 +56,10 @@ export function TextField({ label, error, style, secureTextEntry, ...rest }: Tex
       {error ? (
         <ThemedText type="small" themeColor="danger" selectable>
           {error}
+        </ThemedText>
+      ) : hint ? (
+        <ThemedText type="small" themeColor="textSecondary">
+          {hint}
         </ThemedText>
       ) : null}
     </ThemedView>

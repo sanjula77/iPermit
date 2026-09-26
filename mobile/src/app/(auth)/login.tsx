@@ -1,9 +1,9 @@
-import { Ionicons } from '@expo/vector-icons';
 import { Link } from 'expo-router';
-import { useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { useRef, useState } from 'react';
+import { ActivityIndicator, ScrollView, StyleSheet, TextInput } from 'react-native';
 
 import { extractErrorMessage } from '@/api/client';
+import { AuthHeader } from '@/components/auth-header';
 import { Button } from '@/components/button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -15,6 +15,7 @@ import { useTheme } from '@/hooks/use-theme';
 export default function LoginScreen() {
   const { login } = useAuth();
   const theme = useTheme();
+  const passwordRef = useRef<TextInput>(null);
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -39,34 +40,46 @@ export default function LoginScreen() {
       style={styles.container}
       contentContainerStyle={styles.content}
       contentInsetAdjustmentBehavior="automatic"
+      automaticallyAdjustKeyboardInsets
+      keyboardDismissMode="interactive"
       keyboardShouldPersistTaps="handled"
     >
       <ThemedView style={styles.form}>
-        <View style={[styles.badge, { backgroundColor: theme.primary }]}>
-          <Ionicons name="shield-checkmark" size={36} color={theme.onPrimary} />
-        </View>
-        <ThemedText type="title" style={styles.title}>
-          iPermit
-        </ThemedText>
-        <ThemedText type="subtitle">Log in</ThemedText>
+        <AuthHeader subtitle="Log in to your account" />
 
         <TextField
           label="Email or NIC"
           value={identifier}
           onChangeText={setIdentifier}
           keyboardType="email-address"
+          autoComplete="username"
+          textContentType="username"
+          returnKeyType="next"
+          submitBehavior="submit"
+          onSubmitEditing={() => passwordRef.current?.focus()}
           testID="login-identifier"
         />
         <TextField
+          ref={passwordRef}
           label="Password"
           value={password}
           onChangeText={setPassword}
           secureTextEntry
+          autoComplete="current-password"
+          textContentType="password"
+          returnKeyType="go"
+          onSubmitEditing={canSubmit ? handleSubmit : undefined}
           testID="login-password"
         />
 
         {error ? (
-          <ThemedText type="small" themeColor="danger" selectable testID="login-error">
+          <ThemedText
+            type="small"
+            themeColor="danger"
+            selectable
+            accessibilityLiveRegion="polite"
+            testID="login-error"
+          >
             {error}
           </ThemedText>
         ) : null}
@@ -77,16 +90,21 @@ export default function LoginScreen() {
           onPress={handleSubmit}
           testID="login-submit"
         >
+          {isSubmitting ? <ActivityIndicator color={theme.onPrimary} /> : null}
           <ThemedText type="smallBold" themeColor="onPrimary">
             {isSubmitting ? 'Logging in…' : 'Log in'}
           </ThemedText>
         </Button>
 
-        <Link href="/(auth)/register" testID="login-go-register">
+        <Link href="/(auth)/register" testID="login-go-register" style={styles.centered}>
           <ThemedText type="link">
             Don&apos;t have an account? <ThemedText type="linkPrimary">Register</ThemedText>
           </ThemedText>
         </Link>
+
+        <ThemedText type="small" themeColor="textSecondary" style={styles.centered}>
+          Police officers: sign in with the account issued by your station.
+        </ThemedText>
       </ThemedView>
     </ScrollView>
   );
@@ -106,14 +124,5 @@ const styles = StyleSheet.create({
     maxWidth: MaxContentWidth,
     gap: Spacing.three,
   },
-  badge: {
-    alignSelf: 'center',
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: Spacing.one,
-  },
-  title: { textAlign: 'center' },
+  centered: { textAlign: 'center' },
 });

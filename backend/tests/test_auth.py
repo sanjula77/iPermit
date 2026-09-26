@@ -43,6 +43,31 @@ def test_duplicate_email_rejected(client):
         json={**payload, "nic": "991234570V"},
     )
     assert second.status_code == 409
+    # Structured so clients can show the message under the email input.
+    assert second.json()["detail"] == {
+        "field": "email",
+        "message": "Email already registered",
+    }
+
+
+def test_duplicate_nic_rejected(client):
+    payload = {
+        "email": "dupnic1@example.com",
+        "nic": "991234572V",
+        "password": "supersecret",
+    }
+    first = client.post("/auth/register", json=payload)
+    assert first.status_code == 201
+
+    second = client.post(
+        "/auth/register",
+        json={**payload, "email": "dupnic2@example.com"},
+    )
+    assert second.status_code == 409
+    assert second.json()["detail"] == {
+        "field": "nic",
+        "message": "NIC already registered",
+    }
 
 
 def test_login_and_me(client):

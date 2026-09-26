@@ -1,10 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet } from 'react-native';
+import { ScrollView, StyleSheet } from 'react-native';
 
 import { submitApplication } from '@/api/applications';
 import { extractErrorMessage } from '@/api/client';
+import { Button } from '@/components/button';
+import { Card } from '@/components/card';
 import { FileSlot } from '@/components/file-slot';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -101,7 +103,7 @@ export default function ApplyScreen() {
           Face Photos
         </ThemedText>
 
-        <ThemedView type="backgroundElement" style={styles.tipsCard} testID="apply-photo-tips">
+        <Card testID="apply-photo-tips">
           <ThemedText type="smallBold">Tips for a good photo</ThemedText>
           {PHOTO_TIPS.map((tip) => (
             <ThemedText key={tip} type="small" themeColor="textSecondary">
@@ -109,7 +111,7 @@ export default function ApplyScreen() {
               {tip}
             </ThemedText>
           ))}
-        </ThemedView>
+        </Card>
 
         {facePhotos.map((photo, index) => (
           <FileSlot
@@ -155,21 +157,17 @@ export default function ApplyScreen() {
           </ThemedView>
         ) : null}
 
-        <Pressable
-          style={[
-            styles.button,
-            { backgroundColor: theme.primary },
-            (!allFilesSelected || isSubmitting) && styles.buttonDisabled,
-          ]}
-          onPress={handleSubmit}
+        <Button
+          variant="primary"
           disabled={!allFilesSelected || isSubmitting}
+          onPress={handleSubmit}
           testID="apply-submit"
         >
           <Ionicons name="paper-plane-outline" size={18} color={theme.onPrimary} />
           <ThemedText type="smallBold" themeColor="onPrimary">
             {isSubmitting ? 'Submitting…' : 'Submit Application'}
           </ThemedText>
-        </Pressable>
+        </Button>
       </ThemedView>
     </ScrollView>
   );
@@ -191,24 +189,10 @@ const styles = StyleSheet.create({
   sectionTitle: {
     marginTop: Spacing.two,
   },
-  tipsCard: {
-    borderRadius: Spacing.three,
-    padding: Spacing.three,
-    gap: Spacing.half,
-  },
   errorBanner: {
     borderWidth: 1,
     borderRadius: Spacing.two,
     padding: Spacing.three,
     gap: Spacing.half,
   },
-  button: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: Spacing.two,
-    borderRadius: Spacing.two,
-    paddingVertical: Spacing.three,
-  },
-  buttonDisabled: { opacity: 0.5 },
 });

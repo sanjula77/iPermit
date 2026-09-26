@@ -1,12 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Link } from 'expo-router';
+import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet } from 'react-native';
+import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet } from 'react-native';
 
 import { getMyBadge } from '@/api/badges';
 import { listApplications } from '@/api/applications';
 import { ApiError, extractErrorMessage } from '@/api/client';
 import { getMyLicense } from '@/api/licenses';
+import { Button } from '@/components/button';
+import { Card } from '@/components/card';
 import { LicenseCard } from '@/components/license-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -46,7 +48,7 @@ function PoliceHomeScreen() {
       <ThemedView style={styles.form}>
         <ThemedText type="title">Officer Console</ThemedText>
 
-        <ThemedView type="backgroundElement" style={styles.card}>
+        <Card>
           <ThemedText type="smallBold">Email</ThemedText>
           <ThemedText testID="home-email" selectable>
             {user?.email}
@@ -55,18 +57,14 @@ function PoliceHomeScreen() {
           <ThemedText testID="home-role" selectable>
             {user?.role}
           </ThemedText>
-        </ThemedView>
+        </Card>
 
-        <Pressable
-          style={[styles.button, { backgroundColor: theme.danger }]}
-          onPress={logout}
-          testID="logout-button"
-        >
+        <Button variant="danger" onPress={logout} testID="logout-button">
           <Ionicons name="log-out-outline" size={18} color={theme.onPrimary} />
           <ThemedText type="smallBold" themeColor="onPrimary">
             Log out
           </ThemedText>
-        </Pressable>
+        </Button>
       </ThemedView>
     </ScrollView>
   );
@@ -149,7 +147,7 @@ function DriverHomeScreen() {
       <ThemedView style={styles.form}>
         <ThemedText type="title">Welcome</ThemedText>
 
-        <ThemedView type="backgroundElement" style={styles.card}>
+        <Card>
           <ThemedText type="smallBold">Email</ThemedText>
           <ThemedText testID="home-email" selectable>
             {user?.email}
@@ -162,7 +160,7 @@ function DriverHomeScreen() {
           <ThemedText testID="home-role" selectable>
             {user?.role}
           </ThemedText>
-        </ThemedView>
+        </Card>
 
         {license ? (
           <LicenseCard license={license} badge={badge} />
@@ -187,7 +185,7 @@ function DriverHomeScreen() {
             </ThemedText>
           ) : (
             applications.map((application) => (
-              <ThemedView key={application.id} type="backgroundElement" style={styles.appCard}>
+              <Card key={application.id}>
                 <ThemedText type="small">
                   Submitted {new Date(application.created_at).toLocaleDateString()}
                 </ThemedText>
@@ -203,33 +201,24 @@ function DriverHomeScreen() {
                     {application.reason}
                   </ThemedText>
                 ) : null}
-              </ThemedView>
+              </Card>
             ))
           )}
 
-          <Link href="/(app)/apply" asChild>
-            <Pressable
-              style={StyleSheet.flatten([styles.button, { backgroundColor: theme.primary }])}
-              testID="apply-link"
-            >
-              <Ionicons name="add-circle-outline" size={18} color={theme.onPrimary} />
-              <ThemedText type="smallBold" themeColor="onPrimary">
-                Apply for License
-              </ThemedText>
-            </Pressable>
-          </Link>
+          <Button variant="primary" onPress={() => router.push('/(app)/apply')} testID="apply-link">
+            <Ionicons name="add-circle-outline" size={18} color={theme.onPrimary} />
+            <ThemedText type="smallBold" themeColor="onPrimary">
+              Apply for License
+            </ThemedText>
+          </Button>
         </ThemedView>
 
-        <Pressable
-          style={[styles.button, { backgroundColor: theme.danger }]}
-          onPress={logout}
-          testID="logout-button"
-        >
+        <Button variant="danger" onPress={logout} testID="logout-button">
           <Ionicons name="log-out-outline" size={18} color={theme.onPrimary} />
           <ThemedText type="smallBold" themeColor="onPrimary">
             Log out
           </ThemedText>
-        </Pressable>
+        </Button>
       </ThemedView>
     </ScrollView>
   );
@@ -249,25 +238,7 @@ const styles = StyleSheet.create({
     maxWidth: MaxContentWidth,
     gap: Spacing.four,
   },
-  card: {
-    borderRadius: Spacing.three,
-    padding: Spacing.four,
-    gap: Spacing.one,
-  },
   applicationsSection: {
     gap: Spacing.two,
-  },
-  appCard: {
-    borderRadius: Spacing.three,
-    padding: Spacing.three,
-    gap: Spacing.half,
-  },
-  button: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: Spacing.two,
-    borderRadius: Spacing.two,
-    paddingVertical: Spacing.three,
   },
 });

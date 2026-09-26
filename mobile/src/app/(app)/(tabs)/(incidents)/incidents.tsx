@@ -1,235 +1,108 @@
 import { Ionicons } from '@expo/vector-icons';
-import * as Location from 'expo-location';
-import { useCallback, useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Platform,
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  View,
-} from 'react-native';
+import { Stack, router, useFocusEffect } from 'expo-router';
+import { Fragment, useCallback, useRef, useState } from 'react';
+import { Alert, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 
 import { extractErrorMessage } from '@/api/client';
-import {
-  clearDangerZone,
-  confirmDangerZone,
-  listNearbyDangerZones,
-  markDangerZone,
-} from '@/api/danger-zones';
-import {
-  clearIncident,
-  confirmIncident,
-  listNearbyIncidents,
-  reportIncident,
-} from '@/api/road-incidents';
+import { clearDangerZone, confirmDangerZone, listNearbyDangerZones } from '@/api/danger-zones';
+import { clearIncident, confirmIncident, listNearbyIncidents } from '@/api/road-incidents';
+import { Card } from '@/components/card';
+import { EmptyState } from '@/components/empty-state';
 import { IncidentsMap } from '@/components/incidents-map';
-import { TextField } from '@/components/text-field';
+import { ScreenState } from '@/components/screen-state';
+import { SegmentedControl } from '@/components/segmented-control';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { INCIDENT_ICON, INCIDENT_LABEL, SEVERITY_LABEL } from '@/constants/incidents';
+import { MaxContentWidth, Radius, Spacing, type ThemeColor } from '@/constants/theme';
+import { useCurrentLocation, type LatLng } from '@/hooks/use-current-location';
 import { useTheme } from '@/hooks/use-theme';
+import { relativeTime } from '@/lib/relative-time';
 import type { DangerZone } from '@/types/danger-zone';
-import type {
-  RoadIncident,
-  RoadIncidentSeverity,
-  RoadIncidentType,
-} from '@/types/road-incident';
+import type { RoadIncident, RoadIncidentSeverity } from '@/types/road-incident';
 
-const INCIDENT_TYPES: RoadIncidentType[] = [
-  'ACCIDENT',
-  'TRAFFIC',
-  'ROAD_BLOCK',
-  'FLOOD',
-  'CONSTRUCTION',
-  'BREAKDOWN',
-  'HAZARD',
-  'OTHER',
-];
-const SEVERITIES: RoadIncidentSeverity[] = ['LOW', 'MEDIUM', 'HIGH'];
-const RADIUS_OPTIONS: { label: string; value: number }[] = [
-  { label: '100m', value: 100 },
-  { label: '250m', value: 250 },
-  { label: '500m', value: 500 },
-  { label: '1km', value: 1000 },
-];
+type Tab = 'incidents' | 'zones';
 
-// Colombo, Sri Lanka -- fallback only, used when location permission is
-// denied or unavailable, so the screen still functions for a demo/preview.
-const FALLBACK_LOCATION = { lat: 6.9271, lng: 79.8612 };
-
-const SEVERITY_COLOR: Record<RoadIncidentSeverity, 'danger' | 'warning' | 'textSecondary'> = {
-  HIGH: 'danger',
-  MEDIUM: 'warning',
+const TONE_COLOR: Record<RoadIncidentSeverity, ThemeColor> = {
   LOW: 'textSecondary',
-};
-
-const TYPE_ICON: Record<RoadIncidentType, keyof typeof Ionicons.glyphMap> = {
-  ACCIDENT: 'car-sport',
-  TRAFFIC: 'trail-sign',
-  ROAD_BLOCK: 'hand-left',
-  FLOOD: 'water',
-  CONSTRUCTION: 'construct',
-  BREAKDOWN: 'build',
-  HAZARD: 'alert-circle',
-  OTHER: 'ellipsis-horizontal-circle-outline',
+  MEDIUM: 'warning',
+  HIGH: 'danger',
 };
 
 export default function IncidentsScreen() {
   const theme = useTheme();
-  const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
-  const [locationNote, setLocationNote] = useState<string | null>(null);
+  const { location, note: locationNote } = useCurrentLocation();
+  const [tab, setTab] = useState<Tab>('incidents');
   const [incidents, setIncidents] = useState<RoadIncident[] | null>(null);
   const [zones, setZones] = useState<DangerZone[] | null>(null);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [zonesLoadError, setZonesLoadError] = useState<string | null>(null);
-  const [reportType, setReportType] = useState<RoadIncidentType>('HAZARD');
-  const [reportSeverity, setReportSeverity] = useState<RoadIncidentSeverity>('MEDIUM');
-  const [isReporting, setIsReporting] = useState(false);
-  const [reportError, setReportError] = useState<string | null>(null);
-  const [zoneRadius, setZoneRadius] = useState(250);
-  const [zoneSeverity, setZoneSeverity] = useState<RoadIncidentSeverity>('MEDIUM');
-  const [zoneReason, setZoneReason] = useState('');
-  const [isMarkingZone, setIsMarkingZone] = useState(false);
-  const [zoneError, setZoneError] = useState<string | null>(null);
+  const [incidentsError, setIncidentsError] = useState<string | null>(null);
+  const [zonesError, setZonesError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const [focus, setFocus] = useState<LatLng | null>(null);
+  const [notice, setNotice] = useState<{ kind: 'success' | 'error'; text: string } | null>(null);
+  // Only the newest load may write state (focus reloads and pull-to-refresh
+  // can overlap).
+  const latestLoad = useRef(0);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== 'granted') {
-          if (!cancelled) {
-            setLocationNote('Location permission denied -- showing incidents near Colombo instead.');
-            setLocation(FALLBACK_LOCATION);
-          }
-          return;
-        }
-        const position = await Location.getCurrentPositionAsync({});
-        if (!cancelled) {
-          setLocation({ lat: position.coords.latitude, lng: position.coords.longitude });
-        }
-      } catch {
-        if (!cancelled) {
-          setLocationNote('Could not determine your location -- showing incidents near Colombo instead.');
-          setLocation(FALLBACK_LOCATION);
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const loadIncidents = useCallback(async (lat: number, lng: number) => {
+  const load = useCallback(async (at: LatLng) => {
+    const request = ++latestLoad.current;
     // allSettled, not all -- a failure in one list must not block or clear
     // the other; they load together but report their own errors.
     const [incidentsResult, zonesResult] = await Promise.allSettled([
-      listNearbyIncidents(lat, lng),
-      listNearbyDangerZones(lat, lng),
+      listNearbyIncidents(at.lat, at.lng),
+      listNearbyDangerZones(at.lat, at.lng),
     ]);
+    if (request !== latestLoad.current) return;
     if (incidentsResult.status === 'fulfilled') {
       setIncidents(incidentsResult.value);
-      setLoadError(null);
+      setIncidentsError(null);
     } else {
-      setLoadError(extractErrorMessage(incidentsResult.reason));
+      setIncidentsError(extractErrorMessage(incidentsResult.reason));
     }
     if (zonesResult.status === 'fulfilled') {
       setZones(zonesResult.value);
-      setZonesLoadError(null);
+      setZonesError(null);
     } else {
-      setZonesLoadError(extractErrorMessage(zonesResult.reason));
+      setZonesError(extractErrorMessage(zonesResult.reason));
     }
   }, []);
 
-  useEffect(() => {
-    // Fetch-on-location-change, not a state sync.
-    if (location) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      loadIncidents(location.lat, location.lng);
-    }
-  }, [location, loadIncidents]);
+  // Reload on focus too, so a report made on the Report screen shows up on return.
+  useFocusEffect(
+    useCallback(() => {
+      if (location) load(location);
+    }, [location, load]),
+  );
 
   async function handleRefresh() {
     if (!location) return;
     setRefreshing(true);
-    await loadIncidents(location.lat, location.lng);
+    await load(location);
     setRefreshing(false);
   }
 
-  async function handleReport() {
+  async function runAction(action: () => Promise<unknown>, success: string) {
     if (!location) return;
-    setReportError(null);
-    setActionMessage(null);
-    setIsReporting(true);
+    setNotice(null);
     try {
-      await reportIncident(reportType, reportSeverity, location.lat, location.lng);
-      await loadIncidents(location.lat, location.lng);
-      setActionMessage('Incident reported.');
+      await action();
+      await load(location);
+      setNotice({ kind: 'success', text: success });
     } catch (err) {
-      setReportError(extractErrorMessage(err));
-    } finally {
-      setIsReporting(false);
+      setNotice({ kind: 'error', text: extractErrorMessage(err) });
     }
   }
 
-  async function handleConfirm(id: string) {
-    if (!location) return;
-    setActionMessage(null);
-    await confirmIncident(id);
-    await loadIncidents(location.lat, location.lng);
-    setActionMessage('Incident confirmed -- thanks for the update.');
+  function confirmClear(what: string, clear: () => Promise<unknown>) {
+    // Clearing removes it for every driver, so ask first.
+    Alert.alert(`Mark ${what} as cleared?`, 'It will be removed from the map for everyone.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Mark cleared', style: 'destructive', onPress: () => runAction(clear, `${what} cleared.`) },
+    ]);
   }
 
-  async function handleClear(id: string) {
-    if (!location) return;
-    setActionMessage(null);
-    await clearIncident(id);
-    await loadIncidents(location.lat, location.lng);
-    setActionMessage('Incident cleared.');
-  }
-
-  async function handleMarkZone() {
-    if (!location) return;
-    setZoneError(null);
-    setActionMessage(null);
-    setIsMarkingZone(true);
-    try {
-      await markDangerZone(
-        location.lat,
-        location.lng,
-        zoneRadius,
-        zoneSeverity,
-        zoneReason.trim() || undefined,
-      );
-      await loadIncidents(location.lat, location.lng);
-      setZoneReason('');
-      setActionMessage('Danger zone marked.');
-    } catch (err) {
-      setZoneError(extractErrorMessage(err));
-    } finally {
-      setIsMarkingZone(false);
-    }
-  }
-
-  async function handleConfirmZone(id: string) {
-    if (!location) return;
-    setActionMessage(null);
-    await confirmDangerZone(id);
-    await loadIncidents(location.lat, location.lng);
-    setActionMessage('Danger zone confirmed -- thanks for the update.');
-  }
-
-  async function handleClearZone(id: string) {
-    if (!location) return;
-    setActionMessage(null);
-    await clearDangerZone(id);
-    await loadIncidents(location.lat, location.lng);
-    setActionMessage('Danger zone cleared.');
-  }
+  const list = tab === 'incidents' ? incidents : zones;
+  const listError = tab === 'incidents' ? incidentsError : zonesError;
 
   return (
     <ScrollView
@@ -238,265 +111,225 @@ export default function IncidentsScreen() {
       contentInsetAdjustmentBehavior="automatic"
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
     >
+      <Stack.Screen
+        options={{
+          headerRight: () => (
+            <Pressable
+              onPress={() => router.push('/(app)/(tabs)/(incidents)/report')}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Report an incident or danger zone"
+              testID="open-report"
+              style={styles.headerButton}
+            >
+              <Ionicons name="add-circle" size={22} color={theme.primary} />
+              <ThemedText type="smallBold" themeColor="primary">
+                Report
+              </ThemedText>
+            </Pressable>
+          ),
+        }}
+      />
       <ThemedView style={styles.form}>
-        {actionMessage ? (
-          <View style={styles.successRow} testID="incident-action-message">
-            <Ionicons name="checkmark-circle" size={16} color={theme.success} />
-            <ThemedText type="small" themeColor="success">
-              {actionMessage}
-            </ThemedText>
-          </View>
-        ) : null}
-
-        {locationNote ? (
-          <ThemedText type="small" themeColor="textSecondary" testID="location-note">
-            {locationNote}
-          </ThemedText>
-        ) : null}
+        {locationNote ? <Banner kind="info" text={locationNote} testID="location-note" /> : null}
+        {notice ? <Banner kind={notice.kind} text={notice.text} testID="incident-action-message" /> : null}
 
         {Platform.OS === 'web' ? (
           <ThemedText type="small" themeColor="textSecondary" testID="map-unavailable-note">
-            Map view is only available on the native app -- showing the list below.
+            Map view is only available on the native app.
           </ThemedText>
         ) : location ? (
-          <IncidentsMap center={location} incidents={incidents ?? []} zones={zones ?? []} />
-        ) : null}
-
-        <ThemedView type="backgroundElement" style={styles.card}>
-          <ThemedText type="smallBold">Report an Incident</ThemedText>
-          <View style={styles.chipRow}>
-            {INCIDENT_TYPES.map((type) => (
-              <Pressable
-                key={type}
-                onPress={() => setReportType(type)}
-                style={[
-                  styles.chip,
-                  { backgroundColor: reportType === type ? theme.primary : theme.background },
-                ]}
-                testID={`type-${type}`}
-              >
-                <Ionicons
-                  name={TYPE_ICON[type]}
-                  size={14}
-                  color={reportType === type ? theme.onPrimary : theme.text}
-                />
-                <ThemedText type="small" themeColor={reportType === type ? 'onPrimary' : 'text'}>
-                  {type.replace('_', ' ')}
-                </ThemedText>
-              </Pressable>
-            ))}
-          </View>
-          <View style={styles.chipRow}>
-            {SEVERITIES.map((severity) => (
-              <Pressable
-                key={severity}
-                onPress={() => setReportSeverity(severity)}
-                style={[
-                  styles.chip,
-                  { backgroundColor: reportSeverity === severity ? theme.primary : theme.background },
-                ]}
-                testID={`severity-${severity}`}
-              >
-                <ThemedText
-                  type="small"
-                  themeColor={reportSeverity === severity ? 'onPrimary' : 'text'}
-                >
-                  {severity}
-                </ThemedText>
-              </Pressable>
-            ))}
-          </View>
-          {reportError ? (
-            <ThemedText type="small" themeColor="danger" selectable>
-              {reportError}
-            </ThemedText>
-          ) : null}
-          <Pressable
-            style={[styles.button, { backgroundColor: theme.primary }]}
-            onPress={handleReport}
-            disabled={!location || isReporting}
-            testID="report-button"
-          >
-            <ThemedText type="smallBold" themeColor="onPrimary">
-              {isReporting ? 'Reporting…' : 'Report at My Location'}
-            </ThemedText>
-          </Pressable>
-        </ThemedView>
-
-        <ThemedView type="backgroundElement" style={styles.card}>
-          <ThemedText type="smallBold">Mark a Danger Zone</ThemedText>
-          <View style={styles.chipRow}>
-            {RADIUS_OPTIONS.map((option) => (
-              <Pressable
-                key={option.value}
-                onPress={() => setZoneRadius(option.value)}
-                style={[
-                  styles.chip,
-                  { backgroundColor: zoneRadius === option.value ? theme.primary : theme.background },
-                ]}
-                testID={`zone-radius-${option.value}`}
-              >
-                <ThemedText
-                  type="small"
-                  themeColor={zoneRadius === option.value ? 'onPrimary' : 'text'}
-                >
-                  {option.label}
-                </ThemedText>
-              </Pressable>
-            ))}
-          </View>
-          <View style={styles.chipRow}>
-            {SEVERITIES.map((severity) => (
-              <Pressable
-                key={severity}
-                onPress={() => setZoneSeverity(severity)}
-                style={[
-                  styles.chip,
-                  { backgroundColor: zoneSeverity === severity ? theme.primary : theme.background },
-                ]}
-                testID={`zone-severity-${severity}`}
-              >
-                <ThemedText
-                  type="small"
-                  themeColor={zoneSeverity === severity ? 'onPrimary' : 'text'}
-                >
-                  {severity}
-                </ThemedText>
-              </Pressable>
-            ))}
-          </View>
-          <TextField
-            label="Reason (optional)"
-            value={zoneReason}
-            onChangeText={setZoneReason}
-            testID="zone-reason-input"
-          />
-          {zoneError ? (
-            <ThemedText type="small" themeColor="danger" selectable>
-              {zoneError}
-            </ThemedText>
-          ) : null}
-          <Pressable
-            style={[styles.button, { backgroundColor: theme.primary }]}
-            onPress={handleMarkZone}
-            disabled={!location || isMarkingZone}
-            testID="mark-zone-button"
-          >
-            <ThemedText type="smallBold" themeColor="onPrimary">
-              {isMarkingZone ? 'Marking…' : 'Mark Danger Zone at My Location'}
-            </ThemedText>
-          </Pressable>
-        </ThemedView>
-
-        <ThemedText type="subtitle">Nearby Active Incidents</ThemedText>
-        {loadError ? (
-          <ThemedText type="small" themeColor="danger" selectable testID="incidents-error">
-            {loadError}
-          </ThemedText>
-        ) : incidents === null ? (
-          <ActivityIndicator testID="incidents-loading" />
-        ) : incidents.length === 0 ? (
-          <ThemedText type="small" themeColor="textSecondary" testID="incidents-empty">
-            No active incidents nearby.
-          </ThemedText>
+          <IncidentsMap center={location} incidents={incidents ?? []} zones={zones ?? []} focus={focus} />
         ) : (
-          incidents.map((incident) => (
-            <ThemedView
-              key={incident.id}
-              type="backgroundElement"
-              style={styles.card}
-              testID={`incident-${incident.id}`}
-            >
-              <View style={styles.typeRow}>
-                <Ionicons name={TYPE_ICON[incident.type]} size={16} color={theme.text} />
-                <ThemedText type="smallBold">{incident.type.replace('_', ' ')}</ThemedText>
-              </View>
-              <ThemedText type="small" themeColor={SEVERITY_COLOR[incident.severity]}>
-                {incident.severity} severity
-              </ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">
-                Confirmed by {incident.confirmation_count}{' '}
-                {incident.confirmation_count === 1 ? 'driver' : 'drivers'}
-              </ThemedText>
-              <View style={styles.actionsRow}>
-                <Pressable
-                  style={[styles.button, styles.flexButton, { backgroundColor: theme.primary }]}
-                  onPress={() => handleConfirm(incident.id)}
-                  testID={`confirm-${incident.id}`}
-                >
-                  <ThemedText type="smallBold" themeColor="onPrimary">
-                    Confirm
-                  </ThemedText>
-                </Pressable>
-                <Pressable
-                  style={[styles.button, styles.flexButton, { backgroundColor: theme.backgroundSelected }]}
-                  onPress={() => handleClear(incident.id)}
-                  testID={`clear-${incident.id}`}
-                >
-                  <ThemedText type="smallBold">Clear</ThemedText>
-                </Pressable>
-              </View>
-            </ThemedView>
-          ))
+          <View style={[styles.mapPlaceholder, { backgroundColor: theme.backgroundElement }]}>
+            <ScreenState />
+          </View>
         )}
 
-        <ThemedText type="subtitle">Nearby Danger Zones</ThemedText>
-        {zonesLoadError ? (
-          <ThemedText type="small" themeColor="danger" selectable testID="zones-error">
-            {zonesLoadError}
-          </ThemedText>
-        ) : zones === null ? (
-          <ActivityIndicator testID="zones-loading" />
-        ) : zones.length === 0 ? (
-          <ThemedText type="small" themeColor="textSecondary" testID="zones-empty">
-            No danger zones marked nearby.
-          </ThemedText>
+        <SegmentedControl<Tab>
+          testID="incidents-tab"
+          value={tab}
+          onChange={setTab}
+          options={[
+            { label: incidents ? `Incidents (${incidents.length})` : 'Incidents', value: 'incidents' },
+            { label: zones ? `Danger zones (${zones.length})` : 'Danger zones', value: 'zones' },
+          ]}
+        />
+
+        {list === null ? (
+          <ScreenState
+            error={location ? listError : null}
+            onRetry={handleRefresh}
+            testID={tab === 'incidents' ? 'incidents' : 'zones'}
+          />
+        ) : list.length === 0 ? (
+          <EmptyState
+            testID={tab === 'incidents' ? 'incidents-empty' : 'zones-empty'}
+            icon={tab === 'incidents' ? 'checkmark-done-circle-outline' : 'shield-checkmark-outline'}
+            title={tab === 'incidents' ? 'No incidents nearby' : 'No danger zones nearby'}
+            message={
+              tab === 'incidents'
+                ? 'Seen an accident, flood or road block? Tap Report to warn other drivers.'
+                : 'Know a dangerous stretch of road? Tap Report to mark it for others.'
+            }
+          />
         ) : (
-          zones.map((zone) => (
-            <ThemedView
-              key={zone.id}
-              type="backgroundElement"
-              style={styles.card}
-              testID={`zone-${zone.id}`}
-            >
-              <View style={styles.typeRow}>
-                <Ionicons name="alert-circle" size={16} color={theme[SEVERITY_COLOR[zone.severity]]} />
-                <ThemedText type="smallBold" themeColor={SEVERITY_COLOR[zone.severity]}>
-                  {zone.severity} risk · {zone.radius_m}m radius
-                </ThemedText>
-              </View>
-              {zone.reason ? (
-                <ThemedText type="small" selectable>
-                  {zone.reason}
-                </ThemedText>
-              ) : null}
-              <ThemedText type="small" themeColor="textSecondary">
-                Confirmed by {zone.confirmation_count}{' '}
-                {zone.confirmation_count === 1 ? 'person' : 'people'}
+          <>
+            {listError ? (
+              <ThemedText type="small" themeColor="danger" selectable>
+                Couldn&apos;t refresh: {listError}
               </ThemedText>
-              <View style={styles.actionsRow}>
-                <Pressable
-                  style={[styles.button, styles.flexButton, { backgroundColor: theme.primary }]}
-                  onPress={() => handleConfirmZone(zone.id)}
-                  testID={`confirm-zone-${zone.id}`}
-                >
-                  <ThemedText type="smallBold" themeColor="onPrimary">
-                    Confirm
-                  </ThemedText>
-                </Pressable>
-                <Pressable
-                  style={[styles.button, styles.flexButton, { backgroundColor: theme.backgroundSelected }]}
-                  onPress={() => handleClearZone(zone.id)}
-                  testID={`clear-zone-${zone.id}`}
-                >
-                  <ThemedText type="smallBold">Clear</ThemedText>
-                </Pressable>
-              </View>
-            </ThemedView>
-          ))
+            ) : null}
+            <Card style={styles.list}>
+              {tab === 'incidents'
+                ? (list as RoadIncident[]).map((incident, i) => (
+                    <Fragment key={incident.id}>
+                      {i > 0 ? <Separator /> : null}
+                      <ReportRow
+                        testID={`incident-${incident.id}`}
+                        icon={INCIDENT_ICON[incident.type]}
+                        severity={incident.severity}
+                        title={INCIDENT_LABEL[incident.type]}
+                        detail={`${SEVERITY_LABEL[incident.severity]} · ${confirmations(incident.confirmation_count)} · ${relativeTime(incident.created_at)}`}
+                        onPress={() => setFocus({ lat: incident.lat, lng: incident.lng })}
+                        onConfirm={() =>
+                          runAction(() => confirmIncident(incident.id), 'Incident confirmed. Thanks for the update.')
+                        }
+                        onClear={() => confirmClear('Incident', () => clearIncident(incident.id))}
+                        confirmTestID={`confirm-${incident.id}`}
+                        clearTestID={`clear-${incident.id}`}
+                      />
+                    </Fragment>
+                  ))
+                : (list as DangerZone[]).map((zone, i) => (
+                    <Fragment key={zone.id}>
+                      {i > 0 ? <Separator /> : null}
+                      <ReportRow
+                        testID={`zone-${zone.id}`}
+                        icon="warning"
+                        severity={zone.severity}
+                        title={zone.reason || `${SEVERITY_LABEL[zone.severity]} risk area`}
+                        detail={`${SEVERITY_LABEL[zone.severity]} · ${formatRadius(zone.radius_m)} · ${confirmations(zone.confirmation_count)}`}
+                        onPress={() => setFocus({ lat: zone.lat, lng: zone.lng })}
+                        onConfirm={() =>
+                          runAction(() => confirmDangerZone(zone.id), 'Danger zone confirmed. Thanks for the update.')
+                        }
+                        onClear={() => confirmClear('Danger zone', () => clearDangerZone(zone.id))}
+                        confirmTestID={`confirm-zone-${zone.id}`}
+                        clearTestID={`clear-zone-${zone.id}`}
+                      />
+                    </Fragment>
+                  ))}
+            </Card>
+          </>
         )}
       </ThemedView>
     </ScrollView>
+  );
+}
+
+function confirmations(count: number): string {
+  return `${count} ${count === 1 ? 'confirmation' : 'confirmations'}`;
+}
+
+function formatRadius(meters: number): string {
+  return meters >= 1000 ? `${meters / 1000} km radius` : `${meters} m radius`;
+}
+
+function Separator() {
+  const theme = useTheme();
+  return <View style={[styles.separator, { backgroundColor: theme.backgroundSelected }]} />;
+}
+
+function Banner({ kind, text, testID }: { kind: 'success' | 'error' | 'info'; text: string; testID?: string }) {
+  const theme = useTheme();
+  const colorKey: ThemeColor = kind === 'success' ? 'success' : kind === 'error' ? 'danger' : 'textSecondary';
+  const icon = kind === 'success' ? 'checkmark-circle' : kind === 'error' ? 'alert-circle' : 'information-circle';
+  return (
+    <View
+      style={[styles.banner, { backgroundColor: `${theme[colorKey]}14` }]}
+      accessibilityLiveRegion="polite"
+      testID={testID}
+    >
+      <Ionicons name={icon} size={18} color={theme[colorKey]} />
+      <ThemedText type="small" themeColor={colorKey} selectable style={styles.bannerText}>
+        {text}
+      </ThemedText>
+    </View>
+  );
+}
+
+function ReportRow({
+  icon,
+  severity,
+  title,
+  detail,
+  onPress,
+  onConfirm,
+  onClear,
+  testID,
+  confirmTestID,
+  clearTestID,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  severity: RoadIncidentSeverity;
+  title: string;
+  detail: string;
+  onPress: () => void;
+  onConfirm: () => void;
+  onClear: () => void;
+  testID: string;
+  confirmTestID: string;
+  clearTestID: string;
+}) {
+  const theme = useTheme();
+  const color = theme[TONE_COLOR[severity]];
+
+  return (
+    <View style={styles.row} testID={testID}>
+      <Pressable
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={`${title}, ${detail}. Show on map`}
+        style={({ pressed }) => [styles.rowMain, { opacity: pressed ? 0.6 : 1 }]}
+      >
+        <View style={[styles.iconCircle, { backgroundColor: `${color}1F` }]}>
+          <Ionicons name={icon} size={20} color={color} />
+        </View>
+        <View style={styles.rowText}>
+          <ThemedText numberOfLines={2}>{title}</ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            {detail}
+          </ThemedText>
+        </View>
+      </Pressable>
+      <View style={styles.rowActions}>
+        <Pressable
+          onPress={onConfirm}
+          testID={confirmTestID}
+          accessibilityRole="button"
+          accessibilityLabel={`Confirm ${title} is still there`}
+          style={({ pressed }) => [styles.smallButton, { backgroundColor: theme.background, opacity: pressed ? 0.6 : 1 }]}
+        >
+          <Ionicons name="thumbs-up-outline" size={16} color={theme.primary} />
+          <ThemedText type="smallBold" themeColor="primary">
+            Confirm
+          </ThemedText>
+        </Pressable>
+        <Pressable
+          onPress={onClear}
+          testID={clearTestID}
+          accessibilityRole="button"
+          accessibilityLabel={`Mark ${title} as cleared`}
+          style={({ pressed }) => [styles.smallButton, { backgroundColor: theme.background, opacity: pressed ? 0.6 : 1 }]}
+        >
+          <Ionicons name="checkmark-done-outline" size={16} color={theme.textSecondary} />
+          <ThemedText type="smallBold" themeColor="textSecondary">
+            Clear
+          </ThemedText>
+        </Pressable>
+      </View>
+    </View>
   );
 }
 
@@ -506,50 +339,71 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     alignItems: 'center',
     paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.five,
+    paddingVertical: Spacing.three,
   },
   form: {
+    flexGrow: 1,
     width: '100%',
-    maxWidth: 800,
+    maxWidth: MaxContentWidth,
     gap: Spacing.three,
   },
-  successRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.half,
-  },
-  card: {
-    borderRadius: Spacing.three,
-    padding: Spacing.three,
-    gap: Spacing.one,
-  },
-  chipRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.one,
-  },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.half,
-    borderRadius: Spacing.two,
-    paddingHorizontal: Spacing.two,
-    paddingVertical: Spacing.one,
-  },
-  typeRow: {
+  headerButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.one,
   },
-  actionsRow: {
+  mapPlaceholder: {
+    height: 280,
+    borderRadius: Radius.medium,
+    justifyContent: 'center',
+  },
+  banner: {
     flexDirection: 'row',
     gap: Spacing.two,
-    marginTop: Spacing.one,
+    padding: Spacing.three,
+    borderRadius: Radius.small,
+    borderCurve: 'continuous',
   },
-  flexButton: { flex: 1 },
-  button: {
-    borderRadius: Spacing.two,
-    paddingVertical: Spacing.two,
+  bannerText: { flex: 1 },
+  list: {
+    paddingVertical: 0,
+    gap: 0,
+  },
+  separator: {
+    height: StyleSheet.hairlineWidth,
+  },
+  row: {
+    paddingVertical: Spacing.three,
+    gap: Spacing.two,
+  },
+  rowMain: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: Spacing.three,
+  },
+  iconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rowText: {
+    flex: 1,
+    gap: Spacing.half,
+  },
+  rowActions: {
+    flexDirection: 'row',
+    gap: Spacing.two,
+    paddingLeft: 40 + Spacing.three,
+  },
+  smallButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.one,
+    borderRadius: Radius.small,
+    borderCurve: 'continuous',
   },
 });

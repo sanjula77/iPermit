@@ -5,7 +5,13 @@ paper draft, kept outside this repo) and the fixes needed before submission.
 Found via a research-skills review cross-checked against this project's own
 `docs/methodology.md`, `docs/tasks.md`, and a sample citation-verification
 pass against original sources. Last verified against the actual PDF on
-2026-09-20.
+2026-09-27.
+
+**Where the paper lives:** the only copy on the dev machine is the PDF export,
+`~/Desktop/Project_Paper.pdf` (14 pages, exported from Microsoft Word on
+2026-09-19, document author "bashi rashmika"). The editable `.docx` is with that
+teammate, so every edit below has to be applied in their Word file — the PDF
+can't be edited cleanly.
 
 ## Already Fixed (confirmed in the current PDF)
 
@@ -25,12 +31,28 @@ pass against original sources. Last verified against the actual PDF on
 
 ### 1. Replace Section 5.1 (and Figure 2) with the v2 face-verification evaluation
 
-**As of the 2026-09-20 PDF, Section 5.1 still shows the original flawed
+**As of the 2026-09-19 PDF, Section 5.1 still shows the original flawed
 figure** — the ameesha/keshan/lakshan/oshanda/pasindu/ravishan 6-person
 confusion matrix. A closed-set confusion matrix describes a different problem
 (classifying a fixed set of people) from what iPermit does (open-set
 verification: "is this the same person?"), so it must be removed entirely,
 together with its surrounding paragraph.
+
+**What the current Section 5.1 contains, and what to do with each part:**
+
+| Current part (as in the PDF) | Action |
+|---|---|
+| Paragraph 1: *"The facial recognition module was evaluated using real photographs against the running backend. Consistent four-photo enrollments…"* (enrollment and quality-check behaviour) | **Keep.** Still accurate — it describes functional verification. Place it before 5.1.1 as a short lead-in. |
+| Paragraph 2: *"The recognition behavior was further examined using a confusion matrix…"* | **Delete.** |
+| *Fig. 2. Confusion matrix of the facial recognition evaluation.* | **Delete** and replace with the new Fig. 2 (DET curve). |
+| Paragraph 3: *"The evaluation confirms the functional operation… the FAR, FRR, and EER evaluation framework has been implemented and unit-tested… but has not yet been evaluated…"* | **Delete.** Now false; replaced by 5.1.1–5.1.4 below. |
+
+**Numbering in the paper:** the paper already has TABLE I (tools and technology
+stack) and Fig. 1 (architecture), and references [1]–[21]. So the three new
+tables become **TABLE II, TABLE III and TABLE IV** (IEEE style: roman numerals,
+caption above the table), the figures are **Fig. 2** (replacing the confusion
+matrix) and **Fig. 3**, and the new references are **[22]–[29]**. The draft
+below already uses these numbers.
 
 **Use the v2 evaluation (run 2026-09-26), not the v1 numbers.** An earlier
 draft of this item cited a first Colab run (LFW FRR 0.39%, Bollywood FRR
@@ -50,9 +72,9 @@ LFW-vs-Bollywood comparison was not like-for-like.
 
 | Paper item | File | Notes |
 |---|---|---|
-| **Table 1** — datasets | `results/results_tables.md` (Table 1) | |
-| **Table 2** — performance with 95% CIs | `results/results_tables.md` (Table 2) | Main results table |
-| **Table 3** — confusion counts at τ = 0.42 | `results/results_tables.md` (Table 3) | The correct replacement for the old confusion matrix |
+| **TABLE II** — datasets | `results/results_tables.md` (Table 1) | |
+| **TABLE III** — performance with 95% CIs | `results/results_tables.md` (Table 2) | Main results table |
+| **TABLE IV** — confusion counts at τ = 0.42 | `results/results_tables.md` (Table 3) | The correct replacement for the old confusion matrix |
 | **Figure 2** — DET curve | `results/fig_det_curve.png` | Main figure (ISO/IEC 19795-1 standard view) |
 | **Figure 3** — score distributions | `results/fig_score_distributions.png` | Shows *why* errors happen |
 | (optional) FAR/FRR vs threshold | `results/fig_far_frr_threshold.png` | Only if space allows; DET already covers it |
@@ -60,21 +82,21 @@ LFW-vs-Bollywood comparison was not like-for-like.
 
 Paper-ready tables (copied from `results_tables.md`, rounded for print):
 
-**Table 1. Evaluation datasets (up to 15 usable images per identity).**
+**TABLE II. Evaluation datasets (up to 15 usable images per identity).**
 
 | Dataset | Identities | Usable images | Skipped: no face / 2+ faces / duplicate | Genuine pairs | Impostor pairs |
 |---|---|---|---|---|---|
 | LFW (funneled) | 96 | 1,385 | 6 / 276 / 0 | 9,396 | 949,024 |
 | Bollywood Celebrity Faces | 100 | 1,500 | 17 / 119 / 1 | 10,500 | 1,113,750 |
 
-**Table 2. Verification performance (95% identity-bootstrap confidence intervals).**
+**TABLE III. Verification performance (95% identity-bootstrap confidence intervals).**
 
 | Dataset | FAR @ τ=0.42 | FRR @ τ=0.42 | EER (threshold) | TAR @ FAR=0.1% | TAR @ FAR=0.01% |
 |---|---|---|---|---|---|
 | LFW | 0.0013% (0–0.008%) | 2.91% (1.79–4.09%) | 0.32% (0.03–0.75%) at 0.194 | 99.63% (99.17–100%) | 99.35% (98.53–99.90%) |
 | Bollywood | 0.0025% (0–0.010%) | 9.89% (8.30–11.72%) | 1.13% (0.54–1.77%) at 0.209 | 98.40% (97.53–99.13%) | 96.84% (85.82–98.06%) |
 
-**Table 3. Confusion counts at the deployed threshold τ = 0.42.**
+**TABLE IV. Confusion counts at the deployed threshold τ = 0.42.**
 
 | Dataset | Genuine accepted | Genuine rejected | Impostor accepted | Impostor rejected |
 |---|---|---|---|---|
@@ -87,23 +109,23 @@ Paper-ready tables (copied from `results_tables.md`, rounded for print):
 >
 > *5.1.1 Evaluation protocol.* The face-verification pipeline was evaluated
 > offline with the same models and preprocessing as the deployed backend:
-> CLAHE contrast enhancement, RetinaFace face detection [RetinaFace] and a
-> ResNet-50 ArcFace model [ArcFace] producing 512-dimensional embeddings
+> CLAHE contrast enhancement, RetinaFace face detection [22] and a
+> ResNet-50 ArcFace model [23] producing 512-dimensional embeddings
 > (InsightFace `buffalo_l` model pack, 640×640 detector input). Two public,
-> identity-labelled datasets were used: LFW [LFW] (funneled version; the 96
+> identity-labelled datasets were used: LFW [24] (funneled version; the 96
 > identities with at least 15 images, mostly Western public figures) and the
-> 100 Bollywood Celebrity Faces collection (100 South Asian actors). To make
+> 100 Bollywood Celebrity Faces collection [25] (100 South Asian actors). To make
 > the two datasets comparable, up to 15 usable images per identity were
 > sampled with a fixed random seed. As in the backend, which rejects
 > photographs containing no face or more than one face, such images were
-> skipped (Table 1). Every pair of retained images was compared by cosine
+> skipped (TABLE II). Every pair of retained images was compared by cosine
 > similarity; same-identity pairs formed the genuine set and cross-identity
-> pairs the impostor set. Following ISO/IEC 19795-1 [ISO19795], performance
+> pairs the impostor set. Following ISO/IEC 19795-1 [26], performance
 > is reported as false accept rate (FAR), false reject rate (FRR), equal
 > error rate (EER) and true accept rate (TAR) at fixed FAR, with 95%
 > confidence intervals from an identity-level bootstrap (1,000 replicates;
 > people rather than pairs are resampled, because pairs involving the same
-> person are not independent) [Bolle]. This all-pairs protocol differs from
+> person are not independent) [27]. This all-pairs protocol differs from
 > the standard 6,000-pair LFW benchmark, so the results are not directly
 > comparable with published LFW accuracies. The evaluation ran in Google
 > Colab; re-computing the LFW embeddings inside the backend's own container
@@ -111,7 +133,7 @@ Paper-ready tables (copied from `results_tables.md`, rounded for print):
 >
 > *5.1.2 Results.* At the deployed threshold τ = 0.42 the system accepted 12
 > of 949,024 LFW impostor pairs (FAR 0.0013%) and 28 of 1,113,750 Bollywood
-> impostor pairs (FAR 0.0025%) (Tables 2 and 3). Inspection showed that all
+> impostor pairs (FAR 0.0025%) (TABLES III and IV). Inspection showed that all
 > 40 false accepts involved one of three mislabelled photographs being
 > matched to photographs of the person actually shown: an LFW image filed
 > under Recep Tayyip Erdoğan that depicts Abdullah Gül, and two Bollywood
@@ -167,7 +189,7 @@ Paper-ready tables (copied from `results_tables.md`, rounded for print):
 > LFW consists largely of news photographs. The NIST FRVT demographic study
 > found that differences in false non-match rates between demographic groups
 > are comparatively small and largely driven by image quality, whereas larger
-> demographic differentials appear in false match rates [NIST8280]. The
+> demographic differentials appear in false match rates [28]. The
 > observed gap is therefore consistent with photo-style and image-quality
 > differences; a demographic contribution can be neither confirmed nor ruled
 > out.
@@ -176,7 +198,7 @@ Paper-ready tables (copied from `results_tables.md`, rounded for print):
 > Lankan drivers photographed with mobile phones, so the figures are
 > indicative rather than a measure of field performance. (ii) The ArcFace
 > model was trained on web-collected celebrity imagery (WebFace600K
-> [WebFace260M]), which may include some of the evaluated identities and
+> [29]), which may include some of the evaluated identities and
 > favour both datasets. (iii) Only exact duplicate files were removed; some
 > near-duplicate photographs remain, visible as genuine scores close to 1.0.
 > (iv) The enrollment photo-quality gate was not applied, so enrolled
@@ -185,25 +207,30 @@ Paper-ready tables (copied from `results_tables.md`, rounded for print):
 > are expected to behave similarly but this was not measured.
 
 **Captions:**
-- *Table 1.* Evaluation datasets after sampling up to 15 usable images per identity.
-- *Table 2.* Verification performance of the iPermit face pipeline; 95% confidence intervals from an identity-level bootstrap (1,000 replicates).
-- *Table 3.* Confusion counts at the deployed threshold τ = 0.42. All 40 impostor accepts involve mislabelled dataset images (Section 5.1.2).
+- *TABLE II.* Evaluation datasets after sampling up to 15 usable images per identity.
+- *TABLE III.* Verification performance of the iPermit face pipeline; 95% confidence intervals from an identity-level bootstrap (1,000 replicates).
+- *TABLE IV.* Confusion counts at the deployed threshold τ = 0.42. All 40 impostor accepts involve mislabelled dataset images (Section 5.1.2).
 - *Fig. 2.* Detection error trade-off (DET) curves on log–log axes. Markers show the deployed threshold τ = 0.42; the dotted diagonal marks FAR = FRR, where each curve crosses at its EER.
 - *Fig. 3.* Distributions of genuine (same-person) and impostor (different-person) cosine similarities. Dashed line: deployed threshold τ = 0.42; dotted line: EER threshold.
 
-**References to add** (verify each against the source before submitting, as
-item 4 requires):
-- [LFW] G. B. Huang, M. Ramesh, T. Berg, and E. Learned-Miller, "Labeled Faces in the Wild: A Database for Studying Face Recognition in Unconstrained Environments," Univ. of Massachusetts, Amherst, Tech. Rep. 07-49, Oct. 2007.
-- [ArcFace] J. Deng, J. Guo, N. Xue, and S. Zafeiriou, "ArcFace: Additive Angular Margin Loss for Deep Face Recognition," in *Proc. IEEE/CVF CVPR*, 2019, pp. 4690–4699.
-- [RetinaFace] J. Deng, J. Guo, E. Ververas, I. Kotsia, and S. Zafeiriou, "RetinaFace: Single-Shot Multi-Level Face Localisation in the Wild," in *Proc. IEEE/CVF CVPR*, 2020, pp. 5203–5212.
-- [WebFace260M] Z. Zhu *et al.*, "WebFace260M: A Benchmark Unveiling the Power of Million-Scale Deep Face Recognition," in *Proc. IEEE/CVF CVPR*, 2021.
-- [NIST8280] P. Grother, M. Ngan, and K. Hanaoka, "Face Recognition Vendor Test (FRVT) Part 3: Demographic Effects," NIST, NISTIR 8280, Dec. 2019, doi: 10.6028/NIST.IR.8280.
-- [ISO19795] ISO/IEC 19795-1:2021, *Information technology — Biometric performance testing and reporting — Part 1: Principles and framework*.
-- [Bolle] R. M. Bolle, N. K. Ratha, and S. Pankanti, "Error analysis of pattern recognition systems — the subsets bootstrap," *Computer Vision and Image Understanding*, vol. 93, no. 1, pp. 1–33, 2004.
-- The Bollywood dataset: Kaggle, "100 Bollywood Celebrity Faces" (`havingfun/100-bollywood-celebrity-faces`) — cite as a dataset with its URL and access date.
+**References to add** as [22]–[29], numbered in order of first citation in
+Section 5.1 (verify each against the source before submitting, as item 4
+requires). If the paper numbers strictly by first appearance, [28] moves
+earlier because the Section 3.7 edit (item 1a) cites it first.
+- [22] J. Deng, J. Guo, E. Ververas, I. Kotsia, and S. Zafeiriou, "RetinaFace: Single-Shot Multi-Level Face Localisation in the Wild," in *Proc. IEEE/CVF CVPR*, 2020, pp. 5203–5212.
+- [23] J. Deng, J. Guo, N. Xue, and S. Zafeiriou, "ArcFace: Additive Angular Margin Loss for Deep Face Recognition," in *Proc. IEEE/CVF CVPR*, 2019, pp. 4690–4699.
+- [24] G. B. Huang, M. Ramesh, T. Berg, and E. Learned-Miller, "Labeled Faces in the Wild: A Database for Studying Face Recognition in Unconstrained Environments," Univ. of Massachusetts, Amherst, Tech. Rep. 07-49, Oct. 2007.
+- [25] havingfun, "100 Bollywood Celebrity Faces," Kaggle dataset. [Online]. Available: https://www.kaggle.com/datasets/havingfun/100-bollywood-celebrity-faces (accessed Sep. 20, 2026).
+- [26] ISO/IEC 19795-1:2021, *Information technology — Biometric performance testing and reporting — Part 1: Principles and framework*.
+- [27] R. M. Bolle, N. K. Ratha, and S. Pankanti, "Error analysis of pattern recognition systems — the subsets bootstrap," *Computer Vision and Image Understanding*, vol. 93, no. 1, pp. 1–33, 2004.
+- [28] P. Grother, M. Ngan, and K. Hanaoka, "Face Recognition Vendor Test (FRVT) Part 3: Demographic Effects," NIST, NISTIR 8280, Dec. 2019, doi: 10.6028/NIST.IR.8280.
+- [29] Z. Zhu *et al.*, "WebFace260M: A Benchmark Unveiling the Power of Million-Scale Deep Face Recognition," in *Proc. IEEE/CVF CVPR*, 2021.
 
-**Fix:** delete the old Figure 2 and its paragraph; insert Tables 1–3,
-Figures 2–3, the Section 5.1 text and captions above; add the references.
+**Fix (in the teammate's Word file):** keep paragraph 1 of the current 5.1;
+delete paragraph 2, the old Fig. 2 and paragraph 3; insert the new 5.1.1–5.1.4
+text, TABLES II–IV, Figs. 2–3 and their captions; append references [22]–[29].
+Figure files: `docs/evaluation/results/fig_det_curve.png` (Fig. 2) and
+`docs/evaluation/results/fig_score_distributions.png` (Fig. 3), both 300 dpi.
 
 ### 1a. Other sections still say "no evaluation has been done" — now factually wrong
 
@@ -257,11 +284,11 @@ evaluation (Section 5.1) also found a significantly higher false-rejection
 rate on a South Asian celebrity dataset than on LFW (9.9% versus 2.9%)
 using the identical pipeline. Because the two datasets also differ in
 photographic style and image quality, the gap cannot be attributed to
-demographic factors alone [NIST8280], and it has not yet been measured on
+demographic factors alone [28], and it has not yet been measured on
 genuine Sri Lankan driver photographs."* Do **not** cite [4] for this — [4]
 (Haley, biometric surveillance and crime) is not about demographic error
-rates. Check that [17] actually supports it before citing it; otherwise
-cite only [NIST8280].
+rates, and [17] (Varshney *et al.*, "Digital Identity Management Using
+Biometric Systems: BioTrace") isn't either — cite only [28] (NIST FRVT Part 3).
 
 **Section 6 (Conclusion and Future Work)** — current: *"Future enhancements
 include improving facial recognition accuracy using larger Sri Lankan

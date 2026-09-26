@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { RefreshControl, ScrollView, StyleSheet } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 
 import { getMyBadge } from '@/api/badges';
 import { listApplications } from '@/api/applications';
@@ -32,7 +32,24 @@ export default function HomeScreen() {
   return <DriverHomeScreen />;
 }
 
+type VerifyMode = 'face' | 'qr' | 'lookup';
+
+const POLICE_ACTIONS: {
+  mode: VerifyMode;
+  icon: keyof typeof Ionicons.glyphMap;
+  title: string;
+  description: string;
+}[] = [
+  { mode: 'face', icon: 'scan-outline', title: 'Scan face', description: 'Photograph the driver to identify them' },
+  { mode: 'qr', icon: 'qr-code-outline', title: 'Scan license QR', description: 'Scan the code on their digital license' },
+  { mode: 'lookup', icon: 'search-outline', title: 'Look up driver', description: 'Search by NIC or license number' },
+];
+
+// Police Home is a hub for the officer's one job: verifying a driver. Each
+// action opens the Verify tab in that mode.
 function PoliceHomeScreen() {
+  const theme = useTheme();
+
   return (
     <ScrollView
       style={styles.container}
@@ -40,9 +57,41 @@ function PoliceHomeScreen() {
       contentInsetAdjustmentBehavior="automatic"
     >
       <ThemedView style={styles.form}>
-        <ThemedText themeColor="textSecondary">
-          Use the Verify tab to check a driver&apos;s license by face or QR code.
-        </ThemedText>
+        <ThemedText themeColor="textSecondary">How do you want to verify the driver?</ThemedText>
+        {POLICE_ACTIONS.map((action) => (
+          <Pressable
+            key={action.mode}
+            onPress={() =>
+              router.navigate({
+                pathname: '/(app)/(tabs)/(police-verify)/police-verify',
+                params: { mode: action.mode },
+              })
+            }
+            accessibilityRole="button"
+            accessibilityLabel={`${action.title}. ${action.description}`}
+            testID={`police-home-${action.mode}`}
+            style={({ pressed }) => [{ opacity: pressed ? 0.75 : 1 }]}
+          >
+            <Card style={styles.actionCard}>
+              <View style={[styles.actionIcon, { backgroundColor: `${theme.primary}1F` }]}>
+                <Ionicons name={action.icon} size={26} color={theme.primary} />
+              </View>
+              <View style={styles.actionText}>
+                <ThemedText type="subtitle">{action.title}</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">
+                  {action.description}
+                </ThemedText>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
+            </Card>
+          </Pressable>
+        ))}
+        <View style={[styles.infoNote, { backgroundColor: theme.backgroundElement }]}>
+          <Ionicons name="information-circle-outline" size={18} color={theme.textSecondary} />
+          <ThemedText type="small" themeColor="textSecondary" style={styles.actionText}>
+            Face matches are a guide. Confirm the driver&apos;s identity yourself when the match is uncertain.
+          </ThemedText>
+        </View>
       </ThemedView>
     </ScrollView>
   );
@@ -242,6 +291,26 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: MaxContentWidth,
     gap: Spacing.four,
+  },
+  actionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+    padding: Spacing.four,
+  },
+  actionIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionText: { flex: 1, gap: Spacing.half },
+  infoNote: {
+    flexDirection: 'row',
+    gap: Spacing.two,
+    padding: Spacing.three,
+    borderRadius: Spacing.two,
   },
   statusCard: {
     padding: Spacing.four,

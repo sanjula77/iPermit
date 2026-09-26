@@ -8,12 +8,9 @@ import { StatusBadge, type StatusTone } from '@/components/status-badge';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { SUSPENSION_POINTS, pointsColorKey } from '@/lib/points';
 import type { Badge, BadgeTier } from '@/types/badge';
 import type { License } from '@/types/license';
-
-// Mirrors the backend's SUSPENSION_POINTS_THRESHOLD (violation_service.py):
-// the license is suspended once cumulative demerit points reach this value.
-const SUSPENSION_POINTS = 10;
 
 // AT_RISK and SUSPENDED intentionally share "danger" -- both are genuinely
 // bad standing -- but each gets a distinct icon below so they never rely on
@@ -44,14 +41,6 @@ const TIER_LABEL: Record<BadgeTier, string> = {
   AT_RISK: 'At risk',
   SUSPENDED: 'Suspended',
 };
-
-// Bar color as points approach the suspension threshold. These names are
-// both status tones and theme color keys.
-function pointsColorKey(points: number): 'success' | 'warning' | 'danger' {
-  if (points >= 8) return 'danger';
-  if (points >= 5) return 'warning';
-  return 'success';
-}
 
 export function LicenseCard({ license, badge }: { license: License; badge?: Badge | null }) {
   const theme = useTheme();

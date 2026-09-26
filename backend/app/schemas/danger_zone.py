@@ -1,9 +1,9 @@
 import uuid
-from datetime import datetime
 
 from pydantic import BaseModel, Field
 
 from app.models.danger_zone import DangerZoneSeverity, DangerZoneStatus
+from app.schemas.common import UtcDateTime
 
 
 class DangerZoneRead(BaseModel):
@@ -15,8 +15,8 @@ class DangerZoneRead(BaseModel):
     reason: str | None
     status: DangerZoneStatus
     confirmation_count: int
-    created_at: datetime
-    cleared_at: datetime | None
+    created_at: UtcDateTime
+    cleared_at: UtcDateTime | None
 
     model_config = {"from_attributes": True}
 

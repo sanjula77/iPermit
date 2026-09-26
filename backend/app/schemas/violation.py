@@ -1,9 +1,9 @@
 import uuid
-from datetime import datetime
 
 from pydantic import BaseModel
 
 from app.models.violation import ViolationType
+from app.schemas.common import UtcDateTime
 
 
 class ViolationRead(BaseModel):
@@ -11,6 +11,6 @@ class ViolationRead(BaseModel):
     type: ViolationType
     points_deducted: int
     evidence_ref: str | None
-    confirmed_at: datetime
+    confirmed_at: UtcDateTime
 
     model_config = {"from_attributes": True}

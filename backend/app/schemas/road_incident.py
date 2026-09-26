@@ -1,5 +1,4 @@
 import uuid
-from datetime import datetime
 
 from pydantic import BaseModel, Field
 
@@ -8,6 +7,7 @@ from app.models.road_incident import (
     RoadIncidentStatus,
     RoadIncidentType,
 )
+from app.schemas.common import UtcDateTime
 
 
 class RoadIncidentRead(BaseModel):
@@ -18,8 +18,8 @@ class RoadIncidentRead(BaseModel):
     lng: float
     status: RoadIncidentStatus
     confirmation_count: int
-    created_at: datetime
-    expires_at: datetime
+    created_at: UtcDateTime
+    expires_at: UtcDateTime
 
     model_config = {"from_attributes": True}
 

@@ -1,11 +1,11 @@
 import enum
 import uuid
-from datetime import datetime
 
 from pydantic import BaseModel, Field
 
 from app.models.appeal import AppealStatus
 from app.schemas.application import DriverSummary
+from app.schemas.common import UtcDateTime
 from app.schemas.fine import FineWithViolationRead
 
 
@@ -23,8 +23,8 @@ class AppealRead(BaseModel):
     fine: FineWithViolationRead
     reason: str
     status: AppealStatus
-    created_at: datetime
-    resolved_at: datetime | None
+    created_at: UtcDateTime
+    resolved_at: UtcDateTime | None
 
     model_config = {"from_attributes": True}
 

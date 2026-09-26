@@ -1,15 +1,15 @@
 import uuid
-from datetime import datetime
 
 from pydantic import BaseModel, Field
 
 from app.models.application import ApplicationStatus, DocumentType
+from app.schemas.common import UtcDateTime
 
 
 class ApplicationDocumentRead(BaseModel):
     id: uuid.UUID
     doc_type: DocumentType
-    created_at: datetime
+    created_at: UtcDateTime
 
     model_config = {"from_attributes": True}
 
@@ -27,8 +27,8 @@ class ApplicationRead(BaseModel):
     driver: DriverSummary
     status: ApplicationStatus
     reason: str | None
-    created_at: datetime
-    updated_at: datetime
+    created_at: UtcDateTime
+    updated_at: UtcDateTime
     documents: list[ApplicationDocumentRead]
 
     model_config = {"from_attributes": True}

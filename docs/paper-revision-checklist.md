@@ -1,5 +1,9 @@
 # iPermit Paper — Revision Checklist
 
+> **Superseded (2026-09-27):** see [paper-fixes.md](paper-fixes.md), a full
+> review of the 2026-09-27 PDF with copy-paste fixes. Its reference numbering
+> ([22]–[30]) replaces the [22]–[29] numbering used below.
+
 Tracks known issues in `Project_Paper.docx`/`Project_Paper.pdf` (the academic
 paper draft, kept outside this repo) and the fixes needed before submission.
 Found via a research-skills review cross-checked against this project's own

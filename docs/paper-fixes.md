@@ -6,11 +6,10 @@ codebase, `docs/requirements.md`, `docs/design.md`, `docs/tasks.md`, the
 face-evaluation results in `docs/evaluation/results/`, and (for references)
 the original publisher/Crossref/arXiv records.
 
-This file **supersedes `docs/paper-revision-checklist.md`**. The Section 5.1
-text drafted there was never pasted in; the teammate wrote a different 5.1
-using the old, superseded evaluation run. Reference numbers below also differ
-from that file, because new references are now numbered in order of first
-appearance.
+This file replaces the earlier `docs/paper-revision-checklist.md` (deleted
+2026-09-27; see git history). The Section 5.1 text drafted there was never
+pasted in; the teammate wrote a different 5.1 using the old, superseded
+evaluation run.
 
 ## How to use this file
 

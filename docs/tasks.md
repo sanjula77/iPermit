@@ -529,7 +529,7 @@ TypeScript mobile app, Next.js + TypeScript admin web — per the [ADR](design.m
     At 0.42: FAR 0.0013% / 0.0025% (every false accept traced to a
     mislabelled dataset photo), FRR 2.91% / 9.89%, EER 0.32% / 1.13%.
     Results, figures and tables are in docs/evaluation/results/; the paper
-    text is in docs/paper-revision-checklist.md item 1. Accuracy is
+    text is in docs/paper-fixes.md item 1. Accuracy is
     deliberately not reported (meaningless with ~100x more impostor than
     genuine pairs). Colab embeddings reproduce exactly in the backend
     container. Still open: (a) a CLAHE ablation on LFW

@@ -1,0 +1,32 @@
+@startuml ch4-act-appeal
+title \n\n
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam monochrome true
+
+start
+:Driver: open an UNPAID fine;
+if (Fine already appealed?) then (yes)
+  :App hides the appeal option\n(one appeal per fine);
+  stop
+else (no)
+endif
+:Driver: enter reason (1-1000 characters)\nand submit;
+:System: create appeal (PENDING);
+note right: while PENDING the fine\ncannot be paid (409)
+:Administrator: open the Appeals page\n(filter Pending) and review the\nreason, violation and fine;
+if (Decision?) then (overturn)
+  :System: appeal OVERTURNED,\nresolved_by, resolved_at;\nfine REVERSED;
+  :System: restore the violation's points\n(floor 0); licence ACTIVE again\nif it was SUSPENDED and points < 10;
+  :System: commit (one transaction);
+  :System: recompute badge;\nnotify APPEAL_OVERTURNED;
+  :Driver: fine shows\n"Accepted - fine reversed";
+else (uphold)
+  :System: appeal UPHELD,\nresolved_by, resolved_at;\nfine stays UNPAID;
+  :System: commit;
+  :System: recompute badge;\nnotify APPEAL_UPHELD;
+  :Driver: fine shows\n"Rejected - fine stands";\nthe fine can still be paid,\nbut not appealed again;
+endif
+stop
+@enduml

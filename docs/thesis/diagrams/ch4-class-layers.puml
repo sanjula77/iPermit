@@ -1,0 +1,70 @@
+@startuml ch4-class-layers
+!pragma layout smetana
+title \n\n
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam monochrome true
+skinparam classAttributeIconSize 0
+skinparam class {
+  BackgroundColor #FFFFFF
+  BorderColor #333333
+}
+hide circle
+hide empty methods
+set separator none
+
+class "Clients" as C <<external>> {
+  Mobile app (Expo, drivers and police)
+  Admin web (Next.js)
+}
+
+class "api.routers (HTTP layer)" as R <<layer>> {
+  auth, applications, admin, licenses
+  police, fines, appeals, badges
+  notifications, road_incidents
+  danger_zones, face
+  --
+  deps: get_current_user(), require_role()
+}
+
+class "services (business rules)" as S <<layer>> {
+  auth, application, license, face
+  police, violation, fine, appeal
+  badge, notification
+  road_incident, danger_zone
+}
+
+class "repositories (data access)" as P <<layer>> {
+  user, application, license
+  violation, fine, appeal, badge
+  notification, road_incident, danger_zone
+}
+
+class "models (SQLAlchemy ORM)" as M <<layer>> {
+  User, Application, ApplicationDocument
+  License, Violation, Fine, Appeal, Badge
+  Notification, RoadIncident, DangerZone
+}
+
+class "core (shared modules)" as K <<layer>> {
+  config, database, security, rate_limit
+  file_storage, geo, push_service
+  face_engine, face_preprocessing
+  face_index, face_template_store
+}
+
+class "PostgreSQL 16" as DB <<database>>
+class "SQLite + FAISS\n(face templates)" as FT <<database>>
+class "Expo push service" as EX <<external>>
+
+C --> R : HTTPS, JSON, JWT
+R --> S : calls
+S --> P : calls
+P --> M : maps
+M --> DB : SQL (psycopg2)
+R ..> K : security,\nrate_limit, file_storage
+S ..> K : face, geo, push
+K --> FT : face_template_store,\nface_index
+K --> EX : push_service
+@enduml

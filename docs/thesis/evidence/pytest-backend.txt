@@ -1,0 +1,207 @@
+ Container ipermit-db-1 Running 
+ Container ipermit-db-1 Waiting 
+ Container ipermit-db-1 Healthy 
+ Container ipermit-backend-run-a8b89283b5ec Creating 
+ Container ipermit-backend-run-a8b89283b5ec Created 
+/usr/local/lib/python3.11/site-packages/pytest_asyncio/plugin.py:207: PytestDeprecationWarning: The configuration option "asyncio_default_fixture_loop_scope" is unset.
+The event loop scope for asynchronous fixtures will default to the fixture caching scope. Future versions of pytest-asyncio will default the loop scope for asynchronous fixtures to function scope. Set the default fixture loop scope explicitly in order to avoid unexpected behavior in the future. Valid fixture loop scopes are: "function", "class", "module", "package", "session"
+
+  warnings.warn(PytestDeprecationWarning(_DEFAULT_FIXTURE_LOOP_SCOPE_UNSET))
+============================= test session starts ==============================
+platform linux -- Python 3.11.16, pytest-8.3.4, pluggy-1.6.0 -- /usr/local/bin/python
+rootdir: /app
+configfile: pyproject.toml
+plugins: asyncio-0.25.0, anyio-4.15.1
+asyncio: mode=Mode.STRICT, asyncio_default_fixture_loop_scope=None
+collecting ... collected 165 items
+
+tests/test_admin.py::test_non_admin_cannot_list_applications PASSED      [  0%]
+tests/test_admin.py::test_admin_can_list_all_applications_across_drivers PASSED [  1%]
+tests/test_admin.py::test_admin_can_filter_by_status PASSED              [  1%]
+tests/test_admin.py::test_approve_application PASSED                     [  2%]
+tests/test_admin.py::test_cannot_approve_twice PASSED                    [  3%]
+tests/test_admin.py::test_reject_application_requires_reason PASSED      [  3%]
+tests/test_admin.py::test_reject_application_success PASSED              [  4%]
+tests/test_admin.py::test_approve_nonexistent_application PASSED         [  4%]
+tests/test_admin.py::test_driver_sees_updated_status_after_admin_decision PASSED [  5%]
+tests/test_admin.py::test_cannot_apply_while_an_application_is_pending PASSED [  6%]
+tests/test_admin.py::test_cannot_apply_again_once_licensed PASSED        [  6%]
+tests/test_admin.py::test_can_apply_again_after_rejection PASSED         [  7%]
+tests/test_admin.py::test_approve_refuses_a_driver_who_already_has_a_license PASSED [  7%]
+tests/test_admin.py::test_approve_face_engine_failure_is_503_and_leaves_application_pending PASSED [  8%]
+tests/test_appeals.py::test_submit_appeal_success PASSED                 [  9%]
+tests/test_appeals.py::test_cannot_appeal_twice PASSED                   [  9%]
+tests/test_appeals.py::test_cannot_appeal_a_paid_fine PASSED             [ 10%]
+tests/test_appeals.py::test_cannot_pay_fine_with_pending_appeal PASSED   [ 10%]
+tests/test_appeals.py::test_non_admin_cannot_list_appeals PASSED         [ 11%]
+tests/test_appeals.py::test_admin_lists_pending_appeals PASSED           [ 12%]
+tests/test_appeals.py::test_admin_upholds_appeal_leaves_fine_unpaid_and_points_unchanged PASSED [ 12%]
+tests/test_appeals.py::test_admin_overturns_appeal_reverses_fine_and_restores_points PASSED [ 13%]
+tests/test_appeals.py::test_cannot_resolve_appeal_twice PASSED           [ 13%]
+tests/test_applications.py::test_submit_application_success PASSED       [ 14%]
+tests/test_applications.py::test_submit_application_wrong_photo_count PASSED [ 15%]
+tests/test_applications.py::test_submit_application_rejects_invalid_image PASSED [ 15%]
+tests/test_applications.py::test_submit_application_rejects_wrong_content_type PASSED [ 16%]
+tests/test_applications.py::test_submit_application_requires_auth PASSED [ 16%]
+tests/test_applications.py::test_no_orphaned_files_on_validation_failure PASSED [ 17%]
+tests/test_applications.py::test_list_applications_returns_only_own PASSED [ 18%]
+tests/test_applications.py::test_get_application_forbidden_for_other_driver PASSED [ 18%]
+tests/test_applications.py::test_get_application_not_found PASSED        [ 19%]
+tests/test_applications.py::test_submit_application_rejects_blurry_face_photo PASSED [ 20%]
+tests/test_applications.py::test_submit_application_error_identifies_the_failing_photo PASSED [ 20%]
+tests/test_applications.py::test_submit_application_error_identifies_the_failing_document PASSED [ 21%]
+tests/test_applications.py::test_submit_application_face_engine_failure_is_503_not_a_photo_error PASSED [ 21%]
+tests/test_applications.py::test_submit_runs_face_inference_off_the_event_loop PASSED [ 22%]
+tests/test_auth.py::test_register_creates_driver PASSED                  [ 23%]
+tests/test_auth.py::test_register_rejects_client_supplied_role PASSED    [ 23%]
+tests/test_auth.py::test_duplicate_email_rejected PASSED                 [ 24%]
+tests/test_auth.py::test_duplicate_nic_rejected PASSED                   [ 24%]
+tests/test_auth.py::test_login_and_me PASSED                             [ 25%]
+tests/test_auth.py::test_login_wrong_password_rejected PASSED            [ 26%]
+tests/test_auth.py::test_me_requires_token PASSED                        [ 26%]
+tests/test_auth.py::test_health_and_ready PASSED                         [ 27%]
+tests/test_badge_formula.py::test_perfect_record_scores_100 PASSED       [ 27%]
+tests/test_badge_formula.py::test_current_points_weighted_heavily PASSED [ 28%]
+tests/test_badge_formula.py::test_lifetime_violation_severity_weighted_lightly PASSED [ 29%]
+tests/test_badge_formula.py::test_unpaid_fines_weighted_heavily PASSED   [ 29%]
+tests/test_badge_formula.py::test_tenure_bonus_accrues_per_quarter PASSED [ 30%]
+tests/test_badge_formula.py::test_tenure_bonus_is_capped PASSED          [ 30%]
+tests/test_badge_formula.py::test_score_clamped_at_zero PASSED           [ 31%]
+tests/test_badge_formula.py::test_tier_thresholds[100-PLATINUM] PASSED   [ 32%]
+tests/test_badge_formula.py::test_tier_thresholds[90-PLATINUM] PASSED    [ 32%]
+tests/test_badge_formula.py::test_tier_thresholds[89-GOLD] PASSED        [ 33%]
+tests/test_badge_formula.py::test_tier_thresholds[75-GOLD] PASSED        [ 33%]
+tests/test_badge_formula.py::test_tier_thresholds[74-SILVER] PASSED      [ 34%]
+tests/test_badge_formula.py::test_tier_thresholds[60-SILVER] PASSED      [ 35%]
+tests/test_badge_formula.py::test_tier_thresholds[59-BRONZE] PASSED      [ 35%]
+tests/test_badge_formula.py::test_tier_thresholds[40-BRONZE] PASSED      [ 36%]
+tests/test_badge_formula.py::test_tier_thresholds[39-AT_RISK] PASSED     [ 36%]
+tests/test_badge_formula.py::test_tier_thresholds[0-AT_RISK] PASSED      [ 37%]
+tests/test_badge_formula.py::test_suspended_license_always_suspended_tier_regardless_of_score PASSED [ 38%]
+tests/test_badges.py::test_badge_requires_driver_role PASSED             [ 38%]
+tests/test_badges.py::test_badge_not_found_before_any_license PASSED     [ 39%]
+tests/test_badges.py::test_badge_created_on_approval_is_platinum PASSED  [ 40%]
+tests/test_badges.py::test_badge_drops_after_violation_recorded PASSED   [ 40%]
+tests/test_badges.py::test_badge_recovers_after_fine_paid PASSED         [ 41%]
+tests/test_badges.py::test_badge_is_suspended_when_license_suspended_regardless_of_score PASSED [ 41%]
+tests/test_badges.py::test_badge_recovers_after_overturned_appeal PASSED [ 42%]
+tests/test_badges.py::test_non_admin_cannot_view_badge_distribution PASSED [ 43%]
+tests/test_badges.py::test_admin_badge_distribution_and_attention_queue PASSED [ 43%]
+tests/test_danger_zones.py::test_danger_zones_require_auth PASSED        [ 44%]
+tests/test_danger_zones.py::test_mark_and_list_nearby PASSED             [ 44%]
+tests/test_danger_zones.py::test_zone_far_outside_radius_is_excluded PASSED [ 45%]
+tests/test_danger_zones.py::test_confirm_increments_count_without_changing_status PASSED [ 46%]
+tests/test_danger_zones.py::test_clear_removes_zone_from_nearby_list PASSED [ 46%]
+tests/test_danger_zones.py::test_clear_is_idempotent PASSED              [ 47%]
+tests/test_danger_zones.py::test_clear_by_different_user_succeeds PASSED [ 47%]
+tests/test_danger_zones.py::test_confirm_nonexistent_zone_returns_404 PASSED [ 48%]
+tests/test_danger_zones.py::test_mark_rejects_radius_below_minimum PASSED [ 49%]
+tests/test_danger_zones.py::test_mark_rejects_radius_above_maximum PASSED [ 49%]
+tests/test_danger_zones.py::test_mark_accepts_radius_at_boundaries PASSED [ 50%]
+tests/test_danger_zones.py::test_mark_without_reason_succeeds PASSED     [ 50%]
+tests/test_face_consistency.py::test_identical_embeddings_are_consistent PASSED [ 51%]
+tests/test_face_consistency.py::test_nearly_identical_embeddings_pass_threshold PASSED [ 52%]
+tests/test_face_consistency.py::test_orthogonal_embeddings_are_rejected PASSED [ 52%]
+tests/test_face_consistency.py::test_opposite_embeddings_are_rejected PASSED [ 53%]
+tests/test_face_consistency.py::test_threshold_is_respected_at_the_boundary PASSED [ 53%]
+tests/test_face_enrollment.py::test_approve_with_consistent_face_photos_enrolls_face PASSED [ 54%]
+tests/test_face_enrollment.py::test_approve_fails_when_a_photo_has_no_face PASSED [ 55%]
+tests/test_face_enrollment.py::test_approve_fails_when_a_photo_has_multiple_faces PASSED [ 55%]
+tests/test_face_enrollment.py::test_face_status_endpoint_discloses_liveness_is_disabled PASSED [ 56%]
+tests/test_face_enrollment.py::test_re_enrollment_replaces_the_old_vector_in_the_index PASSED [ 56%]
+tests/test_face_enrollment.py::test_first_enrollment_after_startup_is_indexed_once PASSED [ 57%]
+tests/test_face_evaluation.py::test_compute_far_frr_perfect_separation PASSED [ 58%]
+tests/test_face_evaluation.py::test_compute_far_frr_counts_errors_correctly PASSED [ 58%]
+tests/test_face_evaluation.py::test_compute_far_frr_rejects_empty_input PASSED [ 59%]
+tests/test_face_evaluation.py::test_sweep_thresholds_covers_full_range PASSED [ 60%]
+tests/test_face_evaluation.py::test_find_equal_error_rate_on_separable_distributions PASSED [ 60%]
+tests/test_face_evaluation.py::test_find_equal_error_rate_on_overlapping_distributions PASSED [ 61%]
+tests/test_face_preprocessing.py::test_apply_clahe_increases_low_contrast_image_variance PASSED [ 61%]
+tests/test_face_preprocessing.py::test_apply_clahe_preserves_a_uniform_image PASSED [ 62%]
+tests/test_face_preprocessing.py::test_assess_photo_quality_passes_a_sharp_well_lit_adequately_sized_face PASSED [ 63%]
+tests/test_face_preprocessing.py::test_assess_photo_quality_rejects_low_detection_confidence PASSED [ 63%]
+tests/test_face_preprocessing.py::test_assess_photo_quality_rejects_a_too_small_face PASSED [ 64%]
+tests/test_face_preprocessing.py::test_assess_photo_quality_rejects_a_blurry_face PASSED [ 64%]
+tests/test_face_preprocessing.py::test_assess_photo_quality_rejects_poor_lighting PASSED [ 65%]
+tests/test_fines.py::test_list_fines_requires_driver_role PASSED         [ 66%]
+tests/test_fines.py::test_driver_sees_fine_after_violation_recorded PASSED [ 66%]
+tests/test_fines.py::test_pay_fine_marks_paid_and_restores_points PASSED [ 67%]
+tests/test_fines.py::test_pay_fine_reactivates_suspended_license PASSED  [ 67%]
+tests/test_fines.py::test_cannot_pay_fine_twice PASSED                   [ 68%]
+tests/test_fines.py::test_cannot_pay_someone_elses_fine PASSED           [ 69%]
+tests/test_fines.py::test_pay_nonexistent_fine_returns_404 PASSED        [ 69%]
+tests/test_geo.py::test_same_point_distance_is_zero PASSED               [ 70%]
+tests/test_geo.py::test_colombo_to_london_is_thousands_of_km PASSED      [ 70%]
+tests/test_licenses.py::test_no_license_before_approval PASSED           [ 71%]
+tests/test_licenses.py::test_license_requires_auth PASSED                [ 72%]
+tests/test_licenses.py::test_approving_application_issues_license PASSED [ 72%]
+tests/test_licenses.py::test_rejecting_application_does_not_issue_license PASSED [ 73%]
+tests/test_licenses.py::test_each_driver_gets_a_distinct_license PASSED  [ 73%]
+tests/test_licenses.py::test_other_driver_cannot_see_someone_elses_license PASSED [ 74%]
+tests/test_notifications.py::test_notifications_require_auth PASSED      [ 75%]
+tests/test_notifications.py::test_notification_on_license_approval PASSED [ 75%]
+tests/test_notifications.py::test_notification_on_license_rejection PASSED [ 76%]
+tests/test_notifications.py::test_notification_on_violation_and_suspension PASSED [ 76%]
+tests/test_notifications.py::test_no_suspension_notification_for_minor_violation PASSED [ 77%]
+tests/test_notifications.py::test_notification_on_payment PASSED         [ 78%]
+tests/test_notifications.py::test_notification_on_appeal_upheld_and_overturned PASSED [ 78%]
+tests/test_notifications.py::test_mark_notification_read PASSED          [ 79%]
+tests/test_notifications.py::test_cannot_mark_someone_elses_notification_read PASSED [ 80%]
+tests/test_notifications.py::test_register_push_token_triggers_push_on_next_notification PASSED [ 80%]
+tests/test_police.py::test_non_officer_cannot_verify_face PASSED         [ 81%]
+tests/test_police.py::test_verify_face_confident_match_does_not_require_manual_confirmation PASSED [ 81%]
+tests/test_police.py::test_verify_face_with_no_enrolled_drivers_requires_manual_confirmation PASSED [ 82%]
+tests/test_police.py::test_verify_face_rejects_photo_with_no_face PASSED [ 83%]
+tests/test_police.py::test_verify_face_rejects_photo_with_multiple_faces PASSED [ 83%]
+tests/test_police.py::test_verify_qr_returns_driver_summary PASSED       [ 84%]
+tests/test_police.py::test_verify_qr_unknown_token_returns_404 PASSED    [ 84%]
+tests/test_police.py::test_lookup_by_nic PASSED                          [ 85%]
+tests/test_police.py::test_lookup_by_license_no PASSED                   [ 86%]
+tests/test_police.py::test_lookup_without_params_is_rejected PASSED      [ 86%]
+tests/test_police.py::test_lookup_unknown_nic_returns_404 PASSED         [ 87%]
+tests/test_police.py::test_record_violation_deducts_points_and_creates_fine PASSED [ 87%]
+tests/test_police.py::test_repeated_violations_suspend_license_at_threshold PASSED [ 88%]
+tests/test_police.py::test_record_violation_for_driver_without_license_returns_404 PASSED [ 89%]
+tests/test_police.py::test_verify_face_runs_inference_off_the_event_loop PASSED [ 89%]
+tests/test_police.py::test_verify_face_engine_failure_is_503_without_internal_details PASSED [ 90%]
+tests/test_police.py::test_verify_face_rejects_non_image_upload PASSED   [ 90%]
+tests/test_police.py::test_verify_face_rejects_oversized_upload PASSED   [ 91%]
+tests/test_police.py::test_verify_face_rejects_image_with_too_many_pixels PASSED [ 92%]
+tests/test_police.py::test_verify_face_is_rate_limited PASSED            [ 92%]
+tests/test_road_incidents.py::test_road_incidents_require_auth PASSED    [ 93%]
+tests/test_road_incidents.py::test_report_and_list_nearby PASSED         [ 93%]
+tests/test_road_incidents.py::test_incident_far_outside_radius_is_excluded PASSED [ 94%]
+tests/test_road_incidents.py::test_confirm_increments_count_without_changing_status PASSED [ 95%]
+tests/test_road_incidents.py::test_clear_removes_incident_from_nearby_list PASSED [ 95%]
+tests/test_road_incidents.py::test_expired_incident_is_excluded_and_marked_expired PASSED [ 96%]
+tests/test_road_incidents.py::test_confirm_nonexistent_incident_returns_404 PASSED [ 96%]
+tests/test_road_incidents.py::test_report_rejects_invalid_latitude PASSED [ 97%]
+tests/test_utc_datetime.py::test_naive_datetime_is_serialized_as_utc PASSED [ 98%]
+tests/test_utc_datetime.py::test_aware_datetime_is_converted_to_utc PASSED [ 98%]
+tests/test_utc_datetime.py::test_optional_none_stays_none PASSED         [ 99%]
+tests/test_utc_datetime.py::test_api_timestamps_carry_utc_offset PASSED  [100%]
+
+=============================== warnings summary ===============================
+../usr/local/lib/python3.11/site-packages/passlib/utils/__init__.py:854
+  /usr/local/lib/python3.11/site-packages/passlib/utils/__init__.py:854: DeprecationWarning: 'crypt' is deprecated and slated for removal in Python 3.13
+    from crypt import crypt as _crypt
+
+tests/test_admin.py::test_non_admin_cannot_list_applications
+  /usr/local/lib/python3.11/site-packages/starlette/testclient.py:40: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
+    _PortalFactoryType = typing.Callable[[], typing.ContextManager[anyio.abc.BlockingPortal]]
+
+tests/test_admin.py: 12 warnings
+tests/test_appeals.py: 9 warnings
+tests/test_applications.py: 7 warnings
+tests/test_badges.py: 6 warnings
+tests/test_face_enrollment.py: 3 warnings
+tests/test_fines.py: 5 warnings
+tests/test_licenses.py: 4 warnings
+tests/test_notifications.py: 9 warnings
+tests/test_police.py: 9 warnings
+  /usr/local/lib/python3.11/site-packages/insightface/utils/face_align.py:23: FutureWarning: `estimate` is deprecated since version 0.26 and will be removed in version 2.2. Please use `SimilarityTransform.from_estimate` class constructor instead.
+    tform.estimate(lmk, dst)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================= 165 passed, 66 warnings in 249.91s (0:04:09) =================
+exit 0

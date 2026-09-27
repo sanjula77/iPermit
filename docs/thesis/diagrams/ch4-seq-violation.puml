@@ -1,0 +1,46 @@
+@startuml ch4-seq-violation
+title \n\n
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam monochrome true
+skinparam sequenceMessageAlign left
+skinparam maxMessageSize 125
+skinparam ParticipantPadding 4
+hide footbox
+
+actor "Officer\n(mobile app)" as O
+participant "police\nrouter" as R
+participant "violation_\nservice" as VS
+database "PostgreSQL" as DB
+participant "badge_\nservice" as BS
+participant "notification_\nservice" as NS
+participant "Expo\npush" as EX
+
+O -> O : choose type; confirm dialog shows points, total, fine, suspension
+O -> R : POST /police/violations {driver_id, type, evidence_ref}
+note over R : POLICE only (403)\nbad type (422)
+R -> VS : record_violation()
+VS -> DB : latest licence of driver
+alt no licence
+  R --> O : 404 "This driver has no issued license"
+end
+group one PostgreSQL transaction
+  VS -> DB : insert Violation (points by type)
+  VS -> DB : flush; insert Fine (amount by type, UNPAID)
+  VS -> DB : points += n; SUSPENDED if >= 10
+  VS -> DB : COMMIT
+end
+VS -> BS : recompute_badge()
+BS -> DB : upsert badge, COMMIT
+opt tier changed
+  BS -> NS : notify(BADGE_CHANGED)
+end
+VS -> NS : notify(FINE_ISSUED)
+NS -> DB : insert notification, COMMIT
+NS -> EX : push (best effort)
+opt licence now SUSPENDED
+  VS -> NS : notify(LICENSE_SUSPENDED)
+end
+R --> O : 201 {violation, fine, driver_points, license_status}
+@enduml

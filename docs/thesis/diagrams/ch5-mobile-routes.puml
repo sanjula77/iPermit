@@ -1,0 +1,30 @@
+@startwbs ch5-mobile-routes
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+<style>
+wbsDiagram {
+  FontName Arial
+  FontSize 13
+  node {
+    BackgroundColor #FFFFFF
+    LineColor #333333
+    RoundCorner 0
+    Padding 6
+    Margin 8
+  }
+  arrow {
+    LineColor #333333
+  }
+}
+</style>
+* src/app/_layout.tsx\nRoot layout: theme + AuthProvider + <Slot>
+** index.tsx\nRedirects by auth state
+** (auth)/_layout.tsx\nStack; redirects a signed-in\nuser to (home)
+*** login.tsx\nLog in (email or NIC)
+*** register.tsx\nDriver self-registration
+** (app)/_layout.tsx\nStack; redirects to login if signed out;\nregisters the Expo push token
+*** (tabs)/_layout.tsx\nNativeTabs, tab set\nchosen by role (Fig. 5.2)
+*** apply.tsx\nPushed screen:\n"Apply for License"
+*** police-driver.tsx\nPushed screen:\n"Driver Details" and\nrecord violation
+@endwbs

@@ -1,0 +1,47 @@
+@startuml ch4-act-application
+title \n\n
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam monochrome true
+
+|Driver (mobile app)|
+start
+:Open Home;
+if (Licence issued or\napplication pending?) then (yes)
+  :Home shows licence card\nor "under review";
+  stop
+else (no, or last one rejected)
+endif
+:Tap "Apply for License"\n(or "Apply again");
+repeat
+  :Pick or replace 4 face photos\n(camera or library) and NIC, medical\nand birth certificates;
+  :Submit (enabled only when\nall 7 files are ready);
+  |Backend|
+  if (Licence exists or\napplication pending?) then (yes)
+    :409 conflict (licence already\nissued or under review);
+    |Driver (mobile app)|
+    stop
+  else (no)
+  endif
+  |Backend|
+  :For each face photo: JPEG/PNG, <= 10 MB,\n>= 200 x 200 px, <= 50 MP;
+  :Detect faces (CLAHE, RetinaFace);
+  :Quality gate: exactly one face,\ndetection score >= 0.7, face >= 80 px,\nsharpness >= 100, brightness 30-220;
+  :Check documents: JPEG/PNG/PDF, <= 10 MB;
+  if (Face engine failed?) then (yes)
+    :Delete saved files; 503 "Photo\nchecks are temporarily unavailable";
+    |Driver (mobile app)|
+    :Retry later;
+    stop
+  else (no)
+  endif
+  |Driver (mobile app)|
+repeat while (422: a file was rejected?) is (yes: saved files deleted;\napp highlights the photo\nor file named in the error)
+->no;
+|Backend|
+:Create application (PENDING)\nwith 7 documents, commit;
+|Driver (mobile app)|
+:Home shows "Application under review";
+stop
+@enduml

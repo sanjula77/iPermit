@@ -1,0 +1,52 @@
+@startuml ch4-seq-approval
+title \n\n
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam monochrome true
+skinparam sequenceMessageAlign left
+skinparam maxMessageSize 125
+skinparam ParticipantPadding 4
+hide footbox
+
+actor "Administrator\n(admin web)" as A
+participant "admin\nrouter" as R
+participant "application_\nservice" as AS
+participant "face_service\n+ face_engine" as FS
+database "PostgreSQL" as DB
+database "SQLite +\nFAISS" as FT
+participant "badge,\nnotify" as BN
+
+A -> R : POST /admin/applications/{id}/approve
+note over R : require_role(ADMIN),\nelse 403
+R -> AS : approve_application(id)
+AS -> DB : load application, driver's licence
+alt not found / not PENDING / licence exists
+  R --> A : 404 or 409
+end
+AS -> FS : build_enrollment_embedding()
+loop 4 face photos
+  FS -> FS : detect_faces: CLAHE, RetinaFace, ArcFace (512-d)
+end
+FS -> FS : pairwise check: 6 pairs, each >= 0.42
+alt no face, several faces or inconsistent photos
+  FS --> AS : FaceEnrollmentError
+  R --> A : 422; stays PENDING, nothing written
+else model or inference failure
+  R --> A : 503 "temporarily unavailable"
+end
+FS --> AS : averaged, re-normalised template
+group one PostgreSQL transaction
+  AS -> DB : status = APPROVED
+  AS -> AS : license_service.issue_license()
+  AS -> DB : add licence (DL-number, QR token, expiry +5 years)
+  AS -> DB : COMMIT
+end
+AS -> FS : store_template(driver_id, template)
+FS -> FT : save_template (upsert), add_to_index
+note over FT : after the commit; a failure\nhere does not roll back\nthe approval (known gap)
+AS -> BN : recompute_badge (initial)
+AS -> BN : notify(LICENSE_APPROVED)
+AS --> R : application
+R --> A : 200 ApplicationRead (APPROVED)
+@enduml

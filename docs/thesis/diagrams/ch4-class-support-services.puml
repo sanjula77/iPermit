@@ -1,0 +1,58 @@
+@startuml ch4-class-support-services
+!pragma layout smetana
+title \n\n
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam monochrome true
+skinparam classAttributeIconSize 0
+skinparam class {
+  BackgroundColor #FFFFFF
+  BorderColor #333333
+}
+hide circle
+hide empty members
+set separator none
+
+class "auth router" as AR <<router>> {
+  +register(email, nic, password)
+  +login(identifier, password)
+  +me()
+}
+class "deps" as DP <<router>> {
+  +get_current_user(token) : User
+  +require_role(*roles)
+}
+class "auth_service" as AU <<service>> {
+  +register_driver(email, nic, password) : User
+  +authenticate(identifier, password) : str
+}
+class "security" as SE <<core>> {
+  +hash_password(plain) : str
+  +verify_password(plain, hash) : bool
+  +create_access_token(sub, role) : str
+  +decode_access_token(token) : dict
+}
+class "road_incidents and\ndanger_zones routers" as RR <<router>> {
+  +report / mark()
+  +list_nearby(lat, lng, radius_km)
+  +confirm(id)
+  +clear(id)
+}
+class "road_incident_service\ndanger_zone_service" as RI <<service>> {
+  +report_incident() / mark_zone()
+  +list_nearby(lat, lng, radius_km)
+  +confirm_incident() / confirm_zone()
+  +clear_incident() / clear_zone()
+}
+class "geo" as GE <<core>> {
+  +haversine_km(lat1, lng1, lat2, lng2) : float
+}
+
+AR --> AU
+AU --> SE
+DP --> SE : decode JWT
+RR --> RI
+RR ..> DP : any logged-in role
+RI --> GE
+@enduml

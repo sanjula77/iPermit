@@ -1,0 +1,94 @@
+@startuml ch4-class-domain-core
+!pragma layout smetana
+title \n\n
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam monochrome true
+skinparam classAttributeIconSize 0
+skinparam class {
+  BackgroundColor #FFFFFF
+  BorderColor #333333
+}
+hide circle
+set separator none
+hide empty methods
+
+class User {
+  id : UUID
+  {field} email : String(255)
+  {field} nic : String(20)
+  {field} password_hash : String(255)
+  role : UserRole
+  created_at : DateTime
+  {field} push_token : String(255) [0..1]
+}
+
+class Application {
+  id : UUID
+  status : ApplicationStatus
+  reason : Text [0..1]
+  created_at : DateTime
+  updated_at : DateTime
+}
+
+class ApplicationDocument {
+  id : UUID
+  doc_type : DocumentType
+  {field} file_path : String(512)
+  created_at : DateTime
+}
+
+class License {
+  id : UUID
+  {field} license_no : String(32)
+  {field} qr_token : String(64)
+  status : LicenseStatus
+  points : Integer
+  issued_at : DateTime
+  expiry_at : DateTime
+}
+
+class Violation {
+  id : UUID
+  type : ViolationType
+  points_deducted : Integer
+  evidence_ref : Text [0..1]
+  confirmed_at : DateTime
+}
+
+class Fine {
+  id : UUID
+  {field} amount : Integer (LKR)
+  status : FineStatus
+  created_at : DateTime
+  paid_at : DateTime [0..1]
+  payment_method : PaymentMethod [0..1]
+}
+
+class Appeal {
+  id : UUID
+  reason : Text
+  status : AppealStatus
+  created_at : DateTime
+  resolved_at : DateTime [0..1]
+}
+
+class Badge {
+  tier : BadgeTier
+  safety_score : Integer
+  updated_at : DateTime
+}
+
+User "1" -- "0..*" Application : applies >
+Application "1" *-- "7" ApplicationDocument : contains >
+Application "1" -- "0..1" License : results in >
+User "1" -- "0..1" License : holds >
+User "1" -- "0..*" Violation : committed by driver <
+User "1" -- "0..*" Violation : recorded by officer <
+Violation "1" -- "1" Fine : generates >
+Fine "1" -- "0..1" Appeal : contested by <
+User "1" -- "0..*" Appeal : submits >
+Appeal "0..*" -right- "0..1" User : resolved by >
+User "1" -- "0..1" Badge : has >
+@enduml

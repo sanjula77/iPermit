@@ -1,0 +1,47 @@
+@startuml ch4-seq-verify-face
+title \n\n
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam monochrome true
+skinparam sequenceMessageAlign left
+skinparam maxMessageSize 125
+skinparam ParticipantPadding 4
+hide footbox
+
+actor "Officer" as O
+participant "Mobile app\n(Verify tab)" as M
+participant "police\nrouter" as R
+participant "police_\nservice" as PS
+participant "face_\nengine" as FE
+participant "face_index\n(FAISS)" as FI
+database "SQLite store,\nPostgreSQL" as DB
+
+O -> M : Face mode, Capture photo
+M -> R : POST /police/verify-face
+note over R : 30/minute per IP (429)\nPOLICE only (403)\nfile checks (422)
+R -> PS : verify_face(bytes)
+PS -> FE : detect_faces(image)
+alt engine failure
+  R --> M : 503 "... Use QR or NIC lookup."
+else no face or several faces
+  R --> M : 422 error message
+end
+PS -> FI : search(embedding, k = 3)
+note over FI : exact search\n(IndexFlatIP)
+FI --> PS : up to 3 (similarity, rowid)
+loop each candidate
+  PS -> DB : rowid to driver id (SQLite); user, licence, violations
+end
+PS -> PS : manual = no match or best < 0.42
+R --> M : 200 {requires_manual_confirmation, best_match, candidates}
+alt confident match
+  M --> O : driver record
+else uncertain, candidates returned
+  M --> O : warning and ranked candidates (% match)
+  O -> M : pick candidate (or reject all)
+  M --> O : selected driver record
+else no candidates
+  M --> O : "Use QR or NIC instead."
+end
+@enduml

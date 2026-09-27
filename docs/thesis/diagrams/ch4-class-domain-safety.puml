@@ -1,0 +1,77 @@
+@startuml ch4-class-domain-safety
+!pragma layout smetana
+title \n\n
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam monochrome true
+skinparam classAttributeIconSize 0
+skinparam class {
+  BackgroundColor #FFFFFF
+  BorderColor #333333
+}
+skinparam package {
+  BorderColor #333333
+}
+hide circle
+set separator none
+hide empty methods
+
+package "PostgreSQL" {
+  class User {
+    id : UUID
+    {field} email : String(255)
+    {field} nic : String(20)
+    role : UserRole
+    {field} push_token : String(255) [0..1]
+  }
+
+  class Notification {
+    id : UUID
+    type : NotificationType
+    message : Text
+    read_at : DateTime [0..1]
+    created_at : DateTime
+  }
+
+  class RoadIncident {
+    id : UUID
+    type : RoadIncidentType
+    severity : RoadIncidentSeverity
+    lat : Float
+    lng : Float
+    status : RoadIncidentStatus
+    confirmation_count : Integer
+    created_at : DateTime
+    expires_at : DateTime
+  }
+
+  class DangerZone {
+    id : UUID
+    lat : Float
+    lng : Float
+    {field} radius_m : Float (50..1000)
+    severity : DangerZoneSeverity
+    reason : Text [0..1]
+    status : DangerZoneStatus
+    confirmation_count : Integer
+    created_at : DateTime
+    cleared_at : DateTime [0..1]
+  }
+}
+
+package "SQLite (face_templates.db)" {
+  class FaceTemplate {
+    rowid : Integer
+    driver_id : Text
+    {field} embedding : Blob (512 x float32)
+    {field} created_at : Text (ISO time)
+  }
+}
+
+User "1" -- "0..*" Notification : receives >
+User "1" -- "0..*" RoadIncident : reports >
+User "1" -- "0..*" DangerZone : marks >
+User "0..1" -- "0..*" DangerZone : clears >
+User .. FaceTemplate : 0..1 template per driver,\nlinked by user id\n(no foreign key) >
+@enduml

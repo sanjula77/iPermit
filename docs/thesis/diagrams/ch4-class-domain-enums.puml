@@ -1,0 +1,115 @@
+@startuml ch4-class-domain-enums
+!pragma layout smetana
+title \n\n
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam monochrome true
+skinparam classAttributeIconSize 0
+skinparam class {
+  BackgroundColor #FFFFFF
+  BorderColor #333333
+}
+hide circle
+set separator none
+hide empty methods
+
+enum UserRole {
+  DRIVER
+  POLICE
+  ADMIN
+}
+enum ApplicationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+enum DocumentType {
+  FACE_PHOTO
+  NIC
+  MEDICAL_CERT
+  BIRTH_CERT
+}
+enum LicenseStatus {
+  ACTIVE
+  SUSPENDED
+}
+enum ViolationType {
+  {field} WHITE_LINE (3 pts, LKR 2,000)
+  {field} SPEEDING (4 pts, LKR 5,000)
+  {field} RED_LIGHT (6 pts, LKR 10,000)
+  {field} DRUNK_DRIVING (10 pts, LKR 25,000)
+}
+enum FineStatus {
+  UNPAID
+  PAID
+  REVERSED
+}
+enum PaymentMethod {
+  CARD
+  BANK
+  WALLET
+}
+enum AppealStatus {
+  PENDING
+  UPHELD
+  OVERTURNED
+}
+enum BadgeTier {
+  {field} PLATINUM (>= 90)
+  {field} GOLD (>= 75)
+  {field} SILVER (>= 60)
+  {field} BRONZE (>= 40)
+  {field} AT_RISK (< 40)
+  {field} SUSPENDED (override)
+}
+enum NotificationType {
+  LICENSE_APPROVED
+  LICENSE_REJECTED
+  FINE_ISSUED
+  LICENSE_SUSPENDED
+  PAYMENT_CONFIRMED
+  APPEAL_UPHELD
+  APPEAL_OVERTURNED
+  BADGE_CHANGED
+  {field} NEARBY_INCIDENT (not triggered)
+}
+enum RoadIncidentType {
+  ACCIDENT
+  TRAFFIC
+  ROAD_BLOCK
+  FLOOD
+  CONSTRUCTION
+  BREAKDOWN
+  HAZARD
+  OTHER
+}
+enum "RoadIncidentSeverity /\nDangerZoneSeverity" as Sev {
+  LOW
+  MEDIUM
+  HIGH
+}
+enum RoadIncidentStatus {
+  ACTIVE
+  CLEARED
+  EXPIRED
+}
+enum DangerZoneStatus {
+  ACTIVE
+  CLEARED
+}
+
+UserRole -[hidden]right- ApplicationStatus
+ApplicationStatus -[hidden]right- DocumentType
+DocumentType -[hidden]right- LicenseStatus
+UserRole -[hidden]down- ViolationType
+ApplicationStatus -[hidden]down- FineStatus
+DocumentType -[hidden]down- PaymentMethod
+LicenseStatus -[hidden]down- AppealStatus
+ViolationType -[hidden]down- BadgeTier
+FineStatus -[hidden]down- NotificationType
+PaymentMethod -[hidden]down- RoadIncidentType
+AppealStatus -[hidden]down- Sev
+BadgeTier -[hidden]down- RoadIncidentStatus
+NotificationType -[hidden]down- DangerZoneStatus
+@enduml

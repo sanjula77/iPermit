@@ -1,0 +1,47 @@
+@startuml ch4-usecase-admin
+!pragma layout smetana
+left to right direction
+title \n\n
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam actorStyle awesome
+skinparam packageStyle rectangle
+skinparam usecase {
+  BackgroundColor #FFFFFF
+  BorderColor #333333
+}
+skinparam rectangle {
+  BorderColor #333333
+}
+
+actor "Administrator" as A
+actor "Face Recognition\nModule" as FR <<system>>
+
+rectangle "iPermit: administration (web dashboard)" {
+  usecase "Log in\n(ADMIN role only)" as A1
+  usecase "Approve application" as A3
+  usecase "Reject application\nwith reason" as A4
+  usecase "Resolve appeal\n(uphold or overturn)" as A8
+  usecase "View badge distribution\nand attention queue" as A10
+  usecase "Enrol face template" as A5
+  usecase "Issue digital licence" as A6
+  usecase "Notify driver" as A11
+  usecase "Reverse fine and\nrestore points" as A9
+}
+
+A --> A1
+A --> A3
+A --> A4
+A --> A8
+A --> A10
+
+A3 ..> A5 : <<include>>
+A3 ..> A6 : <<include>>
+A3 ..> A11 : <<include>>
+A4 ..> A11 : <<include>>
+A8 ..> A11 : <<include>>
+A9 ..> A8 : <<extend>>\n[overturned]
+
+A5 <-- FR
+@enduml

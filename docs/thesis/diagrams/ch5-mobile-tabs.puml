@@ -1,0 +1,35 @@
+@startwbs ch5-mobile-tabs
+skinparam shadowing false
+<style>
+wbsDiagram {
+  FontName Arial
+  FontSize 13
+  node {
+    BackgroundColor #FFFFFF
+    LineColor #333333
+    RoundCorner 0
+    Padding 5
+    Margin 6
+  }
+  arrow {
+    LineColor #333333
+  }
+  .group {
+    BackgroundColor #E6E6E6
+  }
+}
+</style>
+* (tabs)/_layout.tsx: NativeTabs\n(one route group and Stack per tab)
+** Every role <<group>>
+*** Home tab (home)/index.tsx\nDriver: licence, badge, application\nPolice: verification hub
+*** Incidents tab\n(incidents)/incidents.tsx\nmap and list
+**** report.tsx (modal)\nreport incident or\nmark danger zone
+*** Alerts tab\n(notifications)/notifications.tsx\nunread-count badge
+*** Profile tab\n(profile)/profile.tsx\n@expo/ui components
+** Driver only <<group>>
+*** Fines tab\n(fines)/fines.tsx\nfine list and balance
+**** fine/[id].tsx (detail)\npay or appeal
+** Police only <<group>>
+*** Verify tab\n(police-verify)/police-verify.tsx\nface, QR or NIC lookup
+**** pushes police-driver.tsx\n(Fig. 5.1)
+@endwbs

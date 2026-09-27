@@ -1,0 +1,47 @@
+@startuml ch5-backend-layers
+!pragma layout smetana
+title \n\n
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam packageStyle rectangle
+skinparam rectangle {
+  BackgroundColor #FFFFFF
+  BorderColor #333333
+}
+skinparam package {
+  BackgroundColor #FFFFFF
+  BorderColor #333333
+}
+skinparam database {
+  BackgroundColor #FFFFFF
+  BorderColor #333333
+}
+skinparam arrow {
+  Color #333333
+}
+
+rectangle "app/main.py\nFastAPI app, CORS, slowapi limiter,\n/health and /ready" as MAIN
+rectangle "app/api/routers/ (12 modules)\nHTTP only: parse request, check role,\ncall a service, map errors to status codes" as ROUTERS
+rectangle "app/api/deps.py\nget_current_user,\nrequire_role" as DEPS
+rectangle "app/schemas/\nPydantic request and\nresponse models" as SCHEMAS
+rectangle "app/services/ (12 modules)\nbusiness rules and\ntransaction boundaries" as SERVICES
+rectangle "app/core/ (12 modules)\nconfig, database, security, rate_limit,\nfile_storage, geo, push_service,\nface_engine, face_preprocessing,\nface_index, face_template_store,\nface_evaluation" as CORE
+rectangle "app/repositories/ (10 modules)\nSQLAlchemy queries,\nno business rules" as REPOS
+rectangle "app/models/ (10 modules)\nSQLAlchemy ORM entities and enums" as MODELS
+database "PostgreSQL 16" as PG
+rectangle "alembic/versions/\n8 migrations" as ALEMBIC
+rectangle "app/scripts/create_admin.py\nCLI for POLICE and\nADMIN accounts" as SCRIPT
+
+MAIN -down-> ROUTERS
+ROUTERS -right-> DEPS
+SCHEMAS <-left- ROUTERS
+ROUTERS -down-> SERVICES
+SERVICES -right-> CORE
+DEPS -down-> CORE
+SERVICES -down-> REPOS
+REPOS -down-> MODELS
+MODELS -down-> PG
+ALEMBIC -left-> PG
+SCRIPT -down-> REPOS
+@enduml

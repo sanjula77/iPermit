@@ -33,7 +33,7 @@ evaluation run.
 |---|---|---|---|
 | 1 | §5.1 + Fig. 2 | Uses the superseded v1 evaluation run; numbers wrong; text contradicts its own figure | **Critical** |
 | 2 | §5 intro | Claims a usability evaluation and performance evaluation that were never run | **Critical** |
-| 3 | References | 4 appear fabricated, 1 is a placeholder, [37] doesn't exist, 12 others have errors | **Critical** |
+| 3 | References | 4 look fabricated, 2 more can't be found as cited, 1 is a placeholder, 10 have errors, [37] doesn't exist | **Critical** |
 | 4 | §4 System Design | Says embeddings are in PostgreSQL and the AI runs as a microservice (both false); claims UML/API specs that aren't shown | **Critical** |
 | 5 | Abstract | Says all 14 requirements were verified; says face evaluation is still "future" | **Critical** |
 | 6 | §3.5 last paragraph | Says no FAR/FRR/EER evaluation was done (now false) | **Critical** |
@@ -61,8 +61,9 @@ evaluation run.
    both datasets"*. That is the first Colab run
    (`docs/diagrams/face-recognition-far-frr-curve.png`), which was thrown out
    because it (a) skipped the backend's CLAHE step, so it was **not the
-   deployed pipeline**, and (b) used every LFW image, so George W. Bush alone
-   produced about 59% of all genuine pairs. The run that actually matches the
+   deployed pipeline**, and (b) didn't cap images per person, so George W.
+   Bush's hundreds of photos dominated the LFW genuine pairs. (The pair counts
+   match that run exactly: 3,984 LFW and 1,374 Bollywood images.) The run that actually matches the
    deployed system (v2) gives: LFW 9,396 genuine / 949,024 impostor pairs,
    Bollywood 10,500 / 1,113,750, EER 0.32% at threshold 0.194 (LFW) and 1.13%
    at 0.209 (Bollywood). Source: `docs/evaluation/results/results_tables.md`.
@@ -100,7 +101,7 @@ The face-verification pipeline was evaluated offline using the same models and p
 
 At the deployed threshold τ = 0.42 the system accepted 12 of 949,024 LFW impostor pairs (FAR 0.0013%) and 28 of 1,113,750 Bollywood impostor pairs (FAR 0.0025%) (TABLES IV and V). Inspection showed that all 40 false accepts involved one of three mislabelled photographs being matched to photographs of the person actually shown: an LFW image filed under Recep Tayyip Erdoğan that depicts Abdullah Gül, and two Bollywood images filed under Arjun Rampal and Vaani Kapoor whose embeddings match Hrithik Roshan and Shilpa Shetty (median similarity 0.66 and 0.58 to those identities' images, against 0.18 or less to their labelled identities). Apart from these labelling errors, no pair of different people exceeded the threshold. False rejection rates were higher: 2.91% (95% CI 1.79–4.09%) on LFW and 9.89% (8.30–11.72%) on Bollywood. The EER was 0.32% at a threshold of 0.194 on LFW and 1.13% at 0.209 on Bollywood. The DET curves (Fig. 2) show the Bollywood curve above the LFW curve across the whole operating range, and the score distributions (Fig. 3) show that the difference comes from the genuine scores (mean genuine similarity 0.561 versus 0.632), while the impostor distributions of the two datasets are nearly identical.
 
-Because web-collected datasets contain labelling errors, a sensitivity analysis removed images whose median similarity to the other images of the same identity was below 0.25 (2 LFW and 9 Bollywood images). This reduced FAR at τ to zero on both datasets and the EER to 0.08% (LFW) and 0.20% (Bollywood), while FRR changed only slightly (2.62% and 8.80%). The FRR gap is therefore not an artefact of labelling errors; Bollywood false rejections were also spread across 90 of the 100 identities, whereas LFW false rejections were concentrated in 29 of 96.
+Because web-collected datasets contain labelling errors, a sensitivity analysis removed images whose median similarity to the other images of the same identity was below 0.25 (2 LFW and 9 Bollywood images). This reduced FAR at τ to zero on both datasets and the EER to 0.07% (LFW) and 0.20% (Bollywood), while FRR changed only slightly (2.62% and 8.80%). The FRR gap is therefore not an artefact of labelling errors; Bollywood false rejections were also spread across 90 of the 100 identities, whereas LFW false rejections were concentrated in 29 of 96.
 
 To check the contribution of the CLAHE step, the same 1,367 LFW images (those with exactly one detected face in both conditions) were re-embedded without it. Removing CLAHE reduced FRR at τ = 0.42 from 2.95% to 1.37%, with no meaningful change in FAR (0.0013% versus 0.0016%) or EER (0.32% versus 0.31%). CLAHE lowered the genuine similarity score in 89.5% of same-person pairs (mean change −0.035), plausibly because ArcFace was trained on unprocessed photographs, so contrast enhancement moves its input away from the training distribution. At a fixed threshold this lowers genuine scores without improving separation, so the preprocessing step described in the original design increases false rejections.
 
@@ -182,7 +183,7 @@ test + SUS questionnaire) and the actual scores.
 **Paste this:**
 
 ```text
-The iPermit prototype integrates digital license issuance, face-based and QR/NIC-based roadside verification, manually recorded violations with point deduction and suspension, fines with mock payment and appeals, rule-based driver badges, notifications, and road incident and danger-zone reporting in a single platform. Functional correctness was established in two ways: an automated backend test suite (unit tests for pure business rules and integration tests for every API endpoint against an isolated test database), and live verification of each workflow against the running Docker-based deployment through the mobile app, the admin dashboard and direct API calls (Section 3.4). This section reports the one quantitative evaluation performed so far, of the face-verification pipeline (Section 5.1). A usability study with drivers, police officers and administrators, and performance and load testing of the backend, have not yet been carried out; no usability, latency or throughput claims are therefore made for the prototype, and these evaluations are identified as future work in Section 6.
+The iPermit prototype integrates digital license issuance, face-based and QR/NIC-based roadside verification, manually recorded violations with point deduction and suspension, fines with mock payment and appeals, rule-based driver badges, notifications, and road incident and danger-zone reporting in a single platform. Functional correctness was established in two ways: an automated backend test suite (unit tests for pure business rules and integration tests of the API endpoints against an isolated test database), and live verification of each workflow against the running Docker-based deployment through the mobile app, the admin dashboard and direct API calls (Section 3.4). This section reports the one quantitative evaluation performed so far, of the face-verification pipeline (Section 5.1). A usability study with drivers, police officers and administrators, and performance and load testing of the backend, have not yet been carried out; no usability, latency or throughput claims are therefore made for the prototype, and these evaluations are identified as future work in Section 6.
 ```
 
 ---
@@ -255,9 +256,12 @@ In Sri Lanka, traffic law enforcement and driving license management continue to
 **Fix, part B — replace the whole reference list** with the list below. It
 contains the corrected [1]–[21] (keeping the same numbers, so the other
 in-text citations stay valid) plus the new [22]–[30] introduced by items 1,
-7 and 11, numbered in order of first appearance. Every entry was verified on
-2026-09-27. Before submitting, open [7] once to confirm its year, since the
-year is only implied by the World Bank document ID.
+7 and 11, numbered in order of first appearance. Every entry was checked on
+2026-09-27: all 21 DOIs were resolved on Crossref and their title, authors,
+venue, volume and pages match; the entries without a DOI were checked on the
+publisher or repository page. [15] (IJSRST) and [18] (University of
+Nairobi repository) block automated access, so they were confirmed only
+once; open those two pages yourself before submitting.
 
 **Paste this:**
 
@@ -274,7 +278,7 @@ year is only implied by the World Bank document ID.
 
 [6] J. Wang, C. Zhao, and Z. Liu, "Can historical accident data improve sustainable urban traffic safety? A predictive modeling study," Sustainability, vol. 16, no. 22, Art. no. 9642, Nov. 2024, doi: 10.3390/su16229642.
 
-[7] World Bank, "Smart Mobility Toolkit for World Bank Operations," Washington, DC, USA, Rep. 099041224104510934, 2024.
+[7] World Bank, "Smart Mobility Toolkit for World Bank Operations," World Bank, Washington, DC, USA, Rep. 189194, Dec. 2023. [Online]. Available: http://documents.worldbank.org/curated/en/099041224104510934
 
 [8] K. Wang, J. De Vos, M. Smart, and S. Wang, "Explaining youth driver licensing determinants using XGBoost and SHAP," Transport Policy, vol. 168, pp. 87–100, Jul. 2025, doi: 10.1016/j.tranpol.2025.04.009.
 
@@ -296,7 +300,7 @@ year is only implied by the World Bank document ID.
 
 [17] K. Varshney, Chelse, A. Parasher, S. K. Tomar, and R. Paul, "Digital identity management using biometric systems: BioTrace," J. Inf. Syst. Eng. Manage., vol. 10, no. 51s, pp. 374–385, May 2025, doi: 10.52783/jisem.v10i51s.10396.
 
-[18] C. S. Kimulu, "Stakeholder engagement practices and performance of smart driving licence project among public service vehicles in Kisumu County," M.S. thesis, Univ. of Nairobi, Nairobi, Kenya, 2024. [Online]. Available: http://erepository.uonbi.ac.ke/handle/11295/167318
+[18] C. S. Kimulu, "Stakeholder engagement practices and performance of smart driving licence project among public service vehicles in Kisumu County," thesis, Univ. of Nairobi, Nairobi, Kenya, 2024. [Online]. Available: http://erepository.uonbi.ac.ke/handle/11295/167318
 
 [19] J. Horgan, C. Hughes, J. McDonald, and S. Yogamani, "Vision-based driver assistance systems: Survey, taxonomy and advances," in Proc. IEEE 18th Int. Conf. Intell. Transp. Syst. (ITSC), Sep. 2015, pp. 2032–2039, doi: 10.1109/ITSC.2015.329.
 
@@ -339,7 +343,7 @@ year is only implied by the World Bank document ID.
 - *"The AI service operates as an independent microservice"*: **false**.
   Face recognition runs **in-process** inside the FastAPI backend
   (`backend/app/core/face_engine.py`, `app/services/face_service.py`;
-  `docs/design.md` §Interfaces: "In-process / internal call"). There is no
+  `docs/design.md` §Integration Points: "In-process / internal call"). There is no
   separate AI service in `docker-compose.yml`, only `db` and `backend`.
   Fig. 1 correctly draws Face Recognition *inside* "Backend Services".
 - *"The system design includes UML models, user interface designs, database
@@ -368,7 +372,7 @@ Fig. 1. Logical architecture of the iPermit system. Violation detection is shown
 paragraph):
 
 ```text
-The backend exposes a REST API secured with JWT bearer tokens; each endpoint declares the roles permitted to call it, and the user's role is always taken from the server-side user record rather than from the client. TABLE II summarises the main endpoint groups. Endpoints that change several records at once, such as license approval, violation recording and fine payment, perform all of their writes in a single database transaction, and notifications are created only after that transaction commits, so that a notification failure cannot undo a completed operation.
+The backend exposes a REST API secured with JWT bearer tokens; each protected endpoint declares the roles allowed to call it, and the user's role is always taken from the server-side user record rather than from the client. TABLE II summarises the main endpoint groups. Endpoints that change several records at once, such as license approval, violation recording and fine payment, perform all of their writes in a single database transaction, and notifications are created only after that transaction commits, so that a notification failure cannot undo a completed operation.
 ```
 
 **Paste this — TABLE II:**
@@ -385,7 +389,7 @@ Violations|POST /police/violations|Police
 Fines and appeals|GET /fines/me, POST /fines/{id}/pay, POST /appeals, POST /admin/appeals/{id}/resolve|Driver / Admin
 Driver analytics|GET /admin/badges|Admin
 Notifications|GET /notifications/me, POST /notifications/{id}/read, POST /notifications/register-push-token|Any
-Road incidents and danger zones|POST, GET /road-incidents and /danger-zones; POST …/{id}/confirm, …/{id}/clear|Driver, Police
+Road incidents and danger zones|POST, GET /road-incidents and /danger-zones; POST …/{id}/confirm, …/{id}/clear|Any logged-in user
 ```
 
 ---
@@ -409,7 +413,7 @@ Road incidents and danger zones|POST, GET /road-incidents and /danger-zones; POS
 **Paste this — full Abstract:**
 
 ```text
-Traffic law enforcement and driving license management in Sri Lanka continue to rely heavily on manual, paper-based processes, resulting in administrative inefficiencies, delayed fine processing, fragmented driver records, and limited capacity for proactive road-safety monitoring. This research proposes and implements iPermit, a virtual driving license system that integrates digital license issuance with QR codes, facial recognition-based roadside driver verification, point-based violation tracking with automatic suspension, fine and appeal management, rule-based driver behavior badges, notifications, and road incident and danger-zone reporting within a unified mobile and web platform. The system follows a layered architecture built with FastAPI, PostgreSQL, Expo/React Native and Next.js; facial recognition uses RetinaFace detection and ArcFace embeddings executed with ONNX Runtime, with a FAISS index for one-to-many search. Fourteen requirements were specified and implemented incrementally, with each module verified against the running system in addition to automated tests; automated white-line violation detection (REQ-7) was deferred for lack of a training dataset, and violations are currently recorded manually by officers. The face-verification pipeline was evaluated on two public labelled datasets, LFW and a South Asian celebrity dataset: at the deployed threshold no false match between different people was observed in about two million impostor comparisons, while false-rejection rates were 2.9% and 9.9% respectively, and the evaluation also showed that the CLAHE preprocessing step increases false rejections. The prototype demonstrates the feasibility of combining biometric identity verification with digital licensing, while the higher false-rejection rate on South Asian faces, the deferred violation detector, and the absence of a usability study are reported as explicit limitations that must be addressed before deployment.
+Traffic law enforcement and driving license management in Sri Lanka continue to rely heavily on manual, paper-based processes, resulting in administrative inefficiencies, delayed fine processing, fragmented driver records, and limited capacity for proactive road-safety monitoring. This research proposes and implements iPermit, a virtual driving license system that integrates digital license issuance with QR codes, facial recognition-based roadside driver verification, point-based violation tracking with automatic suspension, fine and appeal management, rule-based driver behavior badges, notifications, and road incident and danger-zone reporting within a unified mobile and web platform. The system follows a layered architecture built with FastAPI, PostgreSQL, Expo/React Native and Next.js; facial recognition uses RetinaFace detection and ArcFace embeddings executed with ONNX Runtime, with a FAISS index for one-to-many search. Fourteen requirements were specified, and all except automated white-line violation detection (REQ-7) were implemented incrementally, with each module verified against the running system in addition to automated tests; REQ-7 was deferred for lack of a training dataset, so violations are currently recorded manually by officers. The face-verification pipeline was evaluated on two public labelled datasets, LFW and a South Asian celebrity dataset: at the deployed threshold no false match between different people was observed in about two million impostor comparisons, while false-rejection rates were 2.9% and 9.9% respectively, and the evaluation also showed that the CLAHE preprocessing step increases false rejections. The prototype demonstrates the feasibility of combining biometric identity verification with digital licensing, while the higher false-rejection rate on South Asian faces, the deferred violation detector, and the absence of a usability study are reported as explicit limitations that must be addressed before deployment.
 ```
 
 ---
@@ -494,8 +498,8 @@ The face-verification evaluation (Section 5.1) also found a significantly higher
   out of date. The map was run on an Android phone in Expo Go during the
   Incidents redesign, and Android was switched to OpenStreetMap tiles
   because Google tiles rendered blank grey without an API key
-  (commit `774f150`). **Confirm this is how you remember it before
-  pasting.**
+  (commit `774f150`). The developer confirmed on 2026-09-27 that the map
+  renders correctly on the phone.
 - *"Push notification delivery was not physically validated because a
   compatible physical device was unavailable"*: a physical phone *was*
   available (it was used for the selfie test). The real reason is that

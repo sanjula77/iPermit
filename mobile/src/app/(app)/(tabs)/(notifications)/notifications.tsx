@@ -9,6 +9,7 @@ import { Banner } from '@/components/banner';
 import { Card } from '@/components/card';
 import { EmptyState } from '@/components/empty-state';
 import { IconTile } from '@/components/icon-tile';
+import { ListSeparator } from '@/components/list-row';
 import { ScreenState } from '@/components/screen-state';
 import { ThemedText } from '@/components/themed-text';
 import { ScreenScroll } from '@/components/screen-scroll';
@@ -142,7 +143,7 @@ export default function NotificationsScreen() {
             <Card style={styles.list}>
               {group.items.map((notification, i) => (
                 <Fragment key={notification.id}>
-                  {i > 0 ? <Separator /> : null}
+                  {i > 0 ? <ListSeparator /> : null}
                   <NotificationRow
                     notification={notification}
                     now={now}
@@ -158,10 +159,6 @@ export default function NotificationsScreen() {
   );
 }
 
-function Separator() {
-  const theme = useTheme();
-  return <View style={[styles.separator, { backgroundColor: theme.backgroundSelected }]} />;
-}
 
 function NotificationRow({
   notification,
@@ -215,9 +212,6 @@ const styles = StyleSheet.create({
   list: {
     paddingVertical: 0,
     gap: 0,
-  },
-  separator: {
-    height: StyleSheet.hairlineWidth,
   },
   row: {
     flexDirection: 'row',

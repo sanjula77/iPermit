@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useNavigation } from 'expo-router';
+import { usePreventRemove } from 'expo-router/react-navigation';
 import { Fragment, useRef, useState } from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
+import { Alert, Platform, StyleSheet, View } from 'react-native';
 
 import { submitApplication } from '@/api/applications';
 import { ApiError, extractErrorMessage } from '@/api/client';
@@ -70,6 +71,9 @@ export default function ApplyScreen() {
   // State updates land after a re-render, so a same-frame double tap would
   // pass an isSubmitting check; the ref blocks it synchronously.
   const submittingRef = useRef(false);
+  const navigation = useNavigation();
+  // Set just before router.replace on success, so leaving then isn't blocked.
+  const submittedRef = useRef(false);
 
   const fieldError = submitError?.field ?? null;
   const photoHasError = (index: number) =>
@@ -123,6 +127,25 @@ export default function ApplyScreen() {
     facePhotos.filter((p) => p !== null).length + Object.values(documents).filter(Boolean).length;
   const allFilesSelected = filesReadyCount === REQUIRED_FILE_COUNT;
 
+  // Backing out would silently drop the photos and documents already added.
+  usePreventRemove(filesReadyCount > 0, ({ data }) => {
+    if (submittedRef.current) {
+      navigation.dispatch(data.action);
+      return;
+    }
+    const title = 'Discard your application?';
+    const message = 'The photos and documents you added will be lost.';
+    if (Platform.OS === 'web') {
+      // react-native-web's Alert.alert is a no-op.
+      if (window.confirm(`${title}\n${message}`)) navigation.dispatch(data.action);
+      return;
+    }
+    Alert.alert(title, message, [
+      { text: 'Keep editing', style: 'cancel' },
+      { text: 'Discard', style: 'destructive', onPress: () => navigation.dispatch(data.action) },
+    ]);
+  });
+
   async function handleSubmit() {
     const { nic_document, medical_cert, birth_cert } = documents;
     if (submittingRef.current || !allFilesSelected || !nic_document || !medical_cert || !birth_cert) {
@@ -138,6 +161,7 @@ export default function ApplyScreen() {
         medicalCert: medical_cert,
         birthCert: birth_cert,
       });
+      submittedRef.current = true;
       router.replace('/(app)/(tabs)/(home)');
     } catch (err) {
       setSubmitError(toSubmitError(err));

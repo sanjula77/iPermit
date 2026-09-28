@@ -120,7 +120,14 @@ export default function ReportScreen() {
                   ]}
                 >
                   <Ionicons name={INCIDENT_ICON[type]} size={22} color={selected ? theme.primary : theme.text} />
-                  <ThemedText type="smallBold" themeColor={selected ? 'primary' : 'text'}>
+                  <ThemedText
+                    type="smallBold"
+                    themeColor={selected ? 'primary' : 'text'}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.8}
+                    style={styles.typeLabel}
+                  >
                     {INCIDENT_LABEL[type]}
                   </ThemedText>
                 </Pressable>
@@ -212,14 +219,16 @@ const styles = StyleSheet.create({
     // Two columns: half the row minus half the gap.
     flexBasis: '48%',
     flexGrow: 1,
-    flexDirection: 'row',
+    minWidth: 0,
     alignItems: 'center',
-    gap: Spacing.two,
-    padding: Spacing.three,
+    gap: Spacing.one,
+    paddingVertical: Spacing.three,
+    paddingHorizontal: Spacing.two,
     borderWidth: 2,
     borderRadius: Radius.small,
     borderCurve: 'continuous',
   },
+  typeLabel: { maxWidth: '100%' },
   locationRow: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -140,7 +140,8 @@ function FineDetail({
 
   const rows: [string, string][] = [
     ['Date', formatDate(fine.violation.confirmed_at)],
-    ['Points deducted', String(fine.violation.points_deducted)],
+    // Demerit points count up towards suspension (the license card shows n / 10).
+    ['Demerit points', `+${fine.violation.points_deducted}`],
   ];
   if (fine.status === 'PAID') {
     if (fine.payment_method) rows.push(['Paid by', PAYMENT_METHOD_LABEL[fine.payment_method]]);
@@ -226,6 +227,7 @@ function FineDetail({
               multiline
               autoCapitalize="sentences"
               autoCorrect
+              style={styles.appealInput}
               testID="appeal-reason-input"
             />
             <Button onPress={handleAppeal} disabled={isSubmitting} testID="confirm-appeal-button">
@@ -291,6 +293,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   appealCard: { gap: Spacing.two },
+  appealInput: { minHeight: 96, textAlignVertical: 'top' },
   list: {
     paddingVertical: 0,
     gap: 0,

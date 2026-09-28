@@ -131,8 +131,9 @@ Widths assume a 360dp screen: 360 − 48 screen padding − 32 card padding give
     (`flexShrink: 0`).
   - Optional chevron.
   - The text column has `flex: 1, minWidth: 0`, so row heights are uniform.
-  - Used by Fines, fine detail, Alerts, Incidents (incidents and zones), police
-    candidates and police violation history.
+  - Used by Fines, Incidents (incidents and zones), police candidates and police
+    violation history. Alerts and fine detail rows weren't squeezing, and they're
+    restyled in Phase 2.
 - **`lib/format.ts`**:
   - `formatDate(iso)` gives "26 Sep 2026".
   - `formatDateShort(iso)` gives "26 Sep".
@@ -144,9 +145,10 @@ Widths assume a 360dp screen: 360 − 48 screen padding − 32 card padding give
   It replaces the three local copies and two inline variants. Refresh errors on
   every screen use it.
 - **`components/screen-scroll.tsx` (`ScreenScroll`)**: the standard tab-screen
-  `ScrollView`. It gives consistent horizontal padding, applies `BottomTabInset` plus
-  spacing at the bottom, supports `refreshControl`, and exposes a ref so screens can
-  scroll to a banner.
+  `ScrollView`. It gives consistent horizontal padding and a consistent bottom padding
+  (`Spacing.five`), supports `refreshControl`, and exposes a ref so screens can scroll
+  to a banner. (Native tab bars don't overlay content on Android, and iOS insets
+  scroll views automatically, so `BottomTabInset` was unused and has been removed.)
 
 ### Fixes
 

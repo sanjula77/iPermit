@@ -1,8 +1,3 @@
-import uuid
-
-from app.models.danger_zone import DangerZone
-
-
 def _register_and_login(client, email="driver@example.com", nic="991234567V"):
     client.post(
         "/auth/register",

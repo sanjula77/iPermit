@@ -82,7 +82,8 @@ def assess_photo_quality(
 
     if sharpness < settings.face_min_sharpness:
         reasons.append(
-            f"image too blurry (sharpness {sharpness:.1f} < {settings.face_min_sharpness})"
+            f"image too blurry (sharpness {sharpness:.1f} "
+            f"< {settings.face_min_sharpness})"
         )
     if not (settings.face_min_brightness <= brightness <= settings.face_max_brightness):
         reasons.append(

@@ -885,35 +885,18 @@ on the page. [2] and [3] are [1] and [2] in Chapter 3; renumber when you merge.
    the 5.5 introduction says "The complete source code is included in the
    appendix". Change that sentence if the appendix will hold only selected
    files or a link to the repository.
-8. **Parts of the docs disagree with the code**, and this chapter follows the
-   code. You may want to fix the docs, and make sure the paper and other
-   chapters don't repeat them:
-   - `docs/design.md` and `mobile/README.md` say the clients use Axios. They
-     use `fetch` (with `XMLHttpRequest` for multipart uploads on the phone).
-   - `docs/design.md` lists `/users` and `/uploads` routes. Neither exists;
-     there are 12 routers (TABLE 5.3), and no endpoint serves uploaded files,
-     so the admin dashboard shows only the photo count, not the photos.
-   - `docs/design.md` says the backend uses asyncpg. It uses psycopg2 with
-     synchronous SQLAlchemy sessions.
-   - `docs/design.md` says map tiles come from the device's native provider.
-     Android uses OpenStreetMap tiles (iOS would use Apple Maps).
-   - `docs/design.md` describes liveness as "optional and must be explicitly
-     enabled". There is no liveness code at all; `liveness_check_enabled` is
-     only a flag reported by `/face/status`.
-   - `docs/methodology.md` calls the admin UI "server-rendered". Every page is
-     a client component.
-   - `docs/methodology.md` says FAISS gives "sub-linear" search. `IndexFlatIP`
-     is an exact linear search (same issue as in the paper, see Chapter 3
-     note 5).
-   - `docs/methodology.md` says integration tests run "against a real test
-     database". `tests/conftest.py` uses an in-memory SQLite database, not
-     PostgreSQL. Say this correctly in Chapter 6.
-   - `docs/setup.md` section 6 says the native map "has not been visually
-     confirmed". It was later run on the Android phone (commit `774f150`).
-   - `docs/diagrams/system-architecture-detailed.png` draws the admin web and
-     the mobile app inside the FastAPI "application container". They are
-     separate applications that run outside Docker (Fig. 5.6). Don't reuse
-     that figure in the thesis without fixing it.
+8. **Docs that disagreed with the code have been corrected** (2026-09-28):
+   `docs/design.md`, `docs/methodology.md`, `docs/setup.md` and
+   `mobile/README.md` now match the code on the HTTP client (`fetch`), the
+   route list, the database driver (psycopg2), map tiles, liveness (not
+   implemented), admin page rendering (client components), the FAISS index
+   (exact `IndexFlatIP`) and the test database (in-memory SQLite). Make sure
+   the paper doesn't repeat the old statements (see Chapter 3 note 5 for
+   "sub-linear"). One issue remains:
+   `docs/diagrams/system-architecture-detailed.png` draws the admin web and
+   the mobile app inside the FastAPI "application container". They are
+   separate applications that run outside Docker (Fig. 5.6). Don't reuse
+   that figure in the thesis without fixing it.
 9. **A small inefficiency you may be asked about.** `face_engine.py` loads the
    whole buffalo_l pack (five models, including age/gender and landmark
    models), although only detection and recognition are used. This affects

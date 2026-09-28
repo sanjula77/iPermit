@@ -1,6 +1,10 @@
 import pytest
 
-from app.core.face_evaluation import compute_far_frr, find_equal_error_rate, sweep_thresholds
+from app.core.face_evaluation import (
+    compute_far_frr,
+    find_equal_error_rate,
+    sweep_thresholds,
+)
 
 
 def test_compute_far_frr_perfect_separation():

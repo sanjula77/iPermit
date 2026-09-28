@@ -9,7 +9,8 @@ overall architecture.
 - `src/app/` — routes (Expo Router). `(auth)` = login/register (unauthenticated),
   `(app)` = authenticated screens. Root `index.tsx` redirects between them based on
   auth state.
-- `src/api/` — backend HTTP client (axios) and per-domain API calls.
+- `src/api/` — backend HTTP client (`fetch`, with `XMLHttpRequest` for multipart uploads)
+  and per-domain API calls.
 - `src/context/auth-context.tsx` — auth state, wraps the whole app.
 - `src/lib/token-storage.ts` — JWT storage: Expo SecureStore on native, `localStorage`
   on web (SecureStore isn't available on web).

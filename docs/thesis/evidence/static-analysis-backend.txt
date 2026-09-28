@@ -1,27 +1,8 @@
- Container ipermit-backend-run-9a24d6f58533 Creating 
- Container ipermit-backend-run-9a24d6f58533 Created 
-# Backend static analysis, 2026-09-27
+# Backend static analysis, 2026-09-28
 ruff 0.8.4
-26	E501 	[ ] line-too-long
-24	UP007	[*] non-pep604-annotation
-10	I001 	[*] unsorted-imports
- 8	UP035	[*] deprecated-import
- 2	F401 	[*] unused-import
-[*] fixable with `ruff check --fix`
+ruff exit 0
 
 black, 24.10.0 (compiled: yes)
-would reformat /app/alembic/versions/480bf96b774d_add_badges_table.py
-would reformat /app/alembic/versions/3df1b12c6ccb_create_applications_and_application_.py
-would reformat /app/alembic/versions/2f8aa43b676c_create_users_table.py
-would reformat /app/alembic/versions/ffecd4ec72e8_add_danger_zones_table.py
-would reformat /app/app/core/face_evaluation.py
-would reformat /app/alembic/versions/fa7391ba98d1_create_licenses_table.py
-would reformat /app/app/core/face_index.py
-would reformat /app/alembic/versions/f4fa8483d762_add_notifications_road_incidents_and_.py
-would reformat /app/app/core/face_engine.py
-would reformat /app/scripts/evaluate_face_threshold.py
-would reformat /app/tests/test_face_evaluation.py
-
-Oh no! 💥 💔 💥
-11 files would be reformatted, 99 files would be left unchanged.
-
+All done! ✨ 🍰 ✨
+102 files would be left unchanged.
+black exit 0

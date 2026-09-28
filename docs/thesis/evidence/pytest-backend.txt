@@ -1,8 +1,3 @@
- Container ipermit-db-1 Running 
- Container ipermit-db-1 Waiting 
- Container ipermit-db-1 Healthy 
- Container ipermit-backend-run-a8b89283b5ec Creating 
- Container ipermit-backend-run-a8b89283b5ec Created 
 /usr/local/lib/python3.11/site-packages/pytest_asyncio/plugin.py:207: PytestDeprecationWarning: The configuration option "asyncio_default_fixture_loop_scope" is unset.
 The event loop scope for asynchronous fixtures will default to the fixture caching scope. Future versions of pytest-asyncio will default the loop scope for asynchronous fixtures to function scope. Set the default fixture loop scope explicitly in order to avoid unexpected behavior in the future. Valid fixture loop scopes are: "function", "class", "module", "package", "session"
 
@@ -203,5 +198,5 @@ tests/test_police.py: 9 warnings
     tform.estimate(lmk, dst)
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-================= 165 passed, 66 warnings in 249.91s (0:04:09) =================
+================= 165 passed, 66 warnings in 242.22s (0:04:02) =================
 exit 0

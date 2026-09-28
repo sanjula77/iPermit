@@ -2,7 +2,14 @@
 
 ## Overview
 
-**Status: greenfield build — nothing described below exists yet.** iPermit will be a
+**Status: written before the build as the target design; the system is now built.**
+Where this document and the code disagree, the code is the reference (the thesis
+chapters in `docs/thesis/` describe the system as built). The main differences: face
+recognition runs in-process inside the FastAPI backend with an exact FAISS index, and
+automated violation detection was deferred, so officers record violations manually
+(see `docs/tasks.md` 5.4).
+
+iPermit will be a
 mobile-first system (Expo/React Native for drivers and police) backed by a FastAPI
 service and PostgreSQL database, with a Next.js admin web dashboard. Face recognition
 will run as an internal AI module (RetinaFace + ArcFace via ONNX Runtime, matched with
@@ -20,7 +27,7 @@ database only through the FastAPI backend — no direct DB access from mobile or
 |----|------|------|-----------------|----------|
 | COMP-1 | Mobile App | Client (Expo/React Native, TS) | Driver + police UI: auth, license, fines, face capture, incidents | COMP-3 |
 | COMP-2 | Admin Web Dashboard | Client (Next.js, TS) | Admin UI: application review, appeals, analytics | COMP-3 |
-| COMP-3 | API Backend | Service (FastAPI, Python) | Auth, applications, admin, police, road-incidents, uploads routes; orchestrates AI modules and DB | COMP-4, COMP-5, COMP-6 |
+| COMP-3 | API Backend | Service (FastAPI, Python) | Auth, applications, admin, licences, face, police, fines, appeals, badges, notifications, road-incidents and danger-zones routes; orchestrates AI modules and DB | COMP-4, COMP-5, COMP-6 |
 | COMP-4 | Face Recognition Module | AI service (Python) | Enrollment, embedding extraction, FAISS matching | COMP-3, COMP-7 |
 | COMP-5 | Violation Detection Module | AI service (Python) | Lane/vehicle detection, violation flagging | COMP-3 |
 | COMP-6 | Primary Database | Data (PostgreSQL + Alembic) | Users, licenses, applications, violations, fines, appeals, incidents | COMP-3 |
@@ -34,17 +41,21 @@ database only through the FastAPI backend — no direct DB access from mobile or
 │  Mobile App     │     │  Admin Web Dashboard │
 │ (Expo/RN, TS)   │     │  (Next.js, TS)       │
 └────────┬────────┘     └──────────┬───────────┘
-         │        REST (Axios, JWT)│
+         │        REST (fetch, JWT)│
          └───────────┬─────────────┘
                       ▼
              ┌─────────────────┐
              │   API Backend    │
              │   (FastAPI)      │
-             │  /auth /users    │
+             │  /auth /admin    │
              │  /applications   │
-             │  /admin /police  │
+             │  /licenses /face │
+             │  /police /fines  │
+             │  /appeals        │
+             │  /badges         │
+             │  /notifications  │
              │  /road-incidents │
-             │  /uploads        │
+             │  /danger-zones   │
              └───┬──────────┬───┘
                  │          │
      ┌───────────▼─┐      ┌─▼─────────────────┐
@@ -125,7 +136,7 @@ database only through the FastAPI backend — no direct DB access from mobile or
 | API Backend | Face Recognition Module | In-process / internal call | NumPy arrays, JSON | Enrollment + matching |
 | API Backend | Violation Detection Module | In-process / internal call | Image bytes, JSON | Violation detection |
 | Face Recognition Module | SQLite + FAISS | Local file/DB | Embedding vectors | Template persistence + search |
-| API Backend | PostgreSQL | SQLAlchemy/asyncpg | SQL | Core data persistence |
+| API Backend | PostgreSQL | SQLAlchemy/psycopg2 | SQL | Core data persistence |
 
 ### External
 
@@ -133,7 +144,7 @@ database only through the FastAPI backend — no direct DB access from mobile or
 |--------|------|---------|-------|
 | Expo Push Service | Push notification API | Mobile push delivery | Requires Expo push tokens per device |
 | Mock Payment Provider | Simulated | Fine payment demo | **Not a real gateway** — explicitly mock in this version |
-| Map Tiles (react-native-maps) | Map rendering | Road incident display | Uses device's native map provider |
+| Map Tiles (react-native-maps) | Map rendering | Road incident and danger-zone display | OpenStreetMap tiles on Android (Google's base map needs an API key and a custom build); Apple Maps on iOS |
 
 ## Components and Interfaces
 
@@ -142,8 +153,10 @@ database only through the FastAPI backend — no direct DB access from mobile or
 **Responsibility:** Single entry point for all clients; owns business rules for
 applications, points, fines, appeals, badges; orchestrates AI modules.
 
-**Routes:** `/auth`, `/users`, `/applications`, `/admin`, `/police`, `/road-incidents`,
-`/uploads`.
+**Routes:** `/auth`, `/applications`, `/admin`, `/licenses`, `/face`, `/police`,
+`/fines`, `/appeals`, `/badges`, `/notifications`, `/road-incidents`, `/danger-zones`,
+plus `/health` and `/ready`. There is no `/users` router, and uploaded files are not
+served over HTTP.
 
 **Key interfaces:**
 ```python
@@ -176,8 +189,9 @@ CLAHE more than doubles FRR (2.95% vs 1.37%) with no FAR/EER benefit, likely bec
 ArcFace was trained on unprocessed photos. Disabling it would require re-embedding
 already-enrolled templates.
 **Data:** face templates in SQLite; FAISS index rebuildable from SQLite at any time.
-**Known limitation:** liveness/anti-spoofing is optional and must be explicitly
-enabled — flag this in any officer-facing UI when disabled.
+**Known limitation:** liveness/anti-spoofing is not implemented. `liveness_check_enabled`
+(default `False`) is only a flag that `/face/status` reports, so the gap is disclosed to
+clients; no liveness code exists behind it.
 
 ### Violation Detection Module
 

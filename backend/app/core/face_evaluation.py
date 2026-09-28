@@ -34,7 +34,8 @@ def sweep_thresholds(
     genuine_scores: list[float], impostor_scores: list[float], steps: int = 100
 ) -> list[ThresholdMetrics]:
     return [
-        compute_far_frr(genuine_scores, impostor_scores, i / steps) for i in range(steps + 1)
+        compute_far_frr(genuine_scores, impostor_scores, i / steps)
+        for i in range(steps + 1)
     ]
 
 

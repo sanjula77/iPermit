@@ -75,9 +75,7 @@ def search(embedding: np.ndarray, k: int = 1) -> list[tuple[float, int]]:
         index = _get_index()
         if index.ntotal == 0:
             return []
-        similarities, ids = index.search(
-            embedding.astype(np.float32).reshape(1, -1), k
-        )
+        similarities, ids = index.search(embedding.astype(np.float32).reshape(1, -1), k)
     return [
         (float(sim), int(rowid))
         for sim, rowid in zip(similarities[0], ids[0], strict=True)

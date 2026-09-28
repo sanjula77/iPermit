@@ -91,7 +91,7 @@ The prototype also has to be placed in the context of recent developments. Since
 ```text
 The strongest part of the project is the reliability of its core enforcement workflow. Every change that affects several records in the main database happens in one transaction, every error the system is designed to reject is tested, and the face module fails safely by asking the officer to decide. The evaluation of face verification was also more rigorous than the project's earlier work, which had reported 100% accuracy on six people: it used about two million impostor comparisons, confidence intervals, and a check that the evaluation reproduced the deployed pipeline exactly.
 
-The weaknesses are equally clear. The system has not been used by any real driver, officer or licensing officer, so its usability and its effect on the time taken at a roadside stop are unknown. The face pipeline has not been tested on the population it is meant to serve, and its default photo-sharpness limit rejected a clear selfie from a real phone, so real drivers would currently struggle to enrol. The prototype runs only on a development machine, has no consent step before biometric enrolment, and its backend code does not yet pass all of its own style checks. Finally, one of the proposal's two AI components was not built. These weaknesses do not invalidate the prototype, but they mean it demonstrates feasibility rather than readiness for deployment.
+The weaknesses are equally clear. The system has not been used by any real driver, officer or licensing officer, so its usability and its effect on the time taken at a roadside stop are unknown. The face pipeline has not been tested on the population it is meant to serve, and its default photo-sharpness limit rejected a clear selfie from a real phone, so real drivers would currently struggle to enrol. The prototype runs only on a development machine and has no consent step before biometric enrolment. Finally, one of the proposal's two AI components was not built. These weaknesses do not invalidate the prototype, but they mean it demonstrates feasibility rather than readiness for deployment.
 ```
 
 ---
@@ -111,7 +111,7 @@ Decide scope conflicts explicitly. When the violation detector could not be trai
 
 Keep a human in the loop for enforcement decisions. Designing the face search to return ranked candidates, rather than one answer, made the system usable even with the error rates measured in Chapter 6.
 
-Automate quality checks. Style checks that were clean earlier in the project had drifted by the end, because they were run by hand. Running tests and linters automatically on every change would have caught this at once.
+Automate quality checks. Style checks that were clean earlier in the project had drifted by the end, because they were run by hand, and had to be corrected just before submission. Running tests and linters automatically on every change would have caught this at once.
 ```
 
 ---
@@ -186,5 +186,3 @@ iPermit shows that a digital driving licence, biometric roadside verification, p
 3. **Counts to re-check if the code changes:** "thirteen were
    implemented" (FR-01–06, 08–13 and 15, with the exceptions for FR-12 and
    FR-13 stated in the text), and "165 automated tests".
-4. **If you fix the Ruff/Black findings** (Chapter 6), delete the sentence
-   "its backend code does not yet pass all of its own style checks" in 7.4.

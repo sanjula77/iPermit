@@ -140,9 +140,10 @@ behavior has not been independently verified by this project (see
   environment. Testing this now, with a real device, is useful new information — if
   it doesn't arrive, check that you accepted the notification permission prompt on
   first launch.
-- **Road incident map view** — `react-native-maps` is expected to render natively in
-  Expo Go, but this has similarly not been visually confirmed by this project (only
-  the web no-op variant has been checked). This is a good thing to verify directly.
+- **Road incident map view** — confirmed on an Android phone in Expo Go. Android uses
+  OpenStreetMap tiles, because Google's base map needs an API key and a custom build
+  and otherwise renders blank grey (commit `774f150`). iOS (Apple Maps) has not been
+  checked.
 
 Camera-based face capture (enrollment, police face-scan) and QR scanning both need
 camera permission — accept the OS prompt the first time either screen is opened.

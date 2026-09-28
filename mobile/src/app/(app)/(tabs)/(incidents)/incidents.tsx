@@ -9,13 +9,16 @@ import { clearIncident, confirmIncident, listNearbyIncidents } from '@/api/road-
 import { Banner } from '@/components/banner';
 import { Card } from '@/components/card';
 import { EmptyState } from '@/components/empty-state';
+import { IconTile } from '@/components/icon-tile';
 import { IncidentsMap } from '@/components/incidents-map';
+import { ListRow, ListSeparator } from '@/components/list-row';
 import { ScreenState } from '@/components/screen-state';
 import { SegmentedControl } from '@/components/segmented-control';
+import { StatusBadge } from '@/components/status-badge';
 import { ThemedText } from '@/components/themed-text';
 import { ScreenScroll } from '@/components/screen-scroll';
-import { INCIDENT_ICON, INCIDENT_LABEL, SEVERITY_LABEL } from '@/constants/incidents';
-import { Radius, Spacing, type ThemeColor } from '@/constants/theme';
+import { INCIDENT_ICON, INCIDENT_LABEL, SEVERITY_COLOR, SEVERITY_LABEL, SEVERITY_TONE } from '@/constants/incidents';
+import { Radius, Spacing } from '@/constants/theme';
 import { useCurrentLocation, type LatLng } from '@/hooks/use-current-location';
 import { useTheme } from '@/hooks/use-theme';
 import { relativeTime } from '@/lib/relative-time';
@@ -23,12 +26,6 @@ import type { DangerZone } from '@/types/danger-zone';
 import type { RoadIncident, RoadIncidentSeverity } from '@/types/road-incident';
 
 type Tab = 'incidents' | 'zones';
-
-const TONE_COLOR: Record<RoadIncidentSeverity, ThemeColor> = {
-  LOW: 'textSecondary',
-  MEDIUM: 'warning',
-  HIGH: 'danger',
-};
 
 export default function IncidentsScreen() {
   const theme = useTheme();
@@ -111,8 +108,10 @@ export default function IncidentsScreen() {
       await action();
       await load(location);
       setNotice({ kind: 'success', text: success });
+      scrollRef.current?.scrollTo({ y: 0, animated: true });
     } catch (err) {
       setNotice({ kind: 'error', text: extractErrorMessage(err) });
+      scrollRef.current?.scrollTo({ y: 0, animated: true });
     } finally {
       busyIds.current.delete(id);
     }
@@ -181,8 +180,8 @@ export default function IncidentsScreen() {
         value={tab}
         onChange={setTab}
         options={[
-          { label: incidents ? `Incidents (${incidents.length})` : 'Incidents', value: 'incidents' },
-          { label: zones ? `Danger zones (${zones.length})` : 'Danger zones', value: 'zones' },
+          { label: 'Incidents', value: 'incidents', count: incidents?.length },
+          { label: 'Danger zones', value: 'zones', count: zones?.length },
         ]}
       />
 
@@ -212,13 +211,13 @@ export default function IncidentsScreen() {
             {tab === 'incidents'
               ? (list as RoadIncident[]).map((incident, i) => (
                   <Fragment key={incident.id}>
-                    {i > 0 ? <Separator /> : null}
+                    {i > 0 ? <ListSeparator /> : null}
                     <ReportRow
                       testID={`incident-${incident.id}`}
                       icon={INCIDENT_ICON[incident.type]}
                       severity={incident.severity}
                       title={INCIDENT_LABEL[incident.type]}
-                      detail={`${SEVERITY_LABEL[incident.severity]} · ${confirmations(incident.confirmation_count)} · ${relativeTime(incident.created_at)}`}
+                      detail={`${confirmations(incident.confirmation_count)} · ${relativeTime(incident.created_at)}`}
                       onPress={() => showOnMap({ lat: incident.lat, lng: incident.lng })}
                       onConfirm={() =>
                         runAction(incident.id, () => confirmIncident(incident.id), 'Incident confirmed. Thanks for the update.')
@@ -231,13 +230,13 @@ export default function IncidentsScreen() {
                 ))
               : (list as DangerZone[]).map((zone, i) => (
                   <Fragment key={zone.id}>
-                    {i > 0 ? <Separator /> : null}
+                    {i > 0 ? <ListSeparator /> : null}
                     <ReportRow
                       testID={`zone-${zone.id}`}
                       icon="warning"
                       severity={zone.severity}
                       title={zone.reason || `${SEVERITY_LABEL[zone.severity]} risk area`}
-                      detail={`${SEVERITY_LABEL[zone.severity]} · ${formatRadius(zone.radius_m)} · ${confirmations(zone.confirmation_count)}`}
+                      detail={`${formatRadius(zone.radius_m)} · ${confirmations(zone.confirmation_count)}`}
                       onPress={() => showOnMap({ lat: zone.lat, lng: zone.lng })}
                       onConfirm={() =>
                         runAction(zone.id, () => confirmDangerZone(zone.id), 'Danger zone confirmed. Thanks for the update.')
@@ -256,17 +255,13 @@ export default function IncidentsScreen() {
 }
 
 function confirmations(count: number): string {
-  return `${count} ${count === 1 ? 'confirmation' : 'confirmations'}`;
+  return `${count} confirmed`;
 }
 
 function formatRadius(meters: number): string {
   return meters >= 1000 ? `${meters / 1000} km radius` : `${meters} m radius`;
 }
 
-function Separator() {
-  const theme = useTheme();
-  return <View style={[styles.separator, { backgroundColor: theme.backgroundSelected }]} />;
-}
 
 
 function ReportRow({
@@ -293,53 +288,47 @@ function ReportRow({
   clearTestID: string;
 }) {
   const theme = useTheme();
-  const color = theme[TONE_COLOR[severity]];
 
   return (
-    <View style={styles.row} testID={testID}>
-      <Pressable
-        onPress={onPress}
-        accessibilityRole="button"
-        accessibilityLabel={`${title}, ${detail}. Show on map`}
-        style={({ pressed }) => [styles.rowMain, { opacity: pressed ? 0.6 : 1 }]}
-      >
-        <View style={[styles.iconCircle, { backgroundColor: `${color}1F` }]}>
-          <Ionicons name={icon} size={20} color={color} />
+    <ListRow
+      testID={testID}
+      onPress={onPress}
+      accessibilityLabel={`${title}, ${SEVERITY_LABEL[severity]} severity, ${detail}. Show on map`}
+      leading={<IconTile icon={icon} color={theme[SEVERITY_COLOR[severity]]} />}
+      title={title}
+      meta={detail}
+      badge={<StatusBadge tone={SEVERITY_TONE[severity]} icon="alert-circle-outline" label={SEVERITY_LABEL[severity]} />}
+      footer={
+        <View style={styles.rowActions}>
+          <Pressable
+            onPress={onConfirm}
+            testID={confirmTestID}
+            hitSlop={{ top: 4, bottom: 4 }}
+            accessibilityRole="button"
+            accessibilityLabel={`Confirm ${title} is still there`}
+            style={({ pressed }) => [styles.smallButton, { backgroundColor: theme.background, opacity: pressed ? 0.6 : 1 }]}
+          >
+            <Ionicons name="thumbs-up-outline" size={16} color={theme.primary} />
+            <ThemedText type="smallBold" themeColor="primary">
+              Confirm
+            </ThemedText>
+          </Pressable>
+          <Pressable
+            onPress={onClear}
+            testID={clearTestID}
+            hitSlop={{ top: 4, bottom: 4 }}
+            accessibilityRole="button"
+            accessibilityLabel={`Mark ${title} as cleared`}
+            style={({ pressed }) => [styles.smallButton, { backgroundColor: theme.background, opacity: pressed ? 0.6 : 1 }]}
+          >
+            <Ionicons name="checkmark-done-outline" size={16} color={theme.textSecondary} />
+            <ThemedText type="smallBold" themeColor="textSecondary">
+              Clear
+            </ThemedText>
+          </Pressable>
         </View>
-        <View style={styles.rowText}>
-          <ThemedText numberOfLines={2}>{title}</ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
-            {detail}
-          </ThemedText>
-        </View>
-      </Pressable>
-      <View style={styles.rowActions}>
-        <Pressable
-          onPress={onConfirm}
-          testID={confirmTestID}
-          accessibilityRole="button"
-          accessibilityLabel={`Confirm ${title} is still there`}
-          style={({ pressed }) => [styles.smallButton, { backgroundColor: theme.background, opacity: pressed ? 0.6 : 1 }]}
-        >
-          <Ionicons name="thumbs-up-outline" size={16} color={theme.primary} />
-          <ThemedText type="smallBold" themeColor="primary">
-            Confirm
-          </ThemedText>
-        </Pressable>
-        <Pressable
-          onPress={onClear}
-          testID={clearTestID}
-          accessibilityRole="button"
-          accessibilityLabel={`Mark ${title} as cleared`}
-          style={({ pressed }) => [styles.smallButton, { backgroundColor: theme.background, opacity: pressed ? 0.6 : 1 }]}
-        >
-          <Ionicons name="checkmark-done-outline" size={16} color={theme.textSecondary} />
-          <ThemedText type="smallBold" themeColor="textSecondary">
-            Clear
-          </ThemedText>
-        </Pressable>
-      </View>
-    </View>
+      }
+    />
   );
 }
 
@@ -358,40 +347,13 @@ const styles = StyleSheet.create({
     paddingVertical: 0,
     gap: 0,
   },
-  separator: {
-    height: StyleSheet.hairlineWidth,
-  },
-  row: {
-    paddingVertical: Spacing.three,
-    gap: Spacing.two,
-  },
-  rowMain: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.three,
-  },
-  iconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  rowText: {
-    flex: 1,
-    gap: Spacing.half,
-  },
-  rowActions: {
-    flexDirection: 'row',
-    gap: Spacing.two,
-    paddingLeft: 40 + Spacing.three,
-  },
+  rowActions: { flexDirection: 'row', gap: Spacing.two },
   smallButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.one,
+    minHeight: 40,
     paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.one,
     borderRadius: Radius.small,
     borderCurve: 'continuous',
   },

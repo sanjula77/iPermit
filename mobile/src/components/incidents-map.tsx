@@ -2,15 +2,11 @@ import { useEffect, useRef } from 'react';
 import MapView, { Circle, Marker, UrlTile } from 'react-native-maps';
 import { Platform, StyleSheet, Text, View } from 'react-native';
 
-import { INCIDENT_LABEL, SEVERITY_LABEL } from '@/constants/incidents';
+import { INCIDENT_LABEL, SEVERITY_COLOR, SEVERITY_LABEL } from '@/constants/incidents';
+import { Radius, tint } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import type { DangerZone } from '@/types/danger-zone';
 import type { RoadIncident } from '@/types/road-incident';
-
-const SEVERITY_PIN_COLOR: Record<RoadIncident['severity'], string> = {
-  HIGH: '#d92d20',
-  MEDIUM: '#208AEF',
-  LOW: '#60646C',
-};
 
 // Android's Google base map needs a Maps API key (and a custom build) to load
 // tiles; without one it renders blank grey. OpenStreetMap tiles need no key and
@@ -32,6 +28,7 @@ export function IncidentsMap({
   /** When set, the map pans and zooms to this point (e.g. a tapped list row). */
   focus?: { lat: number; lng: number } | null;
 }) {
+  const theme = useTheme();
   const mapRef = useRef<MapView>(null);
 
   useEffect(() => {
@@ -63,8 +60,8 @@ export function IncidentsMap({
             key={zone.id}
             center={{ latitude: zone.lat, longitude: zone.lng }}
             radius={zone.radius_m}
-            strokeColor={SEVERITY_PIN_COLOR[zone.severity]}
-            fillColor={`${SEVERITY_PIN_COLOR[zone.severity]}33`}
+            strokeColor={theme[SEVERITY_COLOR[zone.severity]]}
+            fillColor={tint(theme[SEVERITY_COLOR[zone.severity]], 'strong')}
             strokeWidth={2}
           />
         ))}
@@ -74,7 +71,7 @@ export function IncidentsMap({
             coordinate={{ latitude: incident.lat, longitude: incident.lng }}
             title={INCIDENT_LABEL[incident.type]}
             description={`${SEVERITY_LABEL[incident.severity]} severity`}
-            pinColor={SEVERITY_PIN_COLOR[incident.severity]}
+            pinColor={theme[SEVERITY_COLOR[incident.severity]]}
           />
         ))}
       </MapView>
@@ -91,7 +88,7 @@ const styles = StyleSheet.create({
   container: {
     width: '100%',
     height: 280,
-    borderRadius: 16,
+    borderRadius: Radius.medium,
     overflow: 'hidden',
   },
   attribution: {

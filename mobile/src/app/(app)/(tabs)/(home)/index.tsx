@@ -73,7 +73,7 @@ function PoliceHomeScreen() {
               <Ionicons name={action.icon} size={26} color={theme.primary} />
             </View>
             <View style={styles.actionText}>
-              <ThemedText type="subtitle">{action.title}</ThemedText>
+              <ThemedText style={styles.actionTitle}>{action.title}</ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
                 {action.description}
               </ThemedText>
@@ -282,6 +282,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   actionText: { flex: 1, gap: Spacing.half },
+  actionTitle: { fontWeight: 700 },
   infoNote: {
     flexDirection: 'row',
     gap: Spacing.two,

@@ -10,6 +10,7 @@ import { Banner } from '@/components/banner';
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
 import { EmptyState } from '@/components/empty-state';
+import { IconTile } from '@/components/icon-tile';
 import { ScreenState } from '@/components/screen-state';
 import { StatusBadge } from '@/components/status-badge';
 import { TextField } from '@/components/text-field';
@@ -149,9 +150,7 @@ function FineDetail({
   return (
     <>
       <View style={styles.hero}>
-        <View style={[styles.iconCircle, { backgroundColor: theme.backgroundElement }]}>
-          <Ionicons name={VIOLATION_ICON[fine.violation.type]} size={28} color={theme.text} />
-        </View>
+        <IconTile icon={VIOLATION_ICON[fine.violation.type]} color={theme.text} size={64} />
         <ThemedText type="subtitle">{label}</ThemedText>
         <ThemedText type="title" style={styles.tabular}>
           {formatLkr(fine.amount)}
@@ -284,13 +283,6 @@ const styles = StyleSheet.create({
   hero: {
     alignItems: 'center',
     gap: Spacing.two,
-  },
-  iconCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   tabular: { fontVariant: ['tabular-nums'] },
   section: { gap: Spacing.two },

@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams } from 'expo-router';
 import { Fragment, useRef, useState } from 'react';
-import { Alert, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { Alert, Platform, Pressable, type ScrollView, StyleSheet, View } from 'react-native';
 
 import { extractErrorMessage } from '@/api/client';
 import { recordViolation } from '@/api/police';
@@ -9,6 +9,8 @@ import { Banner } from '@/components/banner';
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
 import { EmptyState } from '@/components/empty-state';
+import { IconTile } from '@/components/icon-tile';
+import { ListRow, ListSeparator } from '@/components/list-row';
 import { ProgressBar } from '@/components/progress-bar';
 import { StatusBadge } from '@/components/status-badge';
 import { TextField } from '@/components/text-field';
@@ -64,6 +66,7 @@ function DriverDetails({ initialDriver }: { initialDriver: DriverSummary }) {
   // Blocks a same-frame double submit before isSubmitting has re-rendered.
   const submittingRef = useRef(false);
   const [notice, setNotice] = useState<{ kind: 'success' | 'error'; text: string } | null>(null);
+  const scrollRef = useRef<ScrollView>(null);
 
   const hasLicense = !!driver.license_no;
   const points = driver.points ?? 0;
@@ -94,8 +97,10 @@ function DriverDetails({ initialDriver }: { initialDriver: DriverSummary }) {
           `${result.violation.points_deducted} points and a ${formatLkr(result.fine.amount)} fine.` +
           (result.license_status === 'SUSPENDED' ? ' The license is now suspended.' : ''),
       });
+      scrollRef.current?.scrollTo({ y: 0, animated: true });
     } catch (err) {
       setNotice({ kind: 'error', text: extractErrorMessage(err) });
+      scrollRef.current?.scrollTo({ y: 0, animated: true });
     } finally {
       submittingRef.current = false;
       setIsSubmitting(false);
@@ -131,11 +136,19 @@ function DriverDetails({ initialDriver }: { initialDriver: DriverSummary }) {
 
   return (
     <ScreenScroll
+      ref={scrollRef}
       keyboardShouldPersistTaps="handled"
     >
       <View style={styles.hero}>
         <Ionicons name="person-circle" size={64} color={theme.textSecondary} />
-        <ThemedText type="subtitle" selectable style={styles.centered}>
+        <ThemedText
+          type="subtitle"
+          selectable
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.6}
+          style={styles.centered}
+        >
           {driver.email}
         </ThemedText>
         <ThemedText themeColor="textSecondary" selectable>
@@ -201,23 +214,19 @@ function DriverDetails({ initialDriver }: { initialDriver: DriverSummary }) {
           <Card style={styles.list}>
             {driver.violations.map((violation, i) => (
               <Fragment key={violation.id}>
-                {i > 0 ? <View style={[styles.separator, { backgroundColor: theme.backgroundSelected }]} /> : null}
-                <View style={styles.row}>
-                  <View style={[styles.iconCircle, { backgroundColor: theme.background }]}>
-                    <Ionicons name={VIOLATION_ICON[violation.type]} size={20} color={theme.text} />
-                  </View>
-                  <View style={styles.flex}>
-                    <ThemedText>{VIOLATION_LABEL[violation.type]}</ThemedText>
-                    <ThemedText type="small" themeColor="textSecondary">
-                      {formatDate(violation.confirmed_at)} · {violation.points_deducted} pts
-                    </ThemedText>
-                    {violation.evidence_ref ? (
+                {i > 0 ? <ListSeparator /> : null}
+                <ListRow
+                  leading={<IconTile icon={VIOLATION_ICON[violation.type]} color={theme.text} />}
+                  title={VIOLATION_LABEL[violation.type]}
+                  meta={`${formatDate(violation.confirmed_at)} · ${violation.points_deducted} pts`}
+                  footer={
+                    violation.evidence_ref ? (
                       <ThemedText type="small" themeColor="textSecondary" selectable>
                         Evidence: {violation.evidence_ref}
                       </ThemedText>
-                    ) : null}
-                  </View>
-                </View>
+                    ) : null
+                  }
+                />
               </Fragment>
             ))}
           </Card>
@@ -248,11 +257,15 @@ function DriverDetails({ initialDriver }: { initialDriver: DriverSummary }) {
                   ]}
                 >
                   <Ionicons name={VIOLATION_ICON[type]} size={22} color={selected ? theme.danger : theme.text} />
-                  <ThemedText type="smallBold" themeColor={selected ? 'danger' : 'text'}>
+                  <ThemedText type="smallBold" themeColor={selected ? 'danger' : 'text'} numberOfLines={2}>
                     {VIOLATION_LABEL[type]}
                   </ThemedText>
-                  <ThemedText type="small" themeColor="textSecondary">
-                    {VIOLATION_POINTS[type]} pts · {formatLkr(VIOLATION_FINE[type])}
+                  {/* Points and fine on separate lines, so "LKR" never splits from its amount. */}
+                  <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+                    {VIOLATION_POINTS[type]} pts
+                  </ThemedText>
+                  <ThemedText type="small" themeColor="textSecondary" numberOfLines={1} style={styles.tabular}>
+                    {formatLkr(VIOLATION_FINE[type])}
                   </ThemedText>
                 </Pressable>
               );
@@ -320,22 +333,6 @@ const styles = StyleSheet.create({
     paddingVertical: 0,
     gap: 0,
   },
-  separator: {
-    height: StyleSheet.hairlineWidth,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingVertical: Spacing.three,
-  },
-  iconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   typeGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -345,6 +342,7 @@ const styles = StyleSheet.create({
     // Two columns: half the row minus half the gap.
     flexBasis: '48%',
     flexGrow: 1,
+    minWidth: 0,
     gap: Spacing.one,
     padding: Spacing.three,
     borderWidth: 2,

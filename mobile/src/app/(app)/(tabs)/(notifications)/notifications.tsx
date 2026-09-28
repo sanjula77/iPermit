@@ -8,6 +8,7 @@ import { getMyNotifications, markNotificationRead } from '@/api/notifications';
 import { Banner } from '@/components/banner';
 import { Card } from '@/components/card';
 import { EmptyState } from '@/components/empty-state';
+import { IconTile } from '@/components/icon-tile';
 import { ScreenState } from '@/components/screen-state';
 import { ThemedText } from '@/components/themed-text';
 import { ScreenScroll } from '@/components/screen-scroll';
@@ -186,9 +187,7 @@ function NotificationRow({
       accessibilityLabel={`${unread ? 'Unread. ' : ''}${info.title}. ${notification.message}. ${age}`}
       style={({ pressed }) => [styles.row, { opacity: pressed ? 0.6 : 1 }]}
     >
-      <View style={[styles.iconCircle, { backgroundColor: `${color}1F` }]}>
-        <Ionicons name={info.icon} size={20} color={color} />
-      </View>
+      <IconTile icon={info.icon} color={color} />
       <View style={styles.rowText}>
         <View style={styles.titleRow}>
           <ThemedText type={unread ? 'smallBold' : 'small'} style={styles.title} numberOfLines={1}>
@@ -225,13 +224,6 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: Spacing.three,
     paddingVertical: Spacing.three,
-  },
-  iconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   rowText: {
     flex: 1,

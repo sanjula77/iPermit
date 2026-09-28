@@ -9,8 +9,9 @@ import { lookupDriver, verifyFace, verifyQr } from '@/api/police';
 import { Banner } from '@/components/banner';
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
+import { IconTile } from '@/components/icon-tile';
+import { ListRow, ListSeparator } from '@/components/list-row';
 import { SegmentedControl } from '@/components/segmented-control';
-import { StatusBadge } from '@/components/status-badge';
 import { TextField } from '@/components/text-field';
 import { ThemedText } from '@/components/themed-text';
 import { ScreenScroll } from '@/components/screen-scroll';
@@ -135,7 +136,7 @@ export default function PoliceVerifyScreen() {
             <Card style={styles.list}>
               {uncertainCandidates.map((candidate, i) => (
                 <Fragment key={candidate.driver.driver_id}>
-                  {i > 0 ? <Separator /> : null}
+                  {i > 0 ? <ListSeparator /> : null}
                   <CandidateRow candidate={candidate} onPress={() => openDriver(candidate.driver)} />
                 </Fragment>
               ))}
@@ -147,10 +148,6 @@ export default function PoliceVerifyScreen() {
   );
 }
 
-function Separator() {
-  const theme = useTheme();
-  return <View style={[styles.separator, { backgroundColor: theme.backgroundSelected }]} />;
-}
 
 
 function CandidateRow({ candidate, onPress }: { candidate: FaceMatchCandidate; onPress: () => void }) {
@@ -159,25 +156,24 @@ function CandidateRow({ candidate, onPress }: { candidate: FaceMatchCandidate; o
   // Cosine similarity can be negative for poor matches; show 0-100%.
   const match = `${Math.round(Math.min(Math.max(candidate.similarity, 0), 1) * 100)}% match`;
 
+  const status = driver.license_status
+    ? driver.license_status === 'ACTIVE'
+      ? 'Active'
+      : 'Suspended'
+    : 'No license';
+
   return (
-    <Pressable
-      onPress={onPress}
+    <ListRow
       testID="police-candidate"
-      accessibilityRole="button"
-      accessibilityLabel={`${driver.email}, NIC ${driver.nic}, ${match}. Open driver details`}
-      style={({ pressed }) => [styles.row, { opacity: pressed ? 0.6 : 1 }]}
-    >
-      <Ionicons name="person-circle-outline" size={36} color={theme.textSecondary} />
-      <View style={styles.flex}>
-        <ThemedText numberOfLines={1}>{driver.email}</ThemedText>
-        <ThemedText type="small" themeColor="textSecondary">
-          NIC {driver.nic}
-          {driver.license_status ? ` · ${driver.license_status === 'ACTIVE' ? 'Active' : 'Suspended'}` : ' · No license'}
-        </ThemedText>
-      </View>
-      <StatusBadge tone="warning" icon="scan-outline" label={match} />
-      <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
-    </Pressable>
+      onPress={onPress}
+      accessibilityLabel={`${driver.email}, NIC ${driver.nic}, ${status}, ${match}. Open driver details`}
+      leading={<IconTile icon="person" color={theme.textSecondary} />}
+      title={driver.email}
+      value={match}
+      // NIC first: when the line is too long, the status truncates, never the NIC.
+      meta={`NIC ${driver.nic} · ${status}`}
+      chevron
+    />
   );
 }
 
@@ -402,22 +398,15 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.9)',
     borderRadius: Radius.medium,
   },
-  linkButton: {
-    alignSelf: 'center',
-    paddingVertical: Spacing.one,
-  },
   section: { gap: Spacing.two },
   list: {
     paddingVertical: 0,
     gap: 0,
   },
-  separator: {
-    height: StyleSheet.hairlineWidth,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingVertical: Spacing.three,
+  linkButton: {
+    alignSelf: 'center',
+    minHeight: 48,
+    justifyContent: 'center',
+    paddingHorizontal: Spacing.three,
   },
 });

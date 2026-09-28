@@ -1,11 +1,12 @@
-import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { Fragment, useState } from 'react';
-import { Pressable, RefreshControl, StyleSheet, View } from 'react-native';
+import { useState } from 'react';
+import { RefreshControl, StyleSheet, View } from 'react-native';
 
 import { Banner } from '@/components/banner';
 import { Card } from '@/components/card';
 import { EmptyState } from '@/components/empty-state';
+import { IconTile } from '@/components/icon-tile';
+import { ListRow } from '@/components/list-row';
 import { ScreenState } from '@/components/screen-state';
 import { StatusBadge } from '@/components/status-badge';
 import { ThemedText } from '@/components/themed-text';
@@ -69,6 +70,9 @@ function FinesContent({ fines, appeals }: { fines: FineWithViolation[]; appeals:
           themeColor={unpaid.length ? 'danger' : 'text'}
           testID="outstanding-total"
           style={styles.tabular}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.6}
         >
           {formatLkr(outstandingTotal)}
         </ThemedText>
@@ -96,22 +100,19 @@ function FineSection({
   fines: FineWithViolation[];
   appeals: Appeal[];
 }) {
-  const theme = useTheme();
   if (fines.length === 0) return null;
 
   return (
     <View style={styles.section}>
-      <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionLabel}>
+      <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionLabel} accessibilityRole="header">
         {title}
       </ThemedText>
-      <Card style={styles.list}>
-        {fines.map((fine, i) => (
-          <Fragment key={fine.id}>
-            {i > 0 ? <View style={[styles.separator, { backgroundColor: theme.backgroundSelected }]} /> : null}
-            <FineRow fine={fine} appeal={appealForFine(appeals, fine.id)} />
-          </Fragment>
-        ))}
-      </Card>
+      {/* One card per fine, with space between them. */}
+      {fines.map((fine) => (
+        <Card key={fine.id} style={styles.rowCard}>
+          <FineRow fine={fine} appeal={appealForFine(appeals, fine.id)} />
+        </Card>
+      ))}
     </View>
   );
 }
@@ -120,32 +121,27 @@ function FineRow({ fine, appeal }: { fine: FineWithViolation; appeal: Appeal | n
   const theme = useTheme();
   const badge = fineBadge(fine, appeal);
   const label = VIOLATION_LABEL[fine.violation.type];
+  const points = fine.violation.points_deducted;
+  // In the Unpaid section a plain "Unpaid" badge only repeats the header;
+  // keep the badge when it says something new (e.g. an appeal is pending).
+  const showBadge = badge.label !== 'Unpaid';
 
   return (
-    <Pressable
-      onPress={() => router.push({ pathname: '/(app)/(tabs)/(fines)/fine/[id]', params: { id: fine.id } })}
+    <ListRow
       testID={`fine-${fine.id}`}
-      accessibilityRole="button"
-      accessibilityLabel={`${label}, ${formatLkr(fine.amount)}, ${badge.label}`}
-      style={({ pressed }) => [styles.row, { opacity: pressed ? 0.6 : 1 }]}
-    >
-      <View style={[styles.iconCircle, { backgroundColor: theme.background }]}>
-        <Ionicons name={VIOLATION_ICON[fine.violation.type]} size={20} color={theme.text} />
-      </View>
-      <View style={styles.rowText}>
-        <ThemedText>{label}</ThemedText>
-        <ThemedText type="small" themeColor="textSecondary">
-          {formatDate(fine.violation.confirmed_at)} · {fine.violation.points_deducted} pts
-        </ThemedText>
-      </View>
-      <View style={styles.rowEnd}>
-        <ThemedText type="smallBold" style={styles.tabular}>
-          {formatLkr(fine.amount)}
-        </ThemedText>
-        <StatusBadge testID={`fine-status-${fine.id}`} tone={badge.tone} icon={badge.icon} label={badge.label} />
-      </View>
-      <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
-    </Pressable>
+      onPress={() => router.push({ pathname: '/(app)/(tabs)/(fines)/fine/[id]', params: { id: fine.id } })}
+      accessibilityLabel={`${label}, ${formatLkr(fine.amount)}, ${points} demerit points, ${badge.label}`}
+      leading={<IconTile icon={VIOLATION_ICON[fine.violation.type]} color={theme.text} />}
+      title={label}
+      value={formatLkr(fine.amount)}
+      meta={`${formatDate(fine.violation.confirmed_at)} · ${points} pts`}
+      badge={
+        showBadge ? (
+          <StatusBadge testID={`fine-status-${fine.id}`} tone={badge.tone} icon={badge.icon} label={badge.label} />
+        ) : null
+      }
+      chevron
+    />
   );
 }
 
@@ -155,37 +151,10 @@ const styles = StyleSheet.create({
     gap: Spacing.one,
   },
   tabular: { fontVariant: ['tabular-nums'] },
+  rowCard: { paddingVertical: 0 },
   section: { gap: Spacing.two },
   sectionLabel: {
     textTransform: 'uppercase',
     letterSpacing: 0.5,
-  },
-  list: {
-    paddingVertical: 0,
-    gap: 0,
-  },
-  separator: {
-    height: StyleSheet.hairlineWidth,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingVertical: Spacing.three,
-  },
-  iconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  rowText: {
-    flex: 1,
-    gap: Spacing.half,
-  },
-  rowEnd: {
-    alignItems: 'flex-end',
-    gap: Spacing.one,
   },
 });

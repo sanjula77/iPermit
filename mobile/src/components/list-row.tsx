@@ -10,9 +10,10 @@ import { useTheme } from '@/hooks/use-theme';
 export const LIST_ROW_TEXT_INSET = 40 + Spacing.three;
 
 // A two-line row: title and value on the first line, meta and badge on the
-// second. The value and badge never shrink; the title and meta take what's
-// left and truncate with "…" instead of wrapping. So a wide badge can't squeeze
-// the text into a narrow column, and every row is the same height.
+// second. The value and badge never shrink, so a wide badge can't squeeze the
+// text into a narrow column. A long title wraps to a second line at word
+// boundaries; if the meta and badge don't fit side by side, the badge moves
+// below the meta rather than truncating it.
 // `footer` renders below the row, outside its pressable area, for controls
 // such as action buttons that need their own touch targets.
 export function ListRow({
@@ -47,7 +48,7 @@ export function ListRow({
       {leading}
       <View style={styles.text}>
         <View style={styles.line}>
-          <ThemedText numberOfLines={1} style={styles.shrink}>
+          <ThemedText numberOfLines={2} style={styles.shrink}>
             {title}
           </ThemedText>
           {value ? (
@@ -57,8 +58,8 @@ export function ListRow({
           ) : null}
         </View>
         {meta || badge ? (
-          <View style={styles.line}>
-            <ThemedText type="small" themeColor="textSecondary" numberOfLines={1} style={styles.shrink}>
+          <View style={[styles.line, styles.wrap]}>
+            <ThemedText type="small" themeColor="textSecondary" numberOfLines={1} style={styles.meta}>
               {meta}
             </ThemedText>
             {badge ? <View style={styles.fixed}>{badge}</View> : null}
@@ -108,6 +109,10 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   shrink: { flexShrink: 1, minWidth: 0 },
+  // Keeps its natural width (so a badge wraps below it instead of squeezing
+  // it), but never wider than the row; only then does it truncate.
+  meta: { flexShrink: 0, maxWidth: '100%' },
+  wrap: { flexWrap: 'wrap', rowGap: Spacing.one },
   fixed: { flexShrink: 0 },
   tabular: { fontVariant: ['tabular-nums'] },
   footer: { gap: Spacing.two },

@@ -129,6 +129,9 @@ export default function ApplyScreen() {
 
   // Backing out would silently drop the photos and documents already added.
   usePreventRemove(filesReadyCount > 0, ({ data }) => {
+    // Mid-upload the request can't be cancelled, so leaving would hide its
+    // result (and a late success would still redirect); stay until it ends.
+    if (submittingRef.current) return;
     if (submittedRef.current) {
       navigation.dispatch(data.action);
       return;

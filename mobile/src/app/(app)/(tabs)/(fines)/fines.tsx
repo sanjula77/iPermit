@@ -130,7 +130,7 @@ function FineRow({ fine, appeal }: { fine: FineWithViolation; appeal: Appeal | n
     <ListRow
       testID={`fine-${fine.id}`}
       onPress={() => router.push({ pathname: '/(app)/(tabs)/(fines)/fine/[id]', params: { id: fine.id } })}
-      accessibilityLabel={`${label}, ${formatLkr(fine.amount)}, ${points} demerit points, ${badge.label}`}
+      accessibilityLabel={`${label}, ${formatLkr(fine.amount)}, ${formatDate(fine.violation.confirmed_at)}, ${points} demerit points, ${badge.label}`}
       leading={<IconTile icon={VIOLATION_ICON[fine.violation.type]} color={theme.text} />}
       title={label}
       value={formatLkr(fine.amount)}

@@ -1,18 +1,19 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Fragment, useRef, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, StyleSheet, View } from 'react-native';
 
 import { submitApplication } from '@/api/applications';
 import { ApiError, extractErrorMessage } from '@/api/client';
+import { Banner } from '@/components/banner';
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
 import { DocumentRow } from '@/components/document-row';
 import { PhotoTile } from '@/components/photo-tile';
 import { ProgressBar } from '@/components/progress-bar';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { ScreenScroll } from '@/components/screen-scroll';
+import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { pickDocument, pickImageFromLibrary, takePhoto, type PickedFile } from '@/lib/file-upload';
 
@@ -147,139 +148,113 @@ export default function ApplyScreen() {
   }
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      contentInsetAdjustmentBehavior="automatic"
-    >
-      <ThemedView style={styles.form}>
-        <View style={styles.progress}>
-          <ThemedText themeColor="textSecondary">
-            Add 4 face photos and 3 documents to apply for your digital license.
-          </ThemedText>
-          <View
-            style={styles.progressRow}
-            accessible
-            accessibilityRole="progressbar"
-            accessibilityLabel={`${filesReadyCount} of ${REQUIRED_FILE_COUNT} files ready`}
-            accessibilityValue={{ min: 0, max: REQUIRED_FILE_COUNT, now: filesReadyCount }}
-          >
-            <View style={styles.progressBar}>
-              <ProgressBar value={filesReadyCount} max={REQUIRED_FILE_COUNT} />
-            </View>
-            <ThemedText type="smallBold" testID="apply-progress" style={styles.tabular}>
-              {filesReadyCount} of {REQUIRED_FILE_COUNT} ready
-            </ThemedText>
+    <ScreenScroll>
+      <View style={styles.progress}>
+        <ThemedText themeColor="textSecondary">
+          Add 4 face photos and 3 documents to apply for your digital license.
+        </ThemedText>
+        <View
+          style={styles.progressRow}
+          accessible
+          accessibilityRole="progressbar"
+          accessibilityLabel={`${filesReadyCount} of ${REQUIRED_FILE_COUNT} files ready`}
+          accessibilityValue={{ min: 0, max: REQUIRED_FILE_COUNT, now: filesReadyCount }}
+        >
+          <View style={styles.progressBar}>
+            <ProgressBar value={filesReadyCount} max={REQUIRED_FILE_COUNT} />
           </View>
-        </View>
-
-        <View style={styles.section}>
-          <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionLabel}>
-            Face photos
+          <ThemedText type="smallBold" testID="apply-progress" style={styles.tabular}>
+            {filesReadyCount} of {REQUIRED_FILE_COUNT} ready
           </ThemedText>
+        </View>
+      </View>
 
-          <Card testID="apply-photo-tips" style={styles.tips}>
-            {PHOTO_TIPS.map((tip) => (
-              <View key={tip} style={styles.tipRow}>
-                <Ionicons name="checkmark" size={16} color={theme.primary} />
-                <ThemedText type="small" themeColor="textSecondary" style={styles.tipText}>
-                  {tip}
-                </ThemedText>
-              </View>
-            ))}
-          </Card>
+      <View style={styles.section}>
+        <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionLabel}>
+          Face photos
+        </ThemedText>
 
-          {[0, 2].map((rowStart) => (
-            <View key={rowStart} style={styles.photoRow}>
-              {[rowStart, rowStart + 1].map((index) => (
-                <PhotoTile
-                  key={index}
-                  label={`Photo ${index + 1}`}
-                  value={facePhotos[index]}
-                  hasError={photoHasError(index)}
-                  onPress={() => choosePhotoSource(index)}
-                  testID={`apply-photo-${index}`}
-                />
-              ))}
+        <Card testID="apply-photo-tips" style={styles.tips}>
+          {PHOTO_TIPS.map((tip) => (
+            <View key={tip} style={styles.tipRow}>
+              <Ionicons name="checkmark" size={16} color={theme.primary} />
+              <ThemedText type="small" themeColor="textSecondary" style={styles.tipText}>
+                {tip}
+              </ThemedText>
             </View>
           ))}
-        </View>
+        </Card>
 
-        <View style={styles.section}>
-          <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionLabel}>
-            Documents
-          </ThemedText>
-          <Card style={styles.documents}>
-            {DOCUMENTS.map((doc, i) => (
-              <Fragment key={doc.field}>
-                {i > 0 ? <View style={[styles.separator, { backgroundColor: theme.backgroundSelected }]} /> : null}
-                <DocumentRow
-                  label={doc.label}
-                  value={documents[doc.field]}
-                  hasError={fieldError?.field === doc.field}
-                  onPress={() => chooseDocument(doc.field)}
-                  testID={doc.testID}
-                />
-              </Fragment>
+        {[0, 2].map((rowStart) => (
+          <View key={rowStart} style={styles.photoRow}>
+            {[rowStart, rowStart + 1].map((index) => (
+              <PhotoTile
+                key={index}
+                label={`Photo ${index + 1}`}
+                value={facePhotos[index]}
+                hasError={photoHasError(index)}
+                onPress={() => choosePhotoSource(index)}
+                testID={`apply-photo-${index}`}
+              />
             ))}
-          </Card>
-        </View>
-
-        {submitError ? (
-          <View
-            style={[styles.errorBanner, { borderColor: theme.danger, backgroundColor: `${theme.danger}14` }]}
-            testID="apply-error"
-            accessibilityLiveRegion="polite"
-          >
-            <ThemedText type="smallBold" themeColor="danger">
-              {submitError.kind === 'rejected'
-                ? "We couldn't accept your files"
-                : "Couldn't submit your application"}
-            </ThemedText>
-            <ThemedText type="small" themeColor="danger" selectable>
-              {submitError.message}
-            </ThemedText>
-            <ThemedText type="small" themeColor="textSecondary">
-              {submitError.kind === 'failed'
-                ? 'Please try again in a moment. If it keeps failing, check your connection.'
-                : submitError.field?.field === 'face_photos'
-                  ? 'Retake the highlighted photo using the tips above, then submit again.'
-                  : submitError.field
-                    ? 'Replace the highlighted file, then submit again.'
-                    : 'Check your files and submit again.'}
-            </ThemedText>
           </View>
-        ) : null}
+        ))}
+      </View>
 
-        <Button
-          variant="primary"
-          disabled={!allFilesSelected || isSubmitting}
-          onPress={handleSubmit}
-          testID="apply-submit"
-        >
-          <Ionicons name="paper-plane-outline" size={18} color={theme.onPrimary} />
-          <ThemedText type="smallBold" themeColor="onPrimary">
-            {isSubmitting ? 'Submitting…' : 'Submit Application'}
-          </ThemedText>
-        </Button>
-      </ThemedView>
-    </ScrollView>
+      <View style={styles.section}>
+        <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionLabel}>
+          Documents
+        </ThemedText>
+        <Card style={styles.documents}>
+          {DOCUMENTS.map((doc, i) => (
+            <Fragment key={doc.field}>
+              {i > 0 ? <View style={[styles.separator, { backgroundColor: theme.backgroundSelected }]} /> : null}
+              <DocumentRow
+                label={doc.label}
+                value={documents[doc.field]}
+                hasError={fieldError?.field === doc.field}
+                onPress={() => chooseDocument(doc.field)}
+                testID={doc.testID}
+              />
+            </Fragment>
+          ))}
+        </Card>
+      </View>
+
+      {submitError ? (
+        <Banner
+          tone="danger"
+          testID="apply-error"
+          title={submitError.kind === 'rejected' ? "We couldn't accept your files" : "Couldn't submit your application"}
+          text={submitError.message}
+          detail={
+            submitError.kind === 'failed'
+              ? 'Please try again in a moment. If it keeps failing, check your connection.'
+              : submitError.field?.field === 'face_photos'
+                ? 'Retake the highlighted photo using the tips above, then submit again.'
+                : submitError.field
+                  ? 'Replace the highlighted file, then submit again.'
+                  : 'Check your files and submit again.'
+          }
+        />
+      ) : null}
+
+      <Button
+        variant="primary"
+        disabled={!allFilesSelected || isSubmitting}
+        onPress={handleSubmit}
+        testID="apply-submit"
+      >
+        <Ionicons name="paper-plane-outline" size={18} color={theme.onPrimary} />
+        <ThemedText type="smallBold" themeColor="onPrimary">
+          {isSubmitting ? 'Submitting…' : 'Submit Application'}
+        </ThemedText>
+      </Button>
+    </ScreenScroll>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  content: {
-    flexGrow: 1,
-    alignItems: 'center',
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.four,
-  },
-  form: {
-    width: '100%',
-    maxWidth: MaxContentWidth,
-    gap: Spacing.four,
-  },
   progress: { gap: Spacing.two },
   progressRow: {
     flexDirection: 'row',
@@ -309,12 +284,5 @@ const styles = StyleSheet.create({
   },
   separator: {
     height: StyleSheet.hairlineWidth,
-  },
-  errorBanner: {
-    borderWidth: 1,
-    borderRadius: Spacing.two,
-    borderCurve: 'continuous',
-    padding: Spacing.three,
-    gap: Spacing.one,
   },
 });

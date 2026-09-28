@@ -6,8 +6,9 @@ import { Card } from '@/components/card';
 import { ProgressBar } from '@/components/progress-bar';
 import { StatusBadge, type StatusTone } from '@/components/status-badge';
 import { ThemedText } from '@/components/themed-text';
-import { Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { formatDate } from '@/lib/format';
 import { SUSPENSION_POINTS, pointsColorKey } from '@/lib/points';
 import type { Badge, BadgeTier } from '@/types/badge';
 import type { License } from '@/types/license';
@@ -66,7 +67,7 @@ export function LicenseCard({ license, badge }: { license: License; badge?: Badg
           {license.license_no}
         </ThemedText>
         <ThemedText type="small" themeColor="textSecondary">
-          Expires {new Date(license.expiry_at).toLocaleDateString()}
+          Expires {formatDate(license.expiry_at)}
         </ThemedText>
       </View>
 
@@ -137,7 +138,7 @@ const styles = StyleSheet.create({
   qrWrapper: {
     padding: Spacing.three,
     backgroundColor: '#ffffff',
-    borderRadius: Spacing.three,
+    borderRadius: Radius.medium,
     borderCurve: 'continuous',
   },
   centered: { textAlign: 'center' },

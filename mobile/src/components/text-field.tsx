@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, TextInput, View, type TextInputProps } from 'rea
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 interface TextFieldProps extends TextInputProps {
@@ -42,7 +42,8 @@ export function TextField({ label, error, hint, ref, style, secureTextEntry, ...
           <Pressable
             style={styles.toggleButton}
             onPress={() => setIsRevealed((v) => !v)}
-            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={isRevealed ? 'Hide password' : 'Show password'}
             testID={rest.testID ? `${rest.testID}-toggle-visibility` : undefined}
           >
             <Ionicons
@@ -75,7 +76,7 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderRadius: Spacing.two,
+    borderRadius: Radius.small,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
     fontSize: 16,
@@ -85,7 +86,10 @@ const styles = StyleSheet.create({
   },
   toggleButton: {
     position: 'absolute',
-    right: Spacing.three,
-    padding: Spacing.half,
+    right: Spacing.one,
+    width: 48,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

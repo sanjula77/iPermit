@@ -14,7 +14,8 @@ export const Colors = {
     backgroundElement: '#F0F0F3',
     backgroundSelected: '#E0E1E6',
     textSecondary: '#60646C',
-    primary: '#208AEF',
+    // 5.7:1 on white; the old #208AEF was 3.5:1, below AA for 14sp text.
+    primary: '#1565C0',
     success: '#12805c',
     warning: '#b54708',
     danger: '#d92d20',
@@ -80,5 +81,16 @@ export const Shadows = {
   card: '0 1px 3px rgba(0, 0, 0, 0.08)',
 } as const;
 
-export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
 export const MaxContentWidth = 800;
+
+// Alpha suffixes for soft tinted backgrounds. Theme colours are 6-digit hex, so
+// appending an alpha byte gives the tint.
+export const TintAlpha = {
+  subtle: '14', // banners
+  soft: '1F', // badges, icon tiles, selected tiles
+  strong: '33', // map zone fills
+} as const;
+
+export function tint(color: string, strength: keyof typeof TintAlpha = 'soft'): string {
+  return `${color}${TintAlpha[strength]}`;
+}

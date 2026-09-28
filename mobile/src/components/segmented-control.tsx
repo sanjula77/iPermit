@@ -12,7 +12,7 @@ export function SegmentedControl<T extends string | number>({
   onChange,
   testID,
 }: {
-  options: { label: string; value: T }[];
+  options: { label: string; value: T; count?: number }[];
   value: T;
   onChange: (value: T) => void;
   testID?: string;
@@ -39,9 +39,21 @@ export function SegmentedControl<T extends string | number>({
               selected && { backgroundColor: theme.background, boxShadow: '0 1px 2px rgba(0, 0, 0, 0.12)' },
             ]}
           >
-            <ThemedText type="smallBold" themeColor={selected ? 'text' : 'textSecondary'} numberOfLines={1}>
+            <ThemedText
+              type="smallBold"
+              themeColor={selected ? 'text' : 'textSecondary'}
+              numberOfLines={1}
+              style={styles.label}
+            >
               {option.label}
             </ThemedText>
+            {option.count !== undefined ? (
+              // Separate from the label so a truncated label ("Danger zo…")
+              // still shows its count.
+              <ThemedText type="smallBold" themeColor={selected ? 'text' : 'textSecondary'} style={styles.count}>
+                {` (${option.count})`}
+              </ThemedText>
+            ) : null}
           </Pressable>
         );
       })}
@@ -59,9 +71,14 @@ const styles = StyleSheet.create({
   },
   segment: {
     flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: Spacing.two,
+    justifyContent: 'center',
+    minHeight: 48,
+    paddingHorizontal: Spacing.two,
     borderRadius: Radius.small - Spacing.half,
     borderCurve: 'continuous',
   },
+  label: { flexShrink: 1 },
+  count: { flexShrink: 0 },
 });

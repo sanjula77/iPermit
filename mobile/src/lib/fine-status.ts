@@ -48,7 +48,3 @@ export function canAppealFine(fine: FineWithViolation, appeal: Appeal | null): b
 export function appealForFine(appeals: Appeal[], fineId: string): Appeal | null {
   return appeals.find((a) => a.fine.id === fineId) ?? null;
 }
-
-export function formatLkr(amount: number): string {
-  return `LKR ${amount.toLocaleString()}`;
-}

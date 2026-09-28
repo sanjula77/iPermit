@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 
 import { getMyBadge } from '@/api/badges';
 import { listApplications } from '@/api/applications';
@@ -14,10 +14,11 @@ import { LicenseCard } from '@/components/license-card';
 import { ScreenState } from '@/components/screen-state';
 import { StatusBadge } from '@/components/status-badge';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { ScreenScroll } from '@/components/screen-scroll';
+import { Radius, Spacing, tint } from '@/constants/theme';
 import { useAuth } from '@/context/auth-context';
 import { useTheme } from '@/hooks/use-theme';
+import { formatDate } from '@/lib/format';
 import type { Application } from '@/types/application';
 import type { Badge } from '@/types/badge';
 import type { License } from '@/types/license';
@@ -51,49 +52,43 @@ function PoliceHomeScreen() {
   const theme = useTheme();
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      contentInsetAdjustmentBehavior="automatic"
-    >
-      <ThemedView style={styles.form}>
-        <ThemedText themeColor="textSecondary">How do you want to verify the driver?</ThemedText>
-        {POLICE_ACTIONS.map((action) => (
-          <Pressable
-            key={action.mode}
-            onPress={() =>
-              router.navigate({
-                pathname: '/(app)/(tabs)/(police-verify)/police-verify',
-                params: { mode: action.mode },
-              })
-            }
-            accessibilityRole="button"
-            accessibilityLabel={`${action.title}. ${action.description}`}
-            testID={`police-home-${action.mode}`}
-            style={({ pressed }) => [{ opacity: pressed ? 0.75 : 1 }]}
-          >
-            <Card style={styles.actionCard}>
-              <View style={[styles.actionIcon, { backgroundColor: `${theme.primary}1F` }]}>
-                <Ionicons name={action.icon} size={26} color={theme.primary} />
-              </View>
-              <View style={styles.actionText}>
-                <ThemedText type="subtitle">{action.title}</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">
-                  {action.description}
-                </ThemedText>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
-            </Card>
-          </Pressable>
-        ))}
-        <View style={[styles.infoNote, { backgroundColor: theme.backgroundElement }]}>
-          <Ionicons name="information-circle-outline" size={18} color={theme.textSecondary} />
-          <ThemedText type="small" themeColor="textSecondary" style={styles.actionText}>
-            Face matches are a guide. Confirm the driver&apos;s identity yourself when the match is uncertain.
-          </ThemedText>
-        </View>
-      </ThemedView>
-    </ScrollView>
+    <ScreenScroll>
+      <ThemedText themeColor="textSecondary">How do you want to verify the driver?</ThemedText>
+      {POLICE_ACTIONS.map((action) => (
+        <Pressable
+          key={action.mode}
+          onPress={() =>
+            router.navigate({
+              pathname: '/(app)/(tabs)/(police-verify)/police-verify',
+              params: { mode: action.mode },
+            })
+          }
+          accessibilityRole="button"
+          accessibilityLabel={`${action.title}. ${action.description}`}
+          testID={`police-home-${action.mode}`}
+          style={({ pressed }) => [{ opacity: pressed ? 0.75 : 1 }]}
+        >
+          <Card style={styles.actionCard}>
+            <View style={[styles.actionIcon, { backgroundColor: tint(theme.primary) }]}>
+              <Ionicons name={action.icon} size={26} color={theme.primary} />
+            </View>
+            <View style={styles.actionText}>
+              <ThemedText type="subtitle">{action.title}</ThemedText>
+              <ThemedText type="small" themeColor="textSecondary">
+                {action.description}
+              </ThemedText>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
+          </Card>
+        </Pressable>
+      ))}
+      <View style={[styles.infoNote, { backgroundColor: theme.backgroundElement }]}>
+        <Ionicons name="information-circle-outline" size={18} color={theme.textSecondary} />
+        <ThemedText type="small" themeColor="textSecondary" style={styles.actionText}>
+          Face matches are a guide. Confirm the driver&apos;s identity yourself when the match is uncertain.
+        </ThemedText>
+      </View>
+    </ScreenScroll>
   );
 }
 
@@ -159,24 +154,19 @@ function DriverHomeScreen() {
   }
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      contentInsetAdjustmentBehavior="automatic"
+    <ScreenScroll
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
     >
-      <ThemedView style={styles.form}>
-        <DriverHomeContent
-          license={license}
-          applications={applications}
-          badge={badge}
-          // While a retry/refresh is in flight, show the spinner instead of the
-          // stale error (also removes the Retry button, so taps can't overlap).
-          error={refreshing ? null : (licenseError ?? loadError)}
-          onRetry={handleRefresh}
-        />
-      </ThemedView>
-    </ScrollView>
+      <DriverHomeContent
+        license={license}
+        applications={applications}
+        badge={badge}
+        // While a retry/refresh is in flight, show the spinner instead of the
+        // stale error (also removes the Retry button, so taps can't overlap).
+        error={refreshing ? null : (licenseError ?? loadError)}
+        onRetry={handleRefresh}
+      />
+    </ScreenScroll>
   );
 }
 
@@ -226,7 +216,7 @@ function DriverHomeContent({
     );
   }
 
-  const submitted = new Date(latest.created_at).toLocaleDateString();
+  const submitted = formatDate(latest.created_at);
 
   if (latest.status === 'REJECTED') {
     return (
@@ -278,20 +268,6 @@ function DriverHomeContent({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  content: {
-    flexGrow: 1,
-    alignItems: 'center',
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.three,
-    paddingBottom: Spacing.five,
-  },
-  form: {
-    flexGrow: 1,
-    width: '100%',
-    maxWidth: MaxContentWidth,
-    gap: Spacing.four,
-  },
   actionCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -310,7 +286,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: Spacing.two,
     padding: Spacing.three,
-    borderRadius: Spacing.two,
+    borderRadius: Radius.small,
   },
   statusCard: {
     padding: Spacing.four,

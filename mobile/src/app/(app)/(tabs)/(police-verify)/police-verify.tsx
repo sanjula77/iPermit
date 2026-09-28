@@ -2,18 +2,19 @@ import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Fragment, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, StyleSheet, View } from 'react-native';
 
 import { extractErrorMessage } from '@/api/client';
 import { lookupDriver, verifyFace, verifyQr } from '@/api/police';
+import { Banner } from '@/components/banner';
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
 import { SegmentedControl } from '@/components/segmented-control';
 import { StatusBadge } from '@/components/status-badge';
 import { TextField } from '@/components/text-field';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, Radius, Spacing, type ThemeColor } from '@/constants/theme';
+import { ScreenScroll } from '@/components/screen-scroll';
+import { Radius, Spacing, tint } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { takePhoto } from '@/lib/file-upload';
 import type { DriverSummary, FaceMatchCandidate } from '@/types/police';
@@ -105,50 +106,44 @@ export default function PoliceVerifyScreen() {
   }
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      contentInsetAdjustmentBehavior="automatic"
+    <ScreenScroll
       keyboardShouldPersistTaps="handled"
     >
-      <ThemedView style={styles.form}>
-        <SegmentedControl<Mode> testID="police-tab" value={mode} onChange={changeMode} options={MODE_OPTIONS} />
+      <SegmentedControl<Mode> testID="police-tab" value={mode} onChange={changeMode} options={MODE_OPTIONS} />
 
-        {mode === 'face' ? (
-          <FaceScanPanel onScan={handleFaceScan} isLoading={isLoading} />
-        ) : mode === 'qr' ? (
-          <QrScanPanel onToken={handleQrToken} isLoading={isLoading} />
-        ) : (
-          <LookupPanel onSubmit={handleLookup} isLoading={isLoading} />
-        )}
+      {mode === 'face' ? (
+        <FaceScanPanel onScan={handleFaceScan} isLoading={isLoading} />
+      ) : mode === 'qr' ? (
+        <QrScanPanel onToken={handleQrToken} isLoading={isLoading} />
+      ) : (
+        <LookupPanel onSubmit={handleLookup} isLoading={isLoading} />
+      )}
 
-        {error ? <Banner tone="danger" icon="alert-circle" text={error} testID="police-verify-error" /> : null}
+      {error ? <Banner tone="danger" text={error} testID="police-verify-error" /> : null}
 
-        {uncertainCandidates ? (
-          <View style={styles.section}>
-            <Banner
-              tone="warning"
-              icon="warning"
-              text={
-                uncertainCandidates.length
-                  ? 'Uncertain match. Confirm the driver’s identity before continuing, or use QR or NIC instead.'
-                  : 'No enrolled driver resembles this photo closely enough to suggest. Use QR or NIC instead.'
-              }
-            />
-            {uncertainCandidates.length ? (
-              <Card style={styles.list}>
-                {uncertainCandidates.map((candidate, i) => (
-                  <Fragment key={candidate.driver.driver_id}>
-                    {i > 0 ? <Separator /> : null}
-                    <CandidateRow candidate={candidate} onPress={() => openDriver(candidate.driver)} />
-                  </Fragment>
-                ))}
-              </Card>
-            ) : null}
-          </View>
-        ) : null}
-      </ThemedView>
-    </ScrollView>
+      {uncertainCandidates ? (
+        <View style={styles.section}>
+          <Banner
+            tone="warning"
+            text={
+              uncertainCandidates.length
+                ? 'Uncertain match. Confirm the driver’s identity before continuing, or use QR or NIC instead.'
+                : 'No enrolled driver resembles this photo closely enough to suggest. Use QR or NIC instead.'
+            }
+          />
+          {uncertainCandidates.length ? (
+            <Card style={styles.list}>
+              {uncertainCandidates.map((candidate, i) => (
+                <Fragment key={candidate.driver.driver_id}>
+                  {i > 0 ? <Separator /> : null}
+                  <CandidateRow candidate={candidate} onPress={() => openDriver(candidate.driver)} />
+                </Fragment>
+              ))}
+            </Card>
+          ) : null}
+        </View>
+      ) : null}
+    </ScreenScroll>
   );
 }
 
@@ -157,32 +152,6 @@ function Separator() {
   return <View style={[styles.separator, { backgroundColor: theme.backgroundSelected }]} />;
 }
 
-function Banner({
-  tone,
-  icon,
-  text,
-  testID,
-}: {
-  tone: 'danger' | 'warning';
-  icon: keyof typeof Ionicons.glyphMap;
-  text: string;
-  testID?: string;
-}) {
-  const theme = useTheme();
-  const colorKey: ThemeColor = tone;
-  return (
-    <View
-      style={[styles.banner, { backgroundColor: `${theme[colorKey]}14` }]}
-      accessibilityLiveRegion="polite"
-      testID={testID}
-    >
-      <Ionicons name={icon} size={18} color={theme[colorKey]} />
-      <ThemedText type="small" themeColor={colorKey} selectable style={styles.flex}>
-        {text}
-      </ThemedText>
-    </View>
-  );
-}
 
 function CandidateRow({ candidate, onPress }: { candidate: FaceMatchCandidate; onPress: () => void }) {
   const theme = useTheme();
@@ -216,7 +185,7 @@ function PanelIntro({ icon, title, text }: { icon: keyof typeof Ionicons.glyphMa
   const theme = useTheme();
   return (
     <View style={styles.intro}>
-      <View style={[styles.introIcon, { backgroundColor: `${theme.primary}1F` }]}>
+      <View style={[styles.introIcon, { backgroundColor: tint(theme.primary) }]}>
         <Ionicons name={icon} size={32} color={theme.primary} />
       </View>
       <ThemedText type="subtitle" style={styles.centered}>
@@ -320,17 +289,12 @@ function QrScanPanel({ onToken, isLoading }: { onToken: (token: string) => void;
       )}
 
       {cameraDenied ? (
-        <View style={[styles.banner, { backgroundColor: `${theme.warning}14` }]}>
-          <Ionicons name="camera-outline" size={18} color={theme.warning} />
-          <View style={styles.flex}>
-            <ThemedText type="small" themeColor="warning">
-              Camera access is off. Allow it in Settings, or enter the code manually below.
-            </ThemedText>
-            <Pressable onPress={() => Linking.openSettings()} accessibilityRole="button" style={styles.linkButtonStart}>
-              <ThemedText type="linkPrimary">Open Settings</ThemedText>
-            </Pressable>
-          </View>
-        </View>
+        <Banner
+          tone="warning"
+          icon="camera-outline"
+          text="Camera access is off. Allow it in Settings, or enter the code manually below."
+          action={{ label: 'Open Settings', onPress: () => Linking.openSettings() }}
+        />
       ) : null}
 
       {showManual ? (
@@ -408,18 +372,6 @@ function LookupPanel({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  content: {
-    flexGrow: 1,
-    alignItems: 'center',
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.three,
-  },
-  form: {
-    width: '100%',
-    maxWidth: MaxContentWidth,
-    gap: Spacing.four,
-  },
   flex: { flex: 1 },
   centered: { textAlign: 'center' },
   panel: { gap: Spacing.three },
@@ -454,15 +406,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     paddingVertical: Spacing.one,
   },
-  linkButtonStart: { alignSelf: 'flex-start' },
   section: { gap: Spacing.two },
-  banner: {
-    flexDirection: 'row',
-    gap: Spacing.two,
-    padding: Spacing.three,
-    borderRadius: Radius.small,
-    borderCurve: 'continuous',
-  },
   list: {
     paddingVertical: 0,
     gap: 0,

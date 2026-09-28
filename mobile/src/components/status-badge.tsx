@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Radius, Spacing, type ThemeColor } from '@/constants/theme';
+import { Radius, Spacing, tint, type ThemeColor } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 export type StatusTone = 'neutral' | 'info' | 'success' | 'warning' | 'danger';
@@ -32,15 +32,14 @@ export function StatusBadge({
   const color = theme[TONE_COLOR[tone]];
 
   return (
-    // Theme colors are 6-digit hex, so appending an alpha byte gives a soft tint.
     <View
       testID={testID}
       accessible
       accessibilityLabel={label}
-      style={[styles.badge, { backgroundColor: `${color}1F` }]}
+      style={[styles.badge, { backgroundColor: tint(color) }]}
     >
       <Ionicons name={icon} size={14} color={color} />
-      <ThemedText type="smallBold" themeColor={TONE_COLOR[tone]}>
+      <ThemedText type="smallBold" themeColor={TONE_COLOR[tone]} numberOfLines={1}>
         {label}
       </ThemedText>
     </View>

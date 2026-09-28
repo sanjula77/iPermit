@@ -1,19 +1,21 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Fragment, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 
+import { Banner } from '@/components/banner';
 import { Card } from '@/components/card';
 import { EmptyState } from '@/components/empty-state';
 import { ScreenState } from '@/components/screen-state';
 import { StatusBadge } from '@/components/status-badge';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { ScreenScroll } from '@/components/screen-scroll';
+import { Spacing } from '@/constants/theme';
 import { VIOLATION_ICON, VIOLATION_LABEL } from '@/constants/violations';
 import { useMyFines } from '@/hooks/use-my-fines';
 import { useTheme } from '@/hooks/use-theme';
-import { appealForFine, fineBadge, formatLkr } from '@/lib/fine-status';
+import { appealForFine, fineBadge } from '@/lib/fine-status';
+import { formatDate, formatLkr } from '@/lib/format';
 import type { Appeal, FineWithViolation } from '@/types/fine';
 
 export default function FinesScreen() {
@@ -27,34 +29,27 @@ export default function FinesScreen() {
   }
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      contentInsetAdjustmentBehavior="automatic"
+    <ScreenScroll
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
     >
-      <ThemedView style={styles.form}>
-        {fines !== null && error ? (
-          // Keep showing the last good data, but say the refresh failed.
-          <ThemedText type="small" themeColor="danger" selectable testID="fines-refresh-error">
-            Couldn&apos;t refresh: {error}
-          </ThemedText>
-        ) : null}
-        {fines === null ? (
-          // Spinner while retrying replaces the stale error (and its Retry button).
-          <ScreenState error={isLoading ? null : error} onRetry={handleRefresh} testID="fines" />
-        ) : fines.length === 0 ? (
-          <EmptyState
-            testID="fines-empty"
-            icon="shield-checkmark-outline"
-            title="No fines"
-            message="You have no traffic fines. Keep driving safely."
-          />
-        ) : (
-          <FinesContent fines={fines} appeals={appeals} />
-        )}
-      </ThemedView>
-    </ScrollView>
+      {fines !== null && error ? (
+        // Keep showing the last good data, but say the refresh failed.
+        <Banner tone="danger" text={`Couldn't refresh: ${error}`} testID="fines-refresh-error" />
+      ) : null}
+      {fines === null ? (
+        // Spinner while retrying replaces the stale error (and its Retry button).
+        <ScreenState error={isLoading ? null : error} onRetry={handleRefresh} testID="fines" />
+      ) : fines.length === 0 ? (
+        <EmptyState
+          testID="fines-empty"
+          icon="shield-checkmark-outline"
+          title="No fines"
+          message="You have no traffic fines. Keep driving safely."
+        />
+      ) : (
+        <FinesContent fines={fines} appeals={appeals} />
+      )}
+    </ScreenScroll>
   );
 }
 
@@ -140,7 +135,7 @@ function FineRow({ fine, appeal }: { fine: FineWithViolation; appeal: Appeal | n
       <View style={styles.rowText}>
         <ThemedText>{label}</ThemedText>
         <ThemedText type="small" themeColor="textSecondary">
-          {new Date(fine.violation.confirmed_at).toLocaleDateString()} · {fine.violation.points_deducted} pts
+          {formatDate(fine.violation.confirmed_at)} · {fine.violation.points_deducted} pts
         </ThemedText>
       </View>
       <View style={styles.rowEnd}>
@@ -155,19 +150,6 @@ function FineRow({ fine, appeal }: { fine: FineWithViolation; appeal: Appeal | n
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  content: {
-    flexGrow: 1,
-    alignItems: 'center',
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.four,
-  },
-  form: {
-    flexGrow: 1,
-    width: '100%',
-    maxWidth: MaxContentWidth,
-    gap: Spacing.four,
-  },
   summary: {
     padding: Spacing.four,
     gap: Spacing.one,

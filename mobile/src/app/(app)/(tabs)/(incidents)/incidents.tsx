@@ -6,15 +6,16 @@ import { Alert, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Vie
 import { extractErrorMessage } from '@/api/client';
 import { clearDangerZone, confirmDangerZone, listNearbyDangerZones } from '@/api/danger-zones';
 import { clearIncident, confirmIncident, listNearbyIncidents } from '@/api/road-incidents';
+import { Banner } from '@/components/banner';
 import { Card } from '@/components/card';
 import { EmptyState } from '@/components/empty-state';
 import { IncidentsMap } from '@/components/incidents-map';
 import { ScreenState } from '@/components/screen-state';
 import { SegmentedControl } from '@/components/segmented-control';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
+import { ScreenScroll } from '@/components/screen-scroll';
 import { INCIDENT_ICON, INCIDENT_LABEL, SEVERITY_LABEL } from '@/constants/incidents';
-import { MaxContentWidth, Radius, Spacing, type ThemeColor } from '@/constants/theme';
+import { Radius, Spacing, type ThemeColor } from '@/constants/theme';
 import { useCurrentLocation, type LatLng } from '@/hooks/use-current-location';
 import { useTheme } from '@/hooks/use-theme';
 import { relativeTime } from '@/lib/relative-time';
@@ -136,10 +137,8 @@ export default function IncidentsScreen() {
   const listError = tab === 'incidents' ? incidentsError : zonesError;
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      contentInsetAdjustmentBehavior="automatic"
+    <ScreenScroll
+      gap={Spacing.three}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
       ref={scrollRef}
     >
@@ -162,101 +161,97 @@ export default function IncidentsScreen() {
           ),
         }}
       />
-      <ThemedView style={styles.form}>
-        {locationNote ? <Banner kind="info" text={locationNote} testID="location-note" /> : null}
-        {notice ? <Banner kind={notice.kind} text={notice.text} testID="incident-action-message" /> : null}
+      {locationNote ? <Banner tone="info" text={locationNote} testID="location-note" /> : null}
+      {notice ? <Banner tone={notice.kind === 'success' ? 'success' : 'danger'} text={notice.text} testID="incident-action-message" /> : null}
 
-        {Platform.OS === 'web' ? (
-          <ThemedText type="small" themeColor="textSecondary" testID="map-unavailable-note">
-            Map view is only available on the native app.
-          </ThemedText>
-        ) : location ? (
-          <IncidentsMap center={location} incidents={incidents ?? []} zones={zones ?? []} focus={focus} />
-        ) : (
-          <View style={[styles.mapPlaceholder, { backgroundColor: theme.backgroundElement }]}>
-            <ScreenState />
-          </View>
-        )}
+      {Platform.OS === 'web' ? (
+        <ThemedText type="small" themeColor="textSecondary" testID="map-unavailable-note">
+          Map view is only available on the native app.
+        </ThemedText>
+      ) : location ? (
+        <IncidentsMap center={location} incidents={incidents ?? []} zones={zones ?? []} focus={focus} />
+      ) : (
+        <View style={[styles.mapPlaceholder, { backgroundColor: theme.backgroundElement }]}>
+          <ScreenState />
+        </View>
+      )}
 
-        <SegmentedControl<Tab>
-          testID="incidents-tab"
-          value={tab}
-          onChange={setTab}
-          options={[
-            { label: incidents ? `Incidents (${incidents.length})` : 'Incidents', value: 'incidents' },
-            { label: zones ? `Danger zones (${zones.length})` : 'Danger zones', value: 'zones' },
-          ]}
+      <SegmentedControl<Tab>
+        testID="incidents-tab"
+        value={tab}
+        onChange={setTab}
+        options={[
+          { label: incidents ? `Incidents (${incidents.length})` : 'Incidents', value: 'incidents' },
+          { label: zones ? `Danger zones (${zones.length})` : 'Danger zones', value: 'zones' },
+        ]}
+      />
+
+      {list === null ? (
+        <ScreenState
+          error={location ? listError : null}
+          onRetry={handleRefresh}
+          testID={tab === 'incidents' ? 'incidents' : 'zones'}
         />
-
-        {list === null ? (
-          <ScreenState
-            error={location ? listError : null}
-            onRetry={handleRefresh}
-            testID={tab === 'incidents' ? 'incidents' : 'zones'}
-          />
-        ) : list.length === 0 ? (
-          <EmptyState
-            testID={tab === 'incidents' ? 'incidents-empty' : 'zones-empty'}
-            icon={tab === 'incidents' ? 'checkmark-done-circle-outline' : 'shield-checkmark-outline'}
-            title={tab === 'incidents' ? 'No incidents nearby' : 'No danger zones nearby'}
-            message={
-              tab === 'incidents'
-                ? 'Seen an accident, flood or road block? Tap Report to warn other drivers.'
-                : 'Know a dangerous stretch of road? Tap Report to mark it for others.'
-            }
-          />
-        ) : (
-          <>
-            {listError ? (
-              <ThemedText type="small" themeColor="danger" selectable>
-                Couldn&apos;t refresh: {listError}
-              </ThemedText>
-            ) : null}
-            <Card style={styles.list}>
-              {tab === 'incidents'
-                ? (list as RoadIncident[]).map((incident, i) => (
-                    <Fragment key={incident.id}>
-                      {i > 0 ? <Separator /> : null}
-                      <ReportRow
-                        testID={`incident-${incident.id}`}
-                        icon={INCIDENT_ICON[incident.type]}
-                        severity={incident.severity}
-                        title={INCIDENT_LABEL[incident.type]}
-                        detail={`${SEVERITY_LABEL[incident.severity]} · ${confirmations(incident.confirmation_count)} · ${relativeTime(incident.created_at)}`}
-                        onPress={() => showOnMap({ lat: incident.lat, lng: incident.lng })}
-                        onConfirm={() =>
-                          runAction(incident.id, () => confirmIncident(incident.id), 'Incident confirmed. Thanks for the update.')
-                        }
-                        onClear={() => confirmClear(incident.id, 'Incident', () => clearIncident(incident.id))}
-                        confirmTestID={`confirm-${incident.id}`}
-                        clearTestID={`clear-${incident.id}`}
-                      />
-                    </Fragment>
-                  ))
-                : (list as DangerZone[]).map((zone, i) => (
-                    <Fragment key={zone.id}>
-                      {i > 0 ? <Separator /> : null}
-                      <ReportRow
-                        testID={`zone-${zone.id}`}
-                        icon="warning"
-                        severity={zone.severity}
-                        title={zone.reason || `${SEVERITY_LABEL[zone.severity]} risk area`}
-                        detail={`${SEVERITY_LABEL[zone.severity]} · ${formatRadius(zone.radius_m)} · ${confirmations(zone.confirmation_count)}`}
-                        onPress={() => showOnMap({ lat: zone.lat, lng: zone.lng })}
-                        onConfirm={() =>
-                          runAction(zone.id, () => confirmDangerZone(zone.id), 'Danger zone confirmed. Thanks for the update.')
-                        }
-                        onClear={() => confirmClear(zone.id, 'Danger zone', () => clearDangerZone(zone.id))}
-                        confirmTestID={`confirm-zone-${zone.id}`}
-                        clearTestID={`clear-zone-${zone.id}`}
-                      />
-                    </Fragment>
-                  ))}
-            </Card>
-          </>
-        )}
-      </ThemedView>
-    </ScrollView>
+      ) : list.length === 0 ? (
+        <EmptyState
+          testID={tab === 'incidents' ? 'incidents-empty' : 'zones-empty'}
+          icon={tab === 'incidents' ? 'checkmark-done-circle-outline' : 'shield-checkmark-outline'}
+          title={tab === 'incidents' ? 'No incidents nearby' : 'No danger zones nearby'}
+          message={
+            tab === 'incidents'
+              ? 'Seen an accident, flood or road block? Tap Report to warn other drivers.'
+              : 'Know a dangerous stretch of road? Tap Report to mark it for others.'
+          }
+        />
+      ) : (
+        <>
+          {listError ? (
+            <Banner tone="danger" text={`Couldn't refresh: ${listError}`} testID="incidents-refresh-error" />
+          ) : null}
+          <Card style={styles.list}>
+            {tab === 'incidents'
+              ? (list as RoadIncident[]).map((incident, i) => (
+                  <Fragment key={incident.id}>
+                    {i > 0 ? <Separator /> : null}
+                    <ReportRow
+                      testID={`incident-${incident.id}`}
+                      icon={INCIDENT_ICON[incident.type]}
+                      severity={incident.severity}
+                      title={INCIDENT_LABEL[incident.type]}
+                      detail={`${SEVERITY_LABEL[incident.severity]} · ${confirmations(incident.confirmation_count)} · ${relativeTime(incident.created_at)}`}
+                      onPress={() => showOnMap({ lat: incident.lat, lng: incident.lng })}
+                      onConfirm={() =>
+                        runAction(incident.id, () => confirmIncident(incident.id), 'Incident confirmed. Thanks for the update.')
+                      }
+                      onClear={() => confirmClear(incident.id, 'Incident', () => clearIncident(incident.id))}
+                      confirmTestID={`confirm-${incident.id}`}
+                      clearTestID={`clear-${incident.id}`}
+                    />
+                  </Fragment>
+                ))
+              : (list as DangerZone[]).map((zone, i) => (
+                  <Fragment key={zone.id}>
+                    {i > 0 ? <Separator /> : null}
+                    <ReportRow
+                      testID={`zone-${zone.id}`}
+                      icon="warning"
+                      severity={zone.severity}
+                      title={zone.reason || `${SEVERITY_LABEL[zone.severity]} risk area`}
+                      detail={`${SEVERITY_LABEL[zone.severity]} · ${formatRadius(zone.radius_m)} · ${confirmations(zone.confirmation_count)}`}
+                      onPress={() => showOnMap({ lat: zone.lat, lng: zone.lng })}
+                      onConfirm={() =>
+                        runAction(zone.id, () => confirmDangerZone(zone.id), 'Danger zone confirmed. Thanks for the update.')
+                      }
+                      onClear={() => confirmClear(zone.id, 'Danger zone', () => clearDangerZone(zone.id))}
+                      confirmTestID={`confirm-zone-${zone.id}`}
+                      clearTestID={`clear-zone-${zone.id}`}
+                    />
+                  </Fragment>
+                ))}
+          </Card>
+        </>
+      )}
+    </ScreenScroll>
   );
 }
 
@@ -273,23 +268,6 @@ function Separator() {
   return <View style={[styles.separator, { backgroundColor: theme.backgroundSelected }]} />;
 }
 
-function Banner({ kind, text, testID }: { kind: 'success' | 'error' | 'info'; text: string; testID?: string }) {
-  const theme = useTheme();
-  const colorKey: ThemeColor = kind === 'success' ? 'success' : kind === 'error' ? 'danger' : 'textSecondary';
-  const icon = kind === 'success' ? 'checkmark-circle' : kind === 'error' ? 'alert-circle' : 'information-circle';
-  return (
-    <View
-      style={[styles.banner, { backgroundColor: `${theme[colorKey]}14` }]}
-      accessibilityLiveRegion="polite"
-      testID={testID}
-    >
-      <Ionicons name={icon} size={18} color={theme[colorKey]} />
-      <ThemedText type="small" themeColor={colorKey} selectable style={styles.bannerText}>
-        {text}
-      </ThemedText>
-    </View>
-  );
-}
 
 function ReportRow({
   icon,
@@ -366,19 +344,6 @@ function ReportRow({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  content: {
-    flexGrow: 1,
-    alignItems: 'center',
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.three,
-  },
-  form: {
-    flexGrow: 1,
-    width: '100%',
-    maxWidth: MaxContentWidth,
-    gap: Spacing.three,
-  },
   headerButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -389,14 +354,6 @@ const styles = StyleSheet.create({
     borderRadius: Radius.medium,
     justifyContent: 'center',
   },
-  banner: {
-    flexDirection: 'row',
-    gap: Spacing.two,
-    padding: Spacing.three,
-    borderRadius: Radius.small,
-    borderCurve: 'continuous',
-  },
-  bannerText: { flex: 1 },
   list: {
     paddingVertical: 0,
     gap: 0,

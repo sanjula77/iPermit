@@ -1,16 +1,17 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect, type Href } from 'expo-router';
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 
 import { extractErrorMessage } from '@/api/client';
 import { getMyNotifications, markNotificationRead } from '@/api/notifications';
+import { Banner } from '@/components/banner';
 import { Card } from '@/components/card';
 import { EmptyState } from '@/components/empty-state';
 import { ScreenState } from '@/components/screen-state';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, Spacing, type ThemeColor } from '@/constants/theme';
+import { ScreenScroll } from '@/components/screen-scroll';
+import { Spacing, type ThemeColor } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { relativeTime } from '@/lib/relative-time';
 import { setUnreadCount } from '@/lib/unread-count';
@@ -111,55 +112,48 @@ export default function NotificationsScreen() {
     .filter((group) => group.items.length > 0);
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      contentInsetAdjustmentBehavior="automatic"
+    <ScreenScroll
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
     >
-      <ThemedView style={styles.form}>
-        {notifications !== null && error ? (
-          <ThemedText type="small" themeColor="danger" selectable testID="notifications-error">
-            Couldn&apos;t refresh: {error}
-          </ThemedText>
-        ) : null}
-        {notifications === null ? (
-          <ScreenState error={refreshing ? null : error} onRetry={handleRefresh} testID="notifications" />
-        ) : notifications.length === 0 ? (
-          <EmptyState
-            testID="notifications-empty"
-            icon="notifications-outline"
-            title="No notifications yet"
-            message="We'll let you know about your license, fines and appeals here."
-          />
-        ) : (
-          groups.map((group) => (
-            <View key={group.label} style={styles.section}>
-              <ThemedText
-                type="smallBold"
-                themeColor="textSecondary"
-                style={styles.sectionLabel}
-                accessibilityRole="header"
-              >
-                {group.label}
-              </ThemedText>
-              <Card style={styles.list}>
-                {group.items.map((notification, i) => (
-                  <Fragment key={notification.id}>
-                    {i > 0 ? <Separator /> : null}
-                    <NotificationRow
-                      notification={notification}
-                      now={now}
-                      onPress={() => handlePress(notification)}
-                    />
-                  </Fragment>
-                ))}
-              </Card>
-            </View>
-          ))
-        )}
-      </ThemedView>
-    </ScrollView>
+      {notifications !== null && error ? (
+        <Banner tone="danger" text={`Couldn't refresh: ${error}`} testID="notifications-error" />
+      ) : null}
+      {notifications === null ? (
+        <ScreenState error={refreshing ? null : error} onRetry={handleRefresh} testID="notifications" />
+      ) : notifications.length === 0 ? (
+        <EmptyState
+          testID="notifications-empty"
+          icon="notifications-outline"
+          title="No notifications yet"
+          message="We'll let you know about your license, fines and appeals here."
+        />
+      ) : (
+        groups.map((group) => (
+          <View key={group.label} style={styles.section}>
+            <ThemedText
+              type="smallBold"
+              themeColor="textSecondary"
+              style={styles.sectionLabel}
+              accessibilityRole="header"
+            >
+              {group.label}
+            </ThemedText>
+            <Card style={styles.list}>
+              {group.items.map((notification, i) => (
+                <Fragment key={notification.id}>
+                  {i > 0 ? <Separator /> : null}
+                  <NotificationRow
+                    notification={notification}
+                    now={now}
+                    onPress={() => handlePress(notification)}
+                  />
+                </Fragment>
+              ))}
+            </Card>
+          </View>
+        ))
+      )}
+    </ScreenScroll>
   );
 }
 
@@ -214,19 +208,6 @@ function NotificationRow({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  content: {
-    flexGrow: 1,
-    alignItems: 'center',
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.three,
-  },
-  form: {
-    flexGrow: 1,
-    width: '100%',
-    maxWidth: MaxContentWidth,
-    gap: Spacing.four,
-  },
   section: { gap: Spacing.two },
   sectionLabel: {
     textTransform: 'uppercase',

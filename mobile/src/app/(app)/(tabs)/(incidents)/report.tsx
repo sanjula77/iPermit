@@ -1,16 +1,17 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { extractErrorMessage } from '@/api/client';
 import { markDangerZone } from '@/api/danger-zones';
 import { reportIncident } from '@/api/road-incidents';
+import { Banner } from '@/components/banner';
 import { Button } from '@/components/button';
 import { SegmentedControl } from '@/components/segmented-control';
 import { TextField } from '@/components/text-field';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
+import { ScreenScroll } from '@/components/screen-scroll';
 import {
   INCIDENT_ICON,
   INCIDENT_LABEL,
@@ -19,7 +20,7 @@ import {
   SEVERITY_LABEL,
   ZONE_RADIUS_OPTIONS,
 } from '@/constants/incidents';
-import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { Radius, Spacing, tint } from '@/constants/theme';
 import { useCurrentLocation } from '@/hooks/use-current-location';
 import { useTheme } from '@/hooks/use-theme';
 import type { RoadIncidentSeverity, RoadIncidentType } from '@/types/road-incident';
@@ -73,127 +74,118 @@ export default function ReportScreen() {
   }
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      contentInsetAdjustmentBehavior="automatic"
+    <ScreenScroll
       keyboardShouldPersistTaps="handled"
     >
-      <ThemedView style={styles.form}>
-        <SegmentedControl<Kind>
-          testID="report-kind"
-          value={kind}
-          onChange={(next) => {
-            setKind(next);
-            setError(null);
-          }}
-          options={[
-            { label: 'Incident', value: 'incident' },
-            { label: 'Danger zone', value: 'zone' },
-          ]}
-        />
+      <SegmentedControl<Kind>
+        testID="report-kind"
+        value={kind}
+        onChange={(next) => {
+          setKind(next);
+          setError(null);
+        }}
+        options={[
+          { label: 'Incident', value: 'incident' },
+          { label: 'Danger zone', value: 'zone' },
+        ]}
+      />
 
-        <ThemedText themeColor="textSecondary">
-          {kind === 'incident'
-            ? 'Warn nearby drivers about something happening on the road right now.'
-            : 'Mark a stretch of road that is dangerous, such as a sharp bend or an accident-prone junction.'}
-        </ThemedText>
+      <ThemedText themeColor="textSecondary">
+        {kind === 'incident'
+          ? 'Warn nearby drivers about something happening on the road right now.'
+          : 'Mark a stretch of road that is dangerous, such as a sharp bend or an accident-prone junction.'}
+      </ThemedText>
 
-        {kind === 'incident' ? (
-          <View style={styles.section}>
-            <SectionLabel text="What happened?" />
-            <View style={styles.typeGrid} accessibilityRole="radiogroup">
-              {INCIDENT_TYPES.map((type) => {
-                const selected = incidentType === type;
-                return (
-                  <Pressable
-                    key={type}
-                    onPress={() => setIncidentType(type)}
-                    accessibilityRole="radio"
-                    accessibilityState={{ checked: selected }}
-                    accessibilityLabel={INCIDENT_LABEL[type]}
-                    testID={`type-${type}`}
-                    style={({ pressed }) => [
-                      styles.typeTile,
-                      {
-                        backgroundColor: selected ? `${theme.primary}1F` : theme.backgroundElement,
-                        borderColor: selected ? theme.primary : 'transparent',
-                        opacity: pressed ? 0.7 : 1,
-                      },
-                    ]}
-                  >
-                    <Ionicons name={INCIDENT_ICON[type]} size={22} color={selected ? theme.primary : theme.text} />
-                    <ThemedText type="smallBold" themeColor={selected ? 'primary' : 'text'}>
-                      {INCIDENT_LABEL[type]}
-                    </ThemedText>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-        ) : (
-          <View style={styles.section}>
-            <SectionLabel text="Area size" />
-            <SegmentedControl<number>
-              testID="zone-radius"
-              value={radius}
-              onChange={setRadius}
-              options={ZONE_RADIUS_OPTIONS}
-            />
-          </View>
-        )}
-
+      {kind === 'incident' ? (
         <View style={styles.section}>
-          <SectionLabel text="Severity" />
-          <SegmentedControl<RoadIncidentSeverity>
-            testID={kind === 'incident' ? 'severity' : 'zone-severity'}
-            value={severity}
-            onChange={setSeverity}
-            options={SEVERITY_OPTIONS}
+          <SectionLabel text="What happened?" />
+          <View style={styles.typeGrid} accessibilityRole="radiogroup">
+            {INCIDENT_TYPES.map((type) => {
+              const selected = incidentType === type;
+              return (
+                <Pressable
+                  key={type}
+                  onPress={() => setIncidentType(type)}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: selected }}
+                  accessibilityLabel={INCIDENT_LABEL[type]}
+                  testID={`type-${type}`}
+                  style={({ pressed }) => [
+                    styles.typeTile,
+                    {
+                      backgroundColor: selected ? tint(theme.primary) : theme.backgroundElement,
+                      borderColor: selected ? theme.primary : 'transparent',
+                      opacity: pressed ? 0.7 : 1,
+                    },
+                  ]}
+                >
+                  <Ionicons name={INCIDENT_ICON[type]} size={22} color={selected ? theme.primary : theme.text} />
+                  <ThemedText type="smallBold" themeColor={selected ? 'primary' : 'text'}>
+                    {INCIDENT_LABEL[type]}
+                  </ThemedText>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+      ) : (
+        <View style={styles.section}>
+          <SectionLabel text="Area size" />
+          <SegmentedControl<number>
+            testID="zone-radius"
+            value={radius}
+            onChange={setRadius}
+            options={ZONE_RADIUS_OPTIONS}
           />
         </View>
+      )}
 
-        {kind === 'zone' ? (
-          <TextField
-            label="Reason (optional)"
-            placeholder="e.g. Sharp bend with poor visibility"
-            value={reason}
-            onChangeText={setReason}
-            autoCapitalize="sentences"
-            autoCorrect
-            testID="zone-reason-input"
-          />
-        ) : null}
+      <View style={styles.section}>
+        <SectionLabel text="Severity" />
+        <SegmentedControl<RoadIncidentSeverity>
+          testID={kind === 'incident' ? 'severity' : 'zone-severity'}
+          value={severity}
+          onChange={setSeverity}
+          options={SEVERITY_OPTIONS}
+        />
+      </View>
 
-        <View style={styles.locationRow}>
-          <Ionicons name="location-outline" size={18} color={theme.textSecondary} />
-          <ThemedText type="small" themeColor="textSecondary" style={styles.locationText}>
-            {!location
-              ? 'Finding your location…'
-              : isFallback
-                ? 'Turn on location access to report from where you are.'
-                : 'Uses your current location.'}
-          </ThemedText>
-        </View>
+      {kind === 'zone' ? (
+        <TextField
+          label="Reason (optional)"
+          placeholder="e.g. Sharp bend with poor visibility"
+          value={reason}
+          onChangeText={setReason}
+          autoCapitalize="sentences"
+          autoCorrect
+          testID="zone-reason-input"
+        />
+      ) : null}
 
-        {error ? (
-          <ThemedText type="small" themeColor="danger" selectable accessibilityLiveRegion="polite">
-            {error}
-          </ThemedText>
-        ) : null}
+      <View style={styles.locationRow}>
+        <Ionicons name="location-outline" size={18} color={theme.textSecondary} />
+        <ThemedText type="small" themeColor="textSecondary" style={styles.locationText}>
+          {!location
+            ? 'Finding your location…'
+            : isFallback
+              ? 'Turn on location access to report from where you are.'
+              : 'Uses your current location.'}
+        </ThemedText>
+      </View>
 
-        <Button
-          onPress={handleSubmit}
-          disabled={!canSubmit}
-          testID={kind === 'incident' ? 'report-button' : 'mark-zone-button'}
-        >
-          <Ionicons name="paper-plane-outline" size={18} color={theme.onPrimary} />
-          <ThemedText type="smallBold" themeColor="onPrimary">
-            {isSubmitting ? 'Sending…' : kind === 'incident' ? 'Report incident' : 'Mark danger zone'}
-          </ThemedText>
-        </Button>
-      </ThemedView>
-    </ScrollView>
+      {error ? <Banner tone="danger" text={error} testID="report-error" /> : null}
+
+      <Button
+        onPress={handleSubmit}
+        disabled={!canSubmit}
+        testID={kind === 'incident' ? 'report-button' : 'mark-zone-button'}
+      >
+        <Ionicons name="paper-plane-outline" size={18} color={theme.onPrimary} />
+        <ThemedText type="smallBold" themeColor="onPrimary">
+          {isSubmitting ? 'Sending…' : kind === 'incident' ? 'Report incident' : 'Mark danger zone'}
+        </ThemedText>
+      </Button>
+    </ScreenScroll>
   );
 }
 
@@ -206,18 +198,6 @@ function SectionLabel({ text }: { text: string }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  content: {
-    flexGrow: 1,
-    alignItems: 'center',
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.four,
-  },
-  form: {
-    width: '100%',
-    maxWidth: MaxContentWidth,
-    gap: Spacing.four,
-  },
   section: { gap: Spacing.two },
   sectionLabel: {
     textTransform: 'uppercase',

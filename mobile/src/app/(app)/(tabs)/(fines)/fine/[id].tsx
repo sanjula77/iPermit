@@ -1,11 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { Fragment, useRef, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 
 import { submitAppeal } from '@/api/appeals';
 import { extractErrorMessage } from '@/api/client';
 import { payFine } from '@/api/fines';
+import { Banner } from '@/components/banner';
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
 import { EmptyState } from '@/components/empty-state';
@@ -13,8 +14,8 @@ import { ScreenState } from '@/components/screen-state';
 import { StatusBadge } from '@/components/status-badge';
 import { TextField } from '@/components/text-field';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { ScreenScroll } from '@/components/screen-scroll';
+import { Spacing } from '@/constants/theme';
 import { VIOLATION_ICON, VIOLATION_LABEL } from '@/constants/violations';
 import { useMyFines } from '@/hooks/use-my-fines';
 import { useTheme } from '@/hooks/use-theme';
@@ -26,8 +27,8 @@ import {
   canAppealFine,
   canPayFine,
   fineBadge,
-  formatLkr,
 } from '@/lib/fine-status';
+import { formatDate, formatLkr } from '@/lib/format';
 import type { Appeal, FineWithViolation, PaymentMethod } from '@/types/fine';
 
 const PAYMENT_METHODS: PaymentMethod[] = ['CARD', 'BANK', 'WALLET'];
@@ -39,28 +40,21 @@ export default function FineDetailScreen() {
   const fine = fines?.find((f) => f.id === id) ?? null;
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      contentInsetAdjustmentBehavior="automatic"
+    <ScreenScroll
       keyboardShouldPersistTaps="handled"
     >
       <Stack.Screen options={{ title: 'Fine details', headerLargeTitleEnabled: false }} />
-      <ThemedView style={styles.form}>
-        {fines !== null && error ? (
-          <ThemedText type="small" themeColor="danger" selectable testID="fine-refresh-error">
-            Couldn&apos;t refresh: {error}
-          </ThemedText>
-        ) : null}
-        {fines === null ? (
-          <ScreenState error={isLoading ? null : error} onRetry={reload} testID="fine" />
-        ) : !fine ? (
-          <EmptyState icon="document-outline" title="Fine not found" message="It may have been removed." />
-        ) : (
-          <FineDetail fine={fine} appeal={appealForFine(appeals, fine.id)} onChanged={reload} />
-        )}
-      </ThemedView>
-    </ScrollView>
+      {fines !== null && error ? (
+        <Banner tone="danger" text={`Couldn't refresh: ${error}`} testID="fine-refresh-error" />
+      ) : null}
+      {fines === null ? (
+        <ScreenState error={isLoading ? null : error} onRetry={reload} testID="fine" />
+      ) : !fine ? (
+        <EmptyState icon="document-outline" title="Fine not found" message="It may have been removed." />
+      ) : (
+        <FineDetail fine={fine} appeal={appealForFine(appeals, fine.id)} onChanged={reload} />
+      )}
+    </ScreenScroll>
   );
 }
 
@@ -144,12 +138,12 @@ function FineDetail({
   }
 
   const rows: [string, string][] = [
-    ['Date', new Date(fine.violation.confirmed_at).toLocaleDateString()],
+    ['Date', formatDate(fine.violation.confirmed_at)],
     ['Points deducted', String(fine.violation.points_deducted)],
   ];
   if (fine.status === 'PAID') {
     if (fine.payment_method) rows.push(['Paid by', PAYMENT_METHOD_LABEL[fine.payment_method]]);
-    if (fine.paid_at) rows.push(['Paid on', new Date(fine.paid_at).toLocaleDateString()]);
+    if (fine.paid_at) rows.push(['Paid on', formatDate(fine.paid_at)]);
   }
 
   return (
@@ -165,18 +159,7 @@ function FineDetail({
         <StatusBadge testID="fine-detail-status" tone={badge.tone} icon={badge.icon} label={badge.label} />
       </View>
 
-      {notice ? (
-        <View
-          style={[styles.banner, { borderColor: theme.success, backgroundColor: `${theme.success}14` }]}
-          accessibilityLiveRegion="polite"
-          testID="fine-notice"
-        >
-          <Ionicons name="checkmark-circle" size={20} color={theme.success} />
-          <ThemedText type="small" themeColor="success" style={styles.bannerText}>
-            {notice}
-          </ThemedText>
-        </View>
-      ) : null}
+      {notice ? <Banner tone="success" text={notice} testID="fine-notice" /> : null}
 
       <DetailRows rows={rows} />
 
@@ -189,18 +172,14 @@ function FineDetail({
             <StatusBadge {...APPEAL_STATUS_BADGE[appeal.status]} />
             <ThemedText selectable>{appeal.reason}</ThemedText>
             <ThemedText type="small" themeColor="textSecondary">
-              Submitted {new Date(appeal.created_at).toLocaleDateString()}
-              {appeal.resolved_at ? ` · Resolved ${new Date(appeal.resolved_at).toLocaleDateString()}` : ''}
+              Submitted {formatDate(appeal.created_at)}
+              {appeal.resolved_at ? ` · Resolved ${formatDate(appeal.resolved_at)}` : ''}
             </ThemedText>
           </Card>
         </View>
       ) : null}
 
-      {error ? (
-        <ThemedText type="small" themeColor="danger" selectable accessibilityLiveRegion="polite">
-          {error}
-        </ThemedText>
-      ) : null}
+      {error ? <Banner tone="danger" text={error} testID="fine-action-error" /> : null}
 
       {!resolved && (canPay || canAppeal) ? (
         action === 'pay' ? (
@@ -302,19 +281,6 @@ function DetailRows({ rows }: { rows: [string, string][] }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  content: {
-    flexGrow: 1,
-    alignItems: 'center',
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.four,
-  },
-  form: {
-    flexGrow: 1,
-    width: '100%',
-    maxWidth: MaxContentWidth,
-    gap: Spacing.four,
-  },
   hero: {
     alignItems: 'center',
     gap: Spacing.two,
@@ -327,15 +293,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   tabular: { fontVariant: ['tabular-nums'] },
-  banner: {
-    flexDirection: 'row',
-    gap: Spacing.two,
-    borderWidth: 1,
-    borderRadius: Spacing.two,
-    borderCurve: 'continuous',
-    padding: Spacing.three,
-  },
-  bannerText: { flex: 1 },
   section: { gap: Spacing.two },
   sectionLabel: {
     textTransform: 'uppercase',

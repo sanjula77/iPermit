@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { ReactElement, ReactNode } from 'react';
-import { ScrollView, StyleSheet, View, type RefreshControlProps } from 'react-native';
+import { Platform, ScrollView, StyleSheet, View, type RefreshControlProps } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PressableScale } from '@/components/pressable-scale';
@@ -12,6 +12,8 @@ import { useTheme } from '@/hooks/use-theme';
 // Style-B summary screen: a brand gradient hero holding the screen's key figure,
 // with the content on a rounded sheet that overlaps the hero's lower edge.
 // Used with the native header hidden, so the hero draws under the status bar.
+// A fixed brand strip stays behind the status bar once the hero scrolls away,
+// so the light status-bar icons never sit on the light canvas.
 export function HeroScreen({
   title,
   summary,
@@ -32,34 +34,43 @@ export function HeroScreen({
   const insets = useSafeAreaInsets();
 
   return (
-    <ScrollView
-      style={[styles.container, { backgroundColor: theme.background }]}
-      contentContainerStyle={styles.content}
-      refreshControl={refreshControl}
-      testID={testID}
-    >
-      <LinearGradient
-        colors={[theme.brandDeep, theme.brand, theme.brandBright]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={[styles.hero, { paddingTop: insets.top + Spacing.three }]}
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
+        refreshControl={refreshControl}
+        testID={testID}
       >
-        <View style={styles.inner}>
-          <ThemedText type="subtitle" themeColor="onBrand" accessibilityRole="header">
-            {title}
-          </ThemedText>
-          {summary ? (
-            <ThemedText type="small" themeColor="onBrand" style={styles.summary}>
-              {summary}
+        <LinearGradient
+          colors={[theme.brandDeep, theme.brand, theme.brandBright]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          // iOS: NativeTabs gives this (the tab's first) scroll view automatic
+          // content insets, which already include the top safe area. Android
+          // only applies the bottom inset, so the top is added here.
+          style={[styles.hero, { paddingTop: (Platform.OS === 'ios' ? 0 : insets.top) + Spacing.three }]}
+        >
+          <View style={styles.inner}>
+            <ThemedText type="subtitle" themeColor="onBrand" accessibilityRole="header">
+              {title}
             </ThemedText>
-          ) : null}
-          {heroContent ? <View style={styles.heroContent}>{heroContent}</View> : null}
+            {summary ? (
+              <ThemedText type="small" themeColor="onBrand" style={styles.summary}>
+                {summary}
+              </ThemedText>
+            ) : null}
+            {heroContent ? <View style={styles.heroContent}>{heroContent}</View> : null}
+          </View>
+        </LinearGradient>
+        <View style={[styles.sheet, { backgroundColor: theme.background }]}>
+          <View style={[styles.inner, styles.body]}>{children}</View>
         </View>
-      </LinearGradient>
-      <View style={[styles.sheet, { backgroundColor: theme.background }]}>
-        <View style={[styles.inner, styles.body]}>{children}</View>
-      </View>
-    </ScrollView>
+      </ScrollView>
+      <View
+        pointerEvents="none"
+        style={[styles.statusStrip, { height: insets.top, backgroundColor: theme.brandDeep }]}
+      />
+    </View>
   );
 }
 
@@ -118,6 +129,7 @@ export function HeroAction({
 const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { flexGrow: 1 },
+  statusStrip: { position: 'absolute', top: 0, left: 0, right: 0 },
   hero: {
     alignItems: 'center',
     paddingHorizontal: Spacing.four,

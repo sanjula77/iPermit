@@ -29,7 +29,12 @@ export function TextField({ label, error, hint, ref, style, secureTextEntry, ...
           style={[
             styles.input,
             isPasswordField && styles.inputWithToggle,
-            { color: theme.text, borderColor: error ? theme.danger : theme.backgroundSelected },
+            // Filled white so the field stands out on the grey canvas.
+            {
+              color: theme.text,
+              backgroundColor: theme.backgroundElement,
+              borderColor: error ? theme.danger : theme.textSecondary,
+            },
             style,
           ]}
           placeholderTextColor={theme.textSecondary}

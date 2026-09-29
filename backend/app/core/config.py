@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     license_validity_years: int = 5
 
     face_template_db_path: str = "face_templates.db"
+    # Local time zone for day-based figures (e.g. an officer's "today").
+    # Timestamps are stored as naive UTC.
+    app_timezone: str = "Asia/Colombo"
     # Pairwise cosine similarity threshold for "same person" (used both for
     # enrollment consistency checks and future match lookups). This default
     # is a commonly-cited starting point for ArcFace, NOT independently

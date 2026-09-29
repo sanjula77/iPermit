@@ -1,4 +1,6 @@
 import uuid
+from datetime import UTC, datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from sqlalchemy.orm import Session
 
@@ -7,12 +9,21 @@ from app.core.config import settings
 from app.core.face_engine import FaceEngineError, detect_faces
 from app.models.user import User
 from app.repositories import license_repository, user_repository, violation_repository
-from app.schemas.police import DriverSummary, FaceMatchCandidate, VerifyFaceResponse
+from app.schemas.police import (
+    DriverSummary,
+    FaceMatchCandidate,
+    OfficerSummary,
+    RecentViolation,
+    VerifyFaceResponse,
+)
 
 # REQ-6 AC1: how many alternate candidates to surface alongside the best
 # match, so an officer has something to manually pick between under AC4
 # rather than a single unverifiable score.
 _CANDIDATE_COUNT = 3
+
+# How many of the officer's latest violations Police Home lists.
+_RECENT_VIOLATION_COUNT = 5
 
 
 class FaceVerificationError(Exception):
@@ -125,3 +136,42 @@ def lookup_driver(
     if driver is None:
         raise NotFoundError("No driver matches the given NIC or license number")
     return _driver_summary(db, driver)
+
+
+def officer_summary(
+    db: Session, *, officer_id: uuid.UUID, now: datetime | None = None
+) -> OfficerSummary:
+    """Police Home: how many violations this officer recorded today (local
+    calendar day, settings.app_timezone), in the last 7 days and in total,
+    plus the most recent ones. Only the officer's own records."""
+    now_utc = now or datetime.now(UTC)
+    local_now = now_utc.astimezone(ZoneInfo(settings.app_timezone))
+    local_midnight = local_now.replace(hour=0, minute=0, second=0, microsecond=0)
+    # Stored timestamps are naive UTC, so compare against naive UTC bounds.
+    start_of_today = local_midnight.astimezone(UTC).replace(tzinfo=None)
+    week_ago = (now_utc - timedelta(days=7)).replace(tzinfo=None)
+
+    recent = violation_repository.list_recent_for_officer(
+        db, officer_id, limit=_RECENT_VIOLATION_COUNT
+    )
+    return OfficerSummary(
+        recorded_today=violation_repository.count_for_officer(
+            db, officer_id, since=start_of_today
+        ),
+        recorded_this_week=violation_repository.count_for_officer(
+            db, officer_id, since=week_ago
+        ),
+        recorded_total=violation_repository.count_for_officer(db, officer_id),
+        recent=[
+            RecentViolation(
+                id=violation.id,
+                type=violation.type,
+                points_deducted=violation.points_deducted,
+                confirmed_at=violation.confirmed_at,
+                driver_email=violation.driver.email,
+                driver_nic=violation.driver.nic,
+                fine_amount=fine_amount,
+            )
+            for violation, fine_amount in recent
+        ],
+    )

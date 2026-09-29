@@ -8,28 +8,28 @@ import { listApplications } from '@/api/applications';
 import { ApiError, extractErrorMessage } from '@/api/client';
 import { getMyLicense } from '@/api/licenses';
 import { getMyNotifications } from '@/api/notifications';
-import { Banner } from '@/components/banner';
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
 import { EmptyState } from '@/components/empty-state';
 import { FadeInItem } from '@/components/fade-in-item';
-import { HeroAction, HeroScreen } from '@/components/hero-screen';
+import { HeroScreen } from '@/components/hero-screen';
 import { IconTile } from '@/components/icon-tile';
+import { PoliceHome } from '@/components/police-home';
 import { LicenseCard, TIER_LABEL, TIER_TONE } from '@/components/license-card';
 import { ListRow } from '@/components/list-row';
-import { PressableScale } from '@/components/pressable-scale';
 import { ScreenState } from '@/components/screen-state';
 import { Skeleton } from '@/components/skeleton';
 import { StatTile } from '@/components/stat-tile';
 import { StatusBadge, type StatusTone } from '@/components/status-badge';
 import { ThemedText } from '@/components/themed-text';
 import { KIND_COLOR, TYPE_INFO } from '@/constants/notifications';
-import { Radius, Shadows, Spacing, type ThemeColor } from '@/constants/theme';
+import { Radius, Spacing, type ThemeColor } from '@/constants/theme';
 import { useAuth } from '@/context/auth-context';
 import { useMyFines } from '@/hooks/use-my-fines';
 import { useTheme } from '@/hooks/use-theme';
 import { summarizeFines } from '@/lib/fine-summary';
 import { formatDate, formatLkr } from '@/lib/format';
+import { greeting } from '@/lib/greeting';
 import { relativeTime } from '@/lib/relative-time';
 import type { Application } from '@/types/application';
 import type { Badge } from '@/types/badge';
@@ -40,67 +40,10 @@ export default function HomeScreen() {
   const { user } = useAuth();
 
   if (user?.role === 'POLICE') {
-    return <PoliceHomeScreen />;
+    return <PoliceHome />;
   }
 
   return <DriverHomeScreen />;
-}
-
-type VerifyMode = 'face' | 'qr' | 'lookup';
-
-function openVerify(mode: VerifyMode) {
-  router.navigate({ pathname: '/(app)/(tabs)/(police-verify)/police-verify', params: { mode } });
-}
-
-// The two fallbacks when a face scan isn't possible or isn't conclusive.
-const SECONDARY_ACTIONS: { mode: VerifyMode; icon: keyof typeof Ionicons.glyphMap; title: string; description: string }[] = [
-  { mode: 'qr', icon: 'qr-code-outline', title: 'Scan QR', description: 'Code on their digital license' },
-  { mode: 'lookup', icon: 'search-outline', title: 'Look up', description: 'By NIC or license number' },
-];
-
-// Police Home is a hub for the officer's one job: verifying a driver. Face scan
-// is the primary action (in the hero); QR and NIC lookup are the fallbacks.
-function PoliceHomeScreen() {
-  const theme = useTheme();
-
-  return (
-    <>
-      <Stack.Screen options={{ headerShown: false }} />
-      <HeroScreen
-        title="Verify a driver"
-        summary="Identify the driver, then check their license and record violations."
-        heroContent={
-          <HeroAction icon="scan-outline" label="Scan face" onPress={() => openVerify('face')} testID="police-home-face" />
-        }
-      >
-        <View style={[styles.stats, styles.overlapSmall]}>
-          {SECONDARY_ACTIONS.map((action) => (
-            <PressableScale
-              key={action.mode}
-              onPress={() => openVerify(action.mode)}
-              accessibilityRole="button"
-              accessibilityLabel={`${action.title}. ${action.description}`}
-              testID={`police-home-${action.mode}`}
-              style={styles.flex}
-              contentStyle={[styles.actionTile, { backgroundColor: theme.backgroundElement, boxShadow: Shadows.raised }]}
-            >
-              <IconTile icon={action.icon} color={theme.primary} size={44} />
-              <ThemedText style={styles.actionTitle} numberOfLines={1}>
-                {action.title}
-              </ThemedText>
-              <ThemedText type="small" themeColor="textSecondary" numberOfLines={2}>
-                {action.description}
-              </ThemedText>
-            </PressableScale>
-          ))}
-        </View>
-        <Banner
-          tone="info"
-          text="Face matches are a guide. Confirm the driver's identity yourself when the match is uncertain."
-        />
-      </HeroScreen>
-    </>
-  );
 }
 
 // Badge tier tone as a text colour for the stat tile figure.
@@ -114,13 +57,6 @@ const TONE_TEXT: Record<StatusTone, ThemeColor> = {
 const TIER_TONE_COLOR = Object.fromEntries(
   Object.entries(TIER_TONE).map(([tier, tone]) => [tier, TONE_TEXT[tone]]),
 ) as Record<keyof typeof TIER_TONE, ThemeColor>;
-
-function greeting(now: Date = new Date()): string {
-  const hour = now.getHours();
-  if (hour < 12) return 'Good morning';
-  if (hour < 17) return 'Good afternoon';
-  return 'Good evening';
-}
 
 function DriverHomeScreen() {
   const { user } = useAuth();
@@ -410,15 +346,6 @@ function RecentAlerts({ items }: { items: AppNotification[] }) {
 }
 
 const styles = StyleSheet.create({
-  actionTitle: { fontWeight: 700 },
-  actionTile: {
-    gap: Spacing.one,
-    padding: Spacing.three,
-    minHeight: 132,
-    borderRadius: Radius.medium,
-    borderCurve: 'continuous',
-  },
-  overlapSmall: { marginTop: -(Spacing.four + Spacing.three) },
   statusCard: {
     padding: Spacing.four,
     gap: Spacing.two,

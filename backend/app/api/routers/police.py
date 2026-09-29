@@ -7,6 +7,7 @@ from app.core.rate_limit import limiter
 from app.models.user import User, UserRole
 from app.schemas.police import (
     DriverSummary,
+    OfficerSummary,
     RecordViolationRequest,
     RecordViolationResponse,
     VerifyFaceResponse,
@@ -18,6 +19,14 @@ router = APIRouter(prefix="/police", tags=["police"])
 
 def _police_only(current_user: User = Depends(require_role(UserRole.POLICE))) -> User:
     return current_user
+
+
+@router.get("/me/summary", response_model=OfficerSummary)
+def get_my_summary(
+    db: Session = Depends(get_db),
+    officer: User = Depends(_police_only),
+):
+    return police_service.officer_summary(db, officer_id=officer.id)
 
 
 # Sync on purpose: FastAPI runs it in a worker thread, keeping the blocking

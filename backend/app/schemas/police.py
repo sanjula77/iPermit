@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 
 from app.models.license import LicenseStatus
 from app.models.violation import ViolationType
+from app.schemas.common import UtcDateTime
 from app.schemas.fine import FineRead
 from app.schemas.violation import ViolationRead
 
@@ -48,3 +49,22 @@ class RecordViolationResponse(BaseModel):
     fine: FineRead
     driver_points: int
     license_status: LicenseStatus
+
+
+class RecentViolation(BaseModel):
+    id: uuid.UUID
+    type: ViolationType
+    points_deducted: int
+    confirmed_at: UtcDateTime
+    driver_email: str
+    driver_nic: str
+    fine_amount: int | None
+
+
+class OfficerSummary(BaseModel):
+    """Police Home: the signed-in officer's own recording activity."""
+
+    recorded_today: int
+    recorded_this_week: int
+    recorded_total: int
+    recent: list[RecentViolation]

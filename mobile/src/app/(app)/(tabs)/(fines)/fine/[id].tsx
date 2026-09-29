@@ -95,13 +95,13 @@ function FineDetail({
     try {
       const message = await task();
       // Same moment the success banner appears; one haptic per committed action.
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       setAction(null);
       setResolved(true);
       setNotice(message);
       await onChanged();
     } catch (err) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
       setError(extractErrorMessage(err));
     } finally {
       submittingRef.current = false;
@@ -163,7 +163,7 @@ function FineDetail({
         <ThemedText type="subtitle" style={styles.centered}>
           {label}
         </ThemedText>
-        <ThemedText type="display" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+        <ThemedText type="display" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.4}>
           {formatLkr(fine.amount)}
         </ThemedText>
         <StatusBadge testID="fine-detail-status" tone={badge.tone} icon={badge.icon} label={badge.label} />

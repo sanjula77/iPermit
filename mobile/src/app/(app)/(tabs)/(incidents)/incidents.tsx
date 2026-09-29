@@ -146,7 +146,8 @@ export default function IncidentsScreen() {
           headerRight: () => (
             <Pressable
               onPress={() => router.push('/(app)/(tabs)/(incidents)/report')}
-              hitSlop={8}
+              // 22dp icon row + 13dp each side = 48dp to touch.
+              hitSlop={13}
               accessibilityRole="button"
               accessibilityLabel="Report an incident or danger zone"
               testID="open-report"

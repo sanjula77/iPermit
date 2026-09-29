@@ -59,7 +59,7 @@ export default function FinesScreen() {
               testID="outstanding-total"
               numberOfLines={1}
               adjustsFontSizeToFit
-              minimumFontScale={0.6}
+              minimumFontScale={0.4}
             >
               {formatLkr(summary.outstanding)}
             </ThemedText>

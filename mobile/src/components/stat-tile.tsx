@@ -18,7 +18,7 @@ export function StatTile({
 }) {
   return (
     <Card variant="raised" style={styles.tile} testID={testID}>
-      <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+      <ThemedText type="small" themeColor="textSecondary" numberOfLines={2}>
         {label}
       </ThemedText>
       <ThemedText
@@ -26,7 +26,9 @@ export function StatTile({
         themeColor={valueColor}
         numberOfLines={1}
         adjustsFontSizeToFit
-        minimumFontScale={0.6}
+        // Low floor: at large system fonts a figure must shrink, never truncate
+        // ("LKR 12…" would misstate the amount).
+        minimumFontScale={0.4}
         style={styles.value}
       >
         {value}

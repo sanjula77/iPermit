@@ -11,8 +11,10 @@ export function formatDate(iso: string): string {
 }
 
 // "LKR 10,000". The no-break space (U+00A0) keeps "LKR" and the number on one
-// line, and the grouping is fixed rather than locale-dependent.
+// line, and the grouping is fixed rather than locale-dependent. "—" for a
+// missing (non-finite) amount, matching formatDate.
 export function formatLkr(amount: number): string {
+  if (!Number.isFinite(amount)) return '—';
   const grouped = Math.round(amount)
     .toString()
     .replace(/\B(?=(\d{3})+(?!\d))/g, ',');

@@ -20,7 +20,8 @@ const TONE: Record<BannerTone, { color: ThemeColor; icon: keyof typeof Ionicons.
 const ENTERING = FadeIn.duration(200).reduceMotion(ReduceMotion.System);
 
 // The one inline message style: action results, refresh failures and notes.
-// Announced to screen readers when it appears.
+// accessibilityLiveRegion asks Android screen readers to announce it; iOS has
+// no equivalent, so VoiceOver users find it by position.
 export function Banner({
   tone,
   text,
@@ -45,7 +46,11 @@ export function Banner({
   return (
     <Animated.View
       entering={ENTERING}
-      style={[styles.banner, { backgroundColor: tint(theme[color], 'subtle') }]}
+      // The hairline keeps the edge visible where the tint is faint (dark mode).
+      style={[
+        styles.banner,
+        { backgroundColor: tint(theme[color], 'subtle'), borderColor: tint(theme[color], 'strong') },
+      ]}
       accessibilityLiveRegion="polite"
       testID={testID}
     >
@@ -81,6 +86,7 @@ export function Banner({
 
 const styles = StyleSheet.create({
   banner: {
+    borderWidth: StyleSheet.hairlineWidth,
     flexDirection: 'row',
     gap: Spacing.two,
     padding: Spacing.three,

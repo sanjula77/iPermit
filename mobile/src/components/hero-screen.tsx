@@ -52,6 +52,9 @@ export function HeroScreen({
         refreshControl={refreshControl}
         testID={testID}
       >
+        {/* Fills the iOS pull-to-refresh overscroll with brand blue, so the
+            white spinner (and the bounce) show on blue, not on the grey canvas. */}
+        <View pointerEvents="none" style={[styles.overscroll, { backgroundColor: theme.brandDeep }]} />
         <LinearGradient
           colors={[theme.brandDeep, theme.brand, theme.brandBright]}
           start={{ x: 0, y: 0 }}
@@ -151,6 +154,7 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { flexGrow: 1 },
   statusStrip: { position: 'absolute', top: 0, left: 0, right: 0 },
+  overscroll: { position: 'absolute', top: -1000, left: 0, right: 0, height: 1000 },
   hero: {
     alignItems: 'center',
     paddingHorizontal: Spacing.four,

@@ -16,5 +16,6 @@ assert.equal(formatLkr(999), 'LKR\u00A0999');
 assert.equal(formatLkr(10000), 'LKR\u00A010,000');
 assert.equal(formatLkr(1234567), 'LKR\u00A01,234,567');
 assert.ok(!formatLkr(25000).includes(' '), 'no breakable space inside an amount');
+assert.equal(formatLkr(Number.NaN), '—', 'a missing amount shows a dash, like formatDate');
 
 console.log('format checks passed');

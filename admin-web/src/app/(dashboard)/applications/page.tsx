@@ -1,51 +1,72 @@
 'use client';
 
+import { Check, CheckCircle2, Clock, FileText, Images, X, XCircle } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
+import {
+  Alert,
+  Avatar,
+  Button,
+  Card,
+  Dialog,
+  EmptyState,
+  FilterTabs,
+  PageHeader,
+  StatCard,
+  StatusPill,
+  TableSkeleton,
+  type Tone,
+} from '@/components/ui';
 import * as applicationsApi from '@/lib/applications-api';
 import { extractErrorMessage } from '@/lib/api-client';
-import { StatusBadge } from '@/components/status-badge';
+import { formatDate, formatTime } from '@/lib/format';
 import type { Application, ApplicationStatus } from '@/types/application';
 
-const FILTERS: Array<{ label: string; value: ApplicationStatus | 'ALL' }> = [
-  { label: 'All', value: 'ALL' },
-  { label: 'Pending', value: 'PENDING' },
-  { label: 'Approved', value: 'APPROVED' },
-  { label: 'Rejected', value: 'REJECTED' },
-];
+type Filter = ApplicationStatus | 'ALL';
+
+const STATUS: Record<ApplicationStatus, { label: string; tone: Tone }> = {
+  PENDING: { label: 'Pending', tone: 'amber' },
+  APPROVED: { label: 'Approved', tone: 'green' },
+  REJECTED: { label: 'Rejected', tone: 'red' },
+};
 
 export default function ApplicationsPage() {
-  const [filter, setFilter] = useState<ApplicationStatus | 'ALL'>('ALL');
+  const [filter, setFilter] = useState<Filter>('PENDING');
+  // Every application is loaded once and filtered here, so the tiles and tab
+  // counts stay right whichever tab is open.
   const [applications, setApplications] = useState<Application[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [rejectingId, setRejectingId] = useState<string | null>(null);
+  const [rejecting, setRejecting] = useState<Application | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [actionError, setActionError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [pendingActionId, setPendingActionId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    setApplications(null);
     setLoadError(null);
     try {
-      const data = await applicationsApi.listApplications(filter === 'ALL' ? undefined : filter);
-      setApplications(data);
+      setApplications(await applicationsApi.listApplications());
     } catch (err) {
       setLoadError(extractErrorMessage(err));
     }
-  }, [filter]);
+  }, []);
 
   useEffect(() => {
-    // Fetch-on-mount/filter-change, not a state sync — re-runs whenever
-    // `load` changes identity (i.e. whenever `filter` changes).
+    // Fetch-on-mount, not a state sync.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, [load]);
 
-  async function handleApprove(id: string) {
+  const count = (status: ApplicationStatus) => (applications ?? []).filter((a) => a.status === status).length;
+  const visible = (applications ?? []).filter((a) => filter === 'ALL' || a.status === filter);
+
+  async function handleApprove(application: Application) {
     setActionError(null);
-    setPendingActionId(id);
+    setNotice(null);
+    setPendingActionId(application.id);
     try {
-      await applicationsApi.approveApplication(id);
+      await applicationsApi.approveApplication(application.id);
+      setNotice(`Approved ${application.driver.email}. Their digital licence has been issued.`);
       await load();
     } catch (err) {
       setActionError(extractErrorMessage(err));
@@ -54,16 +75,19 @@ export default function ApplicationsPage() {
     }
   }
 
-  async function handleReject(id: string) {
+  async function handleReject() {
+    if (!rejecting) return;
     if (!rejectReason.trim()) {
       setActionError('A rejection reason is required.');
       return;
     }
     setActionError(null);
-    setPendingActionId(id);
+    setNotice(null);
+    setPendingActionId(rejecting.id);
     try {
-      await applicationsApi.rejectApplication(id, rejectReason.trim());
-      setRejectingId(null);
+      await applicationsApi.rejectApplication(rejecting.id, rejectReason.trim());
+      setNotice(`Rejected ${rejecting.driver.email}'s application.`);
+      setRejecting(null);
       setRejectReason('');
       await load();
     } catch (err) {
@@ -74,136 +98,175 @@ export default function ApplicationsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
-      <div>
-        <h2 className="text-xl font-semibold text-zinc-900">License Applications</h2>
-        <p className="text-sm text-zinc-500">Review, approve, or reject driver applications.</p>
+    <>
+      <PageHeader title="License applications" description="Review driver applications and issue digital licences." />
+
+      <div className="grid gap-4 sm:grid-cols-3">
+        <StatCard label="Awaiting review" value={applications ? count('PENDING') : '–'} icon={Clock} tone="amber" testId="stat-pending" />
+        <StatCard label="Approved" value={applications ? count('APPROVED') : '–'} icon={CheckCircle2} tone="green" testId="stat-approved" />
+        <StatCard label="Rejected" value={applications ? count('REJECTED') : '–'} icon={XCircle} tone="red" testId="stat-rejected" />
       </div>
 
-      <div className="flex gap-2" role="tablist">
-        {FILTERS.map((f) => (
-          <button
-            key={f.value}
-            type="button"
-            onClick={() => setFilter(f.value)}
-            data-testid={`filter-${f.value}`}
-            className={`rounded-full px-3 py-1.5 text-sm font-medium ${
-              filter === f.value
-                ? 'bg-zinc-900 text-white'
-                : 'bg-white text-zinc-600 border border-zinc-300 hover:bg-zinc-100'
-            }`}
+      <FilterTabs<Filter>
+        value={filter}
+        onChange={setFilter}
+        options={[
+          { label: 'Pending', value: 'PENDING', count: applications ? count('PENDING') : undefined },
+          { label: 'Approved', value: 'APPROVED', count: applications ? count('APPROVED') : undefined },
+          { label: 'Rejected', value: 'REJECTED', count: applications ? count('REJECTED') : undefined },
+          { label: 'All', value: 'ALL', count: applications?.length },
+        ]}
+      />
+
+      {notice ? <Alert tone="green">{notice}</Alert> : null}
+      {actionError && !rejecting ? <Alert tone="red" testId="action-error">{actionError}</Alert> : null}
+
+      <Card className="overflow-hidden">
+        {loadError ? (
+          <div className="p-5">
+            <Alert tone="red" testId="load-error">
+              {loadError}
+            </Alert>
+          </div>
+        ) : applications === null ? (
+          <TableSkeleton testId="applications-loading" />
+        ) : visible.length === 0 ? (
+          <EmptyState
+            icon={FileText}
+            title={filter === 'PENDING' ? 'All caught up' : 'No applications here'}
+            message={filter === 'PENDING' ? 'There are no applications waiting for review.' : 'No applications match this filter.'}
+            testId="applications-empty"
+          />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm" data-testid="applications-list">
+              <thead className="border-b border-gray-100 bg-gray-50/60 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                <tr>
+                  <th className="px-5 py-3">Driver</th>
+                  <th className="px-5 py-3">Submitted</th>
+                  <th className="px-5 py-3">Files</th>
+                  <th className="px-5 py-3">Status</th>
+                  <th className="px-5 py-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {visible.map((application) => {
+                  const photos = application.documents.filter((d) => d.doc_type === 'FACE_PHOTO').length;
+                  const docs = application.documents.length - photos;
+                  const busy = pendingActionId === application.id;
+                  return (
+                    <tr key={application.id} className="align-top hover:bg-gray-50/60" data-testid={`application-row-${application.id}`}>
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-3">
+                          <Avatar email={application.driver.email} />
+                          <div className="min-w-0">
+                            <p className="truncate font-medium text-gray-900">{application.driver.email}</p>
+                            <p className="text-xs text-gray-500">NIC {application.driver.nic}</p>
+                            {application.reason ? (
+                              <p className="mt-1 max-w-xs text-xs text-red-600">Reason: {application.reason}</p>
+                            ) : null}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="whitespace-nowrap px-5 py-4">
+                        <p className="text-gray-900">{formatDate(application.created_at)}</p>
+                        <p className="text-xs text-gray-500">{formatTime(application.created_at)}</p>
+                      </td>
+                      <td className="whitespace-nowrap px-5 py-4 text-gray-600">
+                        <span className="inline-flex items-center gap-1.5">
+                          <Images className="h-4 w-4 text-gray-400" aria-hidden />
+                          {photos} photos · {docs} docs
+                        </span>
+                      </td>
+                      <td className="px-5 py-4">
+                        <StatusPill label={STATUS[application.status].label} tone={STATUS[application.status].tone} testId="application-status" />
+                      </td>
+                      <td className="px-5 py-4">
+                        {application.status === 'PENDING' ? (
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="success"
+                              icon={Check}
+                              onClick={() => handleApprove(application)}
+                              disabled={busy}
+                              data-testid={`approve-${application.id}`}
+                            >
+                              {busy ? 'Approving…' : 'Approve'}
+                            </Button>
+                            <Button
+                              variant="secondary"
+                              icon={X}
+                              onClick={() => {
+                                setActionError(null);
+                                setRejecting(application);
+                              }}
+                              disabled={busy}
+                              data-testid={`reject-${application.id}`}
+                              className="text-red-700"
+                            >
+                              Reject
+                            </Button>
+                          </div>
+                        ) : (
+                          <p className="text-right text-xs text-gray-400">No action needed</p>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+
+      <Dialog
+        open={rejecting !== null}
+        title="Reject application"
+        onClose={() => {
+          setRejecting(null);
+          setRejectReason('');
+          setActionError(null);
+        }}
+      >
+        <p className="text-sm text-gray-600">
+          {rejecting?.driver.email} will see this reason and can apply again.
+        </p>
+        <textarea
+          value={rejectReason}
+          onChange={(e) => setRejectReason(e.target.value)}
+          placeholder="e.g. Face photos are blurry, please retake them in good light"
+          data-testid={rejecting ? `reject-reason-${rejecting.id}` : undefined}
+          rows={3}
+          autoFocus
+          className="mt-3 w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-blue-100"
+        />
+        {actionError ? (
+          <p className="mt-2 text-sm text-red-600" data-testid="action-error">
+            {actionError}
+          </p>
+        ) : null}
+        <div className="mt-4 flex justify-end gap-2">
+          <Button
+            variant="ghost"
+            onClick={() => {
+              setRejecting(null);
+              setRejectReason('');
+              setActionError(null);
+            }}
           >
-            {f.label}
-          </button>
-        ))}
-      </div>
-
-      {actionError ? (
-        <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700" data-testid="action-error">
-          {actionError}
-        </p>
-      ) : null}
-
-      {loadError ? (
-        <p className="text-sm text-red-600" data-testid="load-error">
-          {loadError}
-        </p>
-      ) : applications === null ? (
-        <p className="text-sm text-zinc-500" data-testid="applications-loading">
-          Loading…
-        </p>
-      ) : applications.length === 0 ? (
-        <p className="text-sm text-zinc-500" data-testid="applications-empty">
-          No applications match this filter.
-        </p>
-      ) : (
-        <ul className="space-y-3" data-testid="applications-list">
-          {applications.map((application) => (
-            <li
-              key={application.id}
-              className="rounded-lg border border-zinc-200 bg-white p-4"
-              data-testid={`application-row-${application.id}`}
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="font-medium text-zinc-900">{application.driver.email}</p>
-                  <p className="text-sm text-zinc-500">NIC: {application.driver.nic}</p>
-                  <p className="text-xs text-zinc-400">
-                    Submitted {new Date(application.created_at).toLocaleString()}
-                  </p>
-                  <p className="mt-1 text-xs text-zinc-500">
-                    {application.documents.length} documents (
-                    {application.documents.filter((d) => d.doc_type === 'FACE_PHOTO').length} photos)
-                  </p>
-                  {application.reason ? (
-                    <p className="mt-1 text-sm text-zinc-600">Reason: {application.reason}</p>
-                  ) : null}
-                </div>
-                <StatusBadge status={application.status} />
-              </div>
-
-              {application.status === 'PENDING' ? (
-                <div className="mt-3 flex flex-col gap-2 border-t border-zinc-100 pt-3">
-                  {rejectingId === application.id ? (
-                    <div className="flex flex-col gap-2">
-                      <textarea
-                        value={rejectReason}
-                        onChange={(e) => setRejectReason(e.target.value)}
-                        placeholder="Reason for rejection"
-                        data-testid={`reject-reason-${application.id}`}
-                        className="rounded-md border border-zinc-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-                        rows={2}
-                      />
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => handleReject(application.id)}
-                          disabled={pendingActionId === application.id}
-                          data-testid={`confirm-reject-${application.id}`}
-                          className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
-                        >
-                          Confirm Reject
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setRejectingId(null);
-                            setRejectReason('');
-                          }}
-                          className="rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => handleApprove(application.id)}
-                        disabled={pendingActionId === application.id}
-                        data-testid={`approve-${application.id}`}
-                        className="rounded-md bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
-                      >
-                        Approve
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setRejectingId(application.id)}
-                        disabled={pendingActionId === application.id}
-                        data-testid={`reject-${application.id}`}
-                        className="rounded-md border border-red-300 px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
-                      >
-                        Reject
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ) : null}
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
+            Cancel
+          </Button>
+          <Button
+            variant="danger"
+            onClick={handleReject}
+            disabled={!rejecting || pendingActionId === rejecting.id}
+            data-testid={rejecting ? `confirm-reject-${rejecting.id}` : undefined}
+          >
+            {rejecting && pendingActionId === rejecting.id ? 'Rejecting…' : 'Reject application'}
+          </Button>
+        </div>
+      </Dialog>
+    </>
   );
 }

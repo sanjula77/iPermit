@@ -26,7 +26,7 @@ import {
   VIOLATION_TYPES,
 } from '@/constants/violations';
 import { useTheme } from '@/hooks/use-theme';
-import { FACE_MATCH_THRESHOLD, matchPercent, parseIdentification, type Identification } from '@/lib/face-match';
+import { matchPercent, parseIdentification, type Identification } from '@/lib/face-match';
 import { formatDate, formatLkr } from '@/lib/format';
 import { SUSPENSION_POINTS, pointsColorKey } from '@/lib/points';
 import type { DriverSummary, ViolationType } from '@/types/police';
@@ -313,9 +313,7 @@ function DriverDetails({
   );
 }
 
-// How the driver was identified. For a face scan: the match score (the
-// officer's "confidence" in the result) against the backend's threshold, and
-// whether the officer confirmed it themselves from the candidate list.
+// How the driver was identified. For a face scan: the match score.
 function IdentificationNote({ identification }: { identification: Identification }) {
   const theme = useTheme();
   if (identification.method !== 'face') {
@@ -334,13 +332,12 @@ function IdentificationNote({ identification }: { identification: Identification
   }
 
   const percent = matchPercent(identification.similarity);
-  const aboveThreshold = identification.similarity >= FACE_MATCH_THRESHOLD;
   return (
     <View
       style={styles.faceMatch}
       testID="driver-face-match"
       accessible
-      accessibilityLabel={`Face match ${percent} percent, ${aboveThreshold ? 'above' : 'below'} the match threshold${identification.confirmedByOfficer ? ', confirmed by you' : ''}`}
+      accessibilityLabel={`Face match ${percent} percent`}
     >
       <View style={styles.faceMatchHeader}>
         <View style={styles.idRow}>
@@ -353,15 +350,6 @@ function IdentificationNote({ identification }: { identification: Identification
           {percent}%
         </ThemedText>
       </View>
-      {/* Score bar with a tick at the threshold. */}
-      <View style={styles.scoreTrack}>
-        <View style={[styles.scoreFill, { width: `${percent}%` }]} />
-        <View style={[styles.scoreTick, { left: `${matchPercent(FACE_MATCH_THRESHOLD)}%` }]} />
-      </View>
-      <ThemedText type="small" themeColor="onBrand" style={styles.dim}>
-        {aboveThreshold ? 'Above' : 'Below'} the match threshold ({matchPercent(FACE_MATCH_THRESHOLD)}%)
-        {identification.confirmedByOfficer ? ' · You confirmed this match' : ''}
-      </ThemedText>
     </View>
   );
 }
@@ -411,9 +399,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.14)',
   },
   faceMatchHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  scoreTrack: { height: 6, borderRadius: 3, backgroundColor: 'rgba(255, 255, 255, 0.25)' },
-  scoreFill: { height: 6, borderRadius: 3, backgroundColor: '#ffffff' },
-  scoreTick: { position: 'absolute', top: -3, width: 2, height: 12, borderRadius: 1, backgroundColor: '#ffffff' },
   section: { gap: Spacing.two },
   sectionLabel: {
     textTransform: 'uppercase',

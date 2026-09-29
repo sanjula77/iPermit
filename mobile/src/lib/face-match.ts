@@ -1,8 +1,3 @@
-// Copy of the backend's face_match_threshold (app/core/config.py), used only to
-// describe a score to the officer; the backend makes the real decision. If
-// these drift, only that wording is wrong. Keep them in sync.
-export const FACE_MATCH_THRESHOLD = 0.42;
-
 // Cosine similarity can be negative for poor matches; show 0-100.
 export function matchPercent(similarity: number): number {
   return Math.round(Math.min(Math.max(similarity, 0), 1) * 100);

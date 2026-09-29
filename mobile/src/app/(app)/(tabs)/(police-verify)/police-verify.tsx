@@ -10,22 +10,29 @@ import { Banner } from '@/components/banner';
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
 import { IconTile } from '@/components/icon-tile';
+import { HeroScreen } from '@/components/hero-screen';
 import { ListRow, ListSeparator } from '@/components/list-row';
 import { SegmentedControl } from '@/components/segmented-control';
 import { TextField } from '@/components/text-field';
 import { ThemedText } from '@/components/themed-text';
-import { ScreenScroll } from '@/components/screen-scroll';
-import { Radius, Spacing, tint } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { takePhoto } from '@/lib/file-upload';
 import type { DriverSummary, FaceMatchCandidate } from '@/types/police';
 
 type Mode = 'face' | 'qr' | 'lookup';
 
+// What the hero says for each mode.
+const MODE_SUMMARY: Record<Mode, string> = {
+  face: 'Take a photo of the driver. The match is a guide; you confirm the identity.',
+  qr: 'Scan the QR code on the driver’s digital license.',
+  lookup: 'Search by the driver’s NIC or license number.',
+};
+
 const MODE_OPTIONS: { label: string; value: Mode }[] = [
   { label: 'Face', value: 'face' },
   { label: 'QR', value: 'qr' },
-  { label: 'NIC', value: 'lookup' },
+  { label: 'NIC / License', value: 'lookup' },
 ];
 
 function isMode(value: unknown): value is Mode {
@@ -107,10 +114,10 @@ export default function PoliceVerifyScreen() {
   }
 
   return (
-    <ScreenScroll
-      keyboardShouldPersistTaps="handled"
-    >
-      <SegmentedControl<Mode> testID="police-tab" value={mode} onChange={changeMode} options={MODE_OPTIONS} />
+    <HeroScreen title="Verify a driver" summary={MODE_SUMMARY[mode]} keyboardShouldPersistTaps="handled">
+      <View style={styles.overlap}>
+        <SegmentedControl<Mode> testID="police-tab" value={mode} onChange={changeMode} options={MODE_OPTIONS} />
+      </View>
 
       {mode === 'face' ? (
         <FaceScanPanel onScan={handleFaceScan} isLoading={isLoading} />
@@ -144,7 +151,7 @@ export default function PoliceVerifyScreen() {
           ) : null}
         </View>
       ) : null}
-    </ScreenScroll>
+    </HeroScreen>
   );
 }
 
@@ -177,18 +184,14 @@ function CandidateRow({ candidate, onPress }: { candidate: FaceMatchCandidate; o
   );
 }
 
-function PanelIntro({ icon, title, text }: { icon: keyof typeof Ionicons.glyphMap; title: string; text: string }) {
+// The panel's heading: the hero above already explains the mode.
+function PanelIntro({ icon, title }: { icon: keyof typeof Ionicons.glyphMap; title: string }) {
   const theme = useTheme();
   return (
     <View style={styles.intro}>
-      <View style={[styles.introIcon, { backgroundColor: tint(theme.primary) }]}>
-        <Ionicons name={icon} size={32} color={theme.primary} />
-      </View>
+      <IconTile icon={icon} color={theme.primary} size={64} />
       <ThemedText type="subtitle" style={styles.centered}>
         {title}
-      </ThemedText>
-      <ThemedText themeColor="textSecondary" style={styles.centered}>
-        {text}
       </ThemedText>
     </View>
   );
@@ -198,11 +201,7 @@ function FaceScanPanel({ onScan, isLoading }: { onScan: () => void; isLoading: b
   const theme = useTheme();
   return (
     <View style={styles.panel}>
-      <PanelIntro
-        icon="scan-outline"
-        title="Scan the driver’s face"
-        text="Take a clear photo of the driver’s face. The match is a guide; you confirm the identity."
-      />
+      <PanelIntro icon="scan-outline" title="Scan the driver’s face" />
       <Button onPress={onScan} disabled={isLoading} testID="police-face-scan-button">
         {isLoading ? (
           <ActivityIndicator color={theme.onPrimary} />
@@ -266,11 +265,7 @@ function QrScanPanel({ onToken, isLoading }: { onToken: (token: string) => void;
         </>
       ) : (
         <>
-          <PanelIntro
-            icon="qr-code-outline"
-            title="Scan the license QR"
-            text="Ask the driver to open their digital license and point the camera at the code."
-          />
+          <PanelIntro icon="qr-code-outline" title="Scan the license QR" />
           <Button onPress={startScanning} disabled={isLoading} testID="police-qr-start-button">
             {isLoading ? (
               <ActivityIndicator color={theme.onPrimary} />
@@ -338,7 +333,7 @@ function LookupPanel({
 
   return (
     <View style={styles.panel}>
-      <PanelIntro icon="search-outline" title="Look up a driver" text="Enter the driver’s NIC or license number." />
+      <PanelIntro icon="search-outline" title="Look up a driver" />
       <TextField
         label="NIC"
         value={nic}
@@ -371,18 +366,12 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   centered: { textAlign: 'center' },
   panel: { gap: Spacing.three },
+  // The mode picker floats over the hero's lower edge.
+  overlap: { marginTop: -(Spacing.four + Spacing.three) },
   intro: {
     alignItems: 'center',
     gap: Spacing.two,
     paddingVertical: Spacing.three,
-  },
-  introIcon: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: Spacing.one,
   },
   cameraWrapper: {
     height: 320,

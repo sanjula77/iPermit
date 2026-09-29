@@ -8,22 +8,23 @@ import { listApplications } from '@/api/applications';
 import { ApiError, extractErrorMessage } from '@/api/client';
 import { getMyLicense } from '@/api/licenses';
 import { getMyNotifications } from '@/api/notifications';
+import { Banner } from '@/components/banner';
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
 import { EmptyState } from '@/components/empty-state';
 import { FadeInItem } from '@/components/fade-in-item';
-import { HeroScreen } from '@/components/hero-screen';
+import { HeroAction, HeroScreen } from '@/components/hero-screen';
 import { IconTile } from '@/components/icon-tile';
 import { LicenseCard, TIER_LABEL, TIER_TONE } from '@/components/license-card';
 import { ListRow } from '@/components/list-row';
+import { PressableScale } from '@/components/pressable-scale';
 import { ScreenState } from '@/components/screen-state';
 import { Skeleton } from '@/components/skeleton';
 import { StatTile } from '@/components/stat-tile';
 import { StatusBadge, type StatusTone } from '@/components/status-badge';
 import { ThemedText } from '@/components/themed-text';
-import { ScreenScroll } from '@/components/screen-scroll';
 import { KIND_COLOR, TYPE_INFO } from '@/constants/notifications';
-import { Radius, Spacing, tint, type ThemeColor } from '@/constants/theme';
+import { Radius, Shadows, Spacing, type ThemeColor } from '@/constants/theme';
 import { useAuth } from '@/context/auth-context';
 import { useMyFines } from '@/hooks/use-my-fines';
 import { useTheme } from '@/hooks/use-theme';
@@ -47,60 +48,58 @@ export default function HomeScreen() {
 
 type VerifyMode = 'face' | 'qr' | 'lookup';
 
-const POLICE_ACTIONS: {
-  mode: VerifyMode;
-  icon: keyof typeof Ionicons.glyphMap;
-  title: string;
-  description: string;
-}[] = [
-  { mode: 'face', icon: 'scan-outline', title: 'Scan face', description: 'Photograph the driver to identify them' },
-  { mode: 'qr', icon: 'qr-code-outline', title: 'Scan license QR', description: 'Scan the code on their digital license' },
-  { mode: 'lookup', icon: 'search-outline', title: 'Look up driver', description: 'Search by NIC or license number' },
+function openVerify(mode: VerifyMode) {
+  router.navigate({ pathname: '/(app)/(tabs)/(police-verify)/police-verify', params: { mode } });
+}
+
+// The two fallbacks when a face scan isn't possible or isn't conclusive.
+const SECONDARY_ACTIONS: { mode: VerifyMode; icon: keyof typeof Ionicons.glyphMap; title: string; description: string }[] = [
+  { mode: 'qr', icon: 'qr-code-outline', title: 'Scan QR', description: 'Code on their digital license' },
+  { mode: 'lookup', icon: 'search-outline', title: 'Look up', description: 'By NIC or license number' },
 ];
 
-// Police Home is a hub for the officer's one job: verifying a driver. Each
-// action opens the Verify tab in that mode.
+// Police Home is a hub for the officer's one job: verifying a driver. Face scan
+// is the primary action (in the hero); QR and NIC lookup are the fallbacks.
 function PoliceHomeScreen() {
   const theme = useTheme();
 
   return (
-    <ScreenScroll>
-      <ThemedText themeColor="textSecondary">How do you want to verify the driver?</ThemedText>
-      {POLICE_ACTIONS.map((action) => (
-        <Pressable
-          key={action.mode}
-          onPress={() =>
-            router.navigate({
-              pathname: '/(app)/(tabs)/(police-verify)/police-verify',
-              params: { mode: action.mode },
-            })
-          }
-          accessibilityRole="button"
-          accessibilityLabel={`${action.title}. ${action.description}`}
-          testID={`police-home-${action.mode}`}
-          style={({ pressed }) => [{ opacity: pressed ? 0.75 : 1 }]}
-        >
-          <Card style={styles.actionCard}>
-            <View style={[styles.actionIcon, { backgroundColor: tint(theme.primary) }]}>
-              <Ionicons name={action.icon} size={26} color={theme.primary} />
-            </View>
-            <View style={styles.actionText}>
-              <ThemedText style={styles.actionTitle}>{action.title}</ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">
+    <>
+      <Stack.Screen options={{ headerShown: false }} />
+      <HeroScreen
+        title="Verify a driver"
+        summary="Identify the driver, then check their license and record violations."
+        heroContent={
+          <HeroAction icon="scan-outline" label="Scan face" onPress={() => openVerify('face')} testID="police-home-face" />
+        }
+      >
+        <View style={[styles.stats, styles.overlapSmall]}>
+          {SECONDARY_ACTIONS.map((action) => (
+            <PressableScale
+              key={action.mode}
+              onPress={() => openVerify(action.mode)}
+              accessibilityRole="button"
+              accessibilityLabel={`${action.title}. ${action.description}`}
+              testID={`police-home-${action.mode}`}
+              style={styles.flex}
+              contentStyle={[styles.actionTile, { backgroundColor: theme.backgroundElement, boxShadow: Shadows.raised }]}
+            >
+              <IconTile icon={action.icon} color={theme.primary} size={44} />
+              <ThemedText style={styles.actionTitle} numberOfLines={1}>
+                {action.title}
+              </ThemedText>
+              <ThemedText type="small" themeColor="textSecondary" numberOfLines={2}>
                 {action.description}
               </ThemedText>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
-          </Card>
-        </Pressable>
-      ))}
-      <View style={[styles.infoNote, { backgroundColor: theme.backgroundElement }]}>
-        <Ionicons name="information-circle-outline" size={18} color={theme.textSecondary} />
-        <ThemedText type="small" themeColor="textSecondary" style={styles.actionText}>
-          Face matches are a guide. Confirm the driver&apos;s identity yourself when the match is uncertain.
-        </ThemedText>
-      </View>
-    </ScreenScroll>
+            </PressableScale>
+          ))}
+        </View>
+        <Banner
+          tone="info"
+          text="Face matches are a guide. Confirm the driver's identity yourself when the match is uncertain."
+        />
+      </HeroScreen>
+    </>
   );
 }
 
@@ -411,27 +410,15 @@ function RecentAlerts({ items }: { items: AppNotification[] }) {
 }
 
 const styles = StyleSheet.create({
-  actionCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.three,
-    padding: Spacing.four,
-  },
-  actionIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  actionText: { flex: 1, gap: Spacing.half },
   actionTitle: { fontWeight: 700 },
-  infoNote: {
-    flexDirection: 'row',
-    gap: Spacing.two,
+  actionTile: {
+    gap: Spacing.one,
     padding: Spacing.three,
-    borderRadius: Radius.small,
+    minHeight: 132,
+    borderRadius: Radius.medium,
+    borderCurve: 'continuous',
   },
+  overlapSmall: { marginTop: -(Spacing.four + Spacing.three) },
   statusCard: {
     padding: Spacing.four,
     gap: Spacing.two,

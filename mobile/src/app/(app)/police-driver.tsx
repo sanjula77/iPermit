@@ -9,16 +9,16 @@ import { Banner } from '@/components/banner';
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
 import { EmptyState } from '@/components/empty-state';
+import { HeroChip, HeroScreen } from '@/components/hero-screen';
 import { IconTile } from '@/components/icon-tile';
 import { ListRow, ListSeparator } from '@/components/list-row';
 import { ProgressBar } from '@/components/progress-bar';
-import { StatusBadge } from '@/components/status-badge';
 import { TextField } from '@/components/text-field';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { ScreenScroll } from '@/components/screen-scroll';
 import { Radius, Spacing, tint } from '@/constants/theme';
 import {
+  VIOLATION_COLOR,
   VIOLATION_FINE,
   VIOLATION_ICON,
   VIOLATION_LABEL,
@@ -135,45 +135,46 @@ function DriverDetails({ initialDriver }: { initialDriver: DriverSummary }) {
   }
 
   return (
-    <ScreenScroll
+    <HeroScreen
       ref={scrollRef}
+      underHeader
       keyboardShouldPersistTaps="handled"
-    >
-      <View style={styles.hero}>
-        <Ionicons name="person-circle" size={64} color={theme.textSecondary} />
-        <ThemedText
-          type="subtitle"
-          selectable
-          numberOfLines={1}
-          adjustsFontSizeToFit
-          minimumFontScale={0.6}
-          style={styles.centered}
-        >
-          {driver.email}
-        </ThemedText>
-        <ThemedText themeColor="textSecondary" selectable>
-          NIC {driver.nic}
-        </ThemedText>
-      </View>
-
-      {hasLicense ? (
-        <Card style={styles.licenseCard}>
-          <View style={styles.spread}>
+      testID="driver-details"
+      heroContent={
+        <>
+          <View style={styles.identity}>
+            <View style={styles.avatar}>
+              <Ionicons name="person" size={28} color={theme.onBrand} />
+            </View>
             <View style={styles.flex}>
-              <ThemedText type="small" themeColor="textSecondary">
-                License
+              <ThemedText
+                type="subtitle"
+                themeColor="onBrand"
+                selectable
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.5}
+              >
+                {driver.email}
               </ThemedText>
-              <ThemedText type="smallBold" selectable>
-                {driver.license_no}
+              <ThemedText type="small" themeColor="onBrand" selectable style={styles.dim}>
+                NIC {driver.nic}
+                {hasLicense ? ` · ${driver.license_no}` : ''}
               </ThemedText>
             </View>
-            <StatusBadge
-              testID="driver-license-status"
-              tone={driver.license_status === 'ACTIVE' ? 'success' : 'danger'}
-              icon={driver.license_status === 'ACTIVE' ? 'checkmark-circle' : 'ban'}
-              label={driver.license_status === 'ACTIVE' ? 'Active' : 'Suspended'}
-            />
           </View>
+          {/* The result an officer needs first, at a glance. */}
+          <HeroChip
+            large
+            testID="driver-license-status"
+            icon={!hasLicense ? 'alert-circle' : driver.license_status === 'ACTIVE' ? 'checkmark-circle' : 'ban'}
+            label={!hasLicense ? 'No license' : `License ${driver.license_status === 'ACTIVE' ? 'active' : 'suspended'}`}
+          />
+        </>
+      }
+    >
+      {hasLicense ? (
+        <Card variant="raised" style={[styles.pointsCard, styles.overlap]}>
           <View
             style={styles.pointsBlock}
             accessible
@@ -193,7 +194,9 @@ function DriverDetails({ initialDriver }: { initialDriver: DriverSummary }) {
           </View>
         </Card>
       ) : (
-        <Banner tone="danger" text="No license issued. A violation cannot be recorded." />
+        <View style={styles.overlap}>
+          <Banner tone="danger" text="No license issued. A violation cannot be recorded." />
+        </View>
       )}
 
       {notice ? (
@@ -203,35 +206,6 @@ function DriverDetails({ initialDriver }: { initialDriver: DriverSummary }) {
           testID={notice.kind === 'success' ? 'record-violation-success' : 'record-violation-error'}
         />
       ) : null}
-
-      <View style={styles.section}>
-        <SectionLabel text="Violation history" />
-        {driver.violations.length === 0 ? (
-          <Card>
-            <ThemedText themeColor="textSecondary">No violations on record.</ThemedText>
-          </Card>
-        ) : (
-          <Card style={styles.list}>
-            {driver.violations.map((violation, i) => (
-              <Fragment key={violation.id}>
-                {i > 0 ? <ListSeparator /> : null}
-                <ListRow
-                  leading={<IconTile icon={VIOLATION_ICON[violation.type]} color={theme.text} />}
-                  title={VIOLATION_LABEL[violation.type]}
-                  meta={`${formatDate(violation.confirmed_at)} · ${violation.points_deducted} pts`}
-                  footer={
-                    violation.evidence_ref ? (
-                      <ThemedText type="small" themeColor="textSecondary" selectable>
-                        Evidence: {violation.evidence_ref}
-                      </ThemedText>
-                    ) : null
-                  }
-                />
-              </Fragment>
-            ))}
-          </Card>
-        )}
-      </View>
 
       {hasLicense ? (
         <View style={styles.section}>
@@ -291,7 +265,36 @@ function DriverDetails({ initialDriver }: { initialDriver: DriverSummary }) {
           </Button>
         </View>
       ) : null}
-    </ScreenScroll>
+      <View style={styles.section}>
+        <SectionLabel text="Violation history" />
+        {driver.violations.length === 0 ? (
+          <Card>
+            <ThemedText themeColor="textSecondary">No violations on record.</ThemedText>
+          </Card>
+        ) : (
+          <Card style={styles.list}>
+            {driver.violations.map((violation, i) => (
+              <Fragment key={violation.id}>
+                {i > 0 ? <ListSeparator /> : null}
+                <ListRow
+                  leading={<IconTile icon={VIOLATION_ICON[violation.type]} color={theme[VIOLATION_COLOR[violation.type]]} />}
+                  title={VIOLATION_LABEL[violation.type]}
+                  meta={`${formatDate(violation.confirmed_at)} · ${violation.points_deducted} pts`}
+                  footer={
+                    violation.evidence_ref ? (
+                      <ThemedText type="small" themeColor="textSecondary" selectable>
+                        Evidence: {violation.evidence_ref}
+                      </ThemedText>
+                    ) : null
+                  }
+                />
+              </Fragment>
+            ))}
+          </Card>
+        )}
+      </View>
+
+    </HeroScreen>
   );
 }
 
@@ -309,14 +312,6 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   centered: { textAlign: 'center' },
   tabular: { fontVariant: ['tabular-nums'] },
-  hero: {
-    alignItems: 'center',
-    gap: Spacing.one,
-  },
-  licenseCard: {
-    padding: Spacing.four,
-    gap: Spacing.three,
-  },
   spread: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -324,6 +319,19 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   pointsBlock: { gap: Spacing.two },
+  pointsCard: { padding: Spacing.four },
+  // The first card lifts over the hero's lower edge.
+  overlap: { marginTop: -(Spacing.four + Spacing.three) },
+  identity: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, alignSelf: 'stretch' },
+  avatar: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.18)',
+  },
+  dim: { opacity: 0.85 },
   section: { gap: Spacing.two },
   sectionLabel: {
     textTransform: 'uppercase',

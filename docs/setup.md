@@ -141,8 +141,9 @@ behavior has not been independently verified by this project (see
   it doesn't arrive, check that you accepted the notification permission prompt on
   first launch.
 - **Road incident map view** — confirmed on an Android phone in Expo Go. Android uses
-  OpenStreetMap tiles, because Google's base map needs an API key and a custom build
-  and otherwise renders blank grey (commit `774f150`). iOS (Apple Maps) has not been
+  CARTO basemap tiles (OpenStreetMap data): Google's base map needs an API key and a
+  custom build, otherwise it renders blank grey (commit `774f150`), and OSM's own tile
+  servers block apps that don't identify themselves. iOS (Apple Maps) has not been
   checked.
 
 Camera-based face capture (enrollment, police face-scan) and QR scanning both need

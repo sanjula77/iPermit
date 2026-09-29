@@ -491,7 +491,7 @@ Fig. 4.23|Apply for licence|docs/thesis/screens/apply.png|Driver without a licen
 Fig. 4.24|Fines list|docs/thesis/screens/fines.png|Driver with at least one unpaid fine, one paid fine and one fine with a pending appeal|FR-09, FR-10
 Fig. 4.25|Fine details, payment|docs/thesis/screens/fine-pay.png|Unpaid fine with Pay selected and the three payment methods shown (or the "Pay LKR x?" confirmation)|FR-09
 Fig. 4.26|Fine details, appeal|docs/thesis/screens/fine-appeal.png|Unpaid fine with the appeal reason box, or a fine whose appeal card shows its status|FR-10
-Fig. 4.27|Incidents map|docs/thesis/screens/incidents-map.png|Location permission granted; at least one incident marker and one danger-zone circle on the OpenStreetMap tiles, list below|FR-13, FR-15
+Fig. 4.27|Incidents map|docs/thesis/screens/incidents-map.png|Location permission granted; at least one incident marker and one danger-zone circle on the map tiles, list below|FR-13, FR-15
 Fig. 4.28|Report incident or danger zone|docs/thesis/screens/report.png|Report modal open, incident or zone selected, with type and severity chosen|FR-13, FR-15
 Fig. 4.29|Notifications|docs/thesis/screens/notifications.png|Driver with several notifications, some unread, and the unread count on the Alerts tab|FR-12
 Fig. 4.30|Police Home|docs/thesis/screens/police-home.png|Police account; the three verification actions|FR-06
@@ -547,7 +547,7 @@ Fig. 4.26. Appealing a fine from the fine details screen
 **Insert Figure 4.27:** `docs/thesis/screens/incidents-map.png`
 
 ```text
-Fig. 4.27. Map of nearby road incidents and danger zones (map data © OpenStreetMap contributors)
+Fig. 4.27. Map of nearby road incidents and danger zones (map data © OpenStreetMap contributors, basemap © CARTO)
 ```
 
 **Insert Figure 4.28:** `docs/thesis/screens/report.png`
@@ -848,7 +848,7 @@ repository's README. [1] and [2] are also [1] and [2] in Chapter 3.
    non-commercial research purposes only" [3]. The chapter states this in
    4.1.1. Chapter 5 should credit InsightFace, FAISS, FastAPI, Expo/React
    Native, Next.js, react-native-maps and OpenStreetMap as well. Keep the
-   "© OpenStreetMap contributors" credit in the Fig. 4.27 caption.
+   "© OpenStreetMap contributors, © CARTO" credit in the Fig. 4.27 caption.
 7. **"Unstable API" in TABLE 4.1** refers to `expo-router/unstable-native-tabs`,
    which the tab layout imports. That's accurate for Expo SDK 57; check it
    hasn't become stable if you upgrade.

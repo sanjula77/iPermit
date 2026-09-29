@@ -9,12 +9,14 @@ import type { DangerZone } from '@/types/danger-zone';
 import type { RoadIncident } from '@/types/road-incident';
 
 // Android's Google base map needs a Maps API key (and a custom build) to load
-// tiles; without one it renders blank grey. OpenStreetMap tiles need no key and
-// work in Expo Go. OSM's public tile servers are fine for development/demo use,
-// not heavy production traffic, and require the attribution shown below.
+// tiles; without one it renders blank grey. So Android draws its own tiles:
+// CARTO's Voyager basemap (OpenStreetMap data). It needs no key; OSM's own tile
+// servers refuse apps that don't identify themselves (the phone showed their
+// "not following the tile usage policy" tile). CARTO's free tier suits a
+// prototype and requires the attribution shown below.
 // iOS keeps Apple Maps, which works without a key.
-const USE_OSM_TILES = Platform.OS === 'android';
-const OSM_TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+const USE_CUSTOM_TILES = Platform.OS === 'android';
+const TILE_URL = 'https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png';
 
 export function IncidentsMap({
   center,
@@ -45,7 +47,7 @@ export function IncidentsMap({
       <MapView
         ref={mapRef}
         style={StyleSheet.absoluteFill}
-        mapType={USE_OSM_TILES ? 'none' : 'standard'}
+        mapType={USE_CUSTOM_TILES ? 'none' : 'standard'}
         initialRegion={{
           latitude: center.lat,
           longitude: center.lng,
@@ -54,7 +56,7 @@ export function IncidentsMap({
         }}
         testID="incidents-map"
       >
-        {USE_OSM_TILES ? <UrlTile urlTemplate={OSM_TILE_URL} maximumZ={19} shouldReplaceMapContent /> : null}
+        {USE_CUSTOM_TILES ? <UrlTile urlTemplate={TILE_URL} maximumZ={19} shouldReplaceMapContent /> : null}
         {zones.map((zone) => (
           <Circle
             key={zone.id}
@@ -75,9 +77,9 @@ export function IncidentsMap({
           />
         ))}
       </MapView>
-      {USE_OSM_TILES ? (
+      {USE_CUSTOM_TILES ? (
         <View style={styles.attribution} pointerEvents="none">
-          <Text style={styles.attributionText}>© OpenStreetMap contributors</Text>
+          <Text style={styles.attributionText}>© OpenStreetMap contributors © CARTO</Text>
         </View>
       ) : null}
     </View>

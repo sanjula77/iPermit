@@ -144,7 +144,7 @@ database only through the FastAPI backend — no direct DB access from mobile or
 |--------|------|---------|-------|
 | Expo Push Service | Push notification API | Mobile push delivery | Requires Expo push tokens per device |
 | Mock Payment Provider | Simulated | Fine payment demo | **Not a real gateway** — explicitly mock in this version |
-| Map Tiles (react-native-maps) | Map rendering | Road incident and danger-zone display | OpenStreetMap tiles on Android (Google's base map needs an API key and a custom build); Apple Maps on iOS |
+| Map Tiles (react-native-maps) | Map rendering | Road incident and danger-zone display | CARTO Voyager basemap tiles (OpenStreetMap data) on Android: Google's base map needs an API key and a custom build, and OSM's own tile servers block apps that don't identify themselves; Apple Maps on iOS |
 
 ## Components and Interfaces
 

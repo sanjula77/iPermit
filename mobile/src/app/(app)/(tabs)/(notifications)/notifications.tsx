@@ -1,5 +1,5 @@
 import { Stack, router, useFocusEffect } from 'expo-router';
-import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 
 import { extractErrorMessage } from '@/api/client';
@@ -8,7 +8,6 @@ import { Banner } from '@/components/banner';
 import { Card } from '@/components/card';
 import { EmptyState } from '@/components/empty-state';
 import { IconTile } from '@/components/icon-tile';
-import { ListSeparator } from '@/components/list-row';
 import { ScreenState } from '@/components/screen-state';
 import { ThemedText } from '@/components/themed-text';
 import { ScreenScroll } from '@/components/screen-scroll';
@@ -156,18 +155,16 @@ export default function NotificationsScreen() {
             >
               {group.label}
             </ThemedText>
-            <Card style={styles.list}>
-              {group.items.map((notification, i) => (
-                <Fragment key={notification.id}>
-                  {i > 0 ? <ListSeparator /> : null}
-                  <NotificationRow
-                    notification={notification}
-                    now={now}
-                    onPress={() => handlePress(notification)}
-                  />
-                </Fragment>
-              ))}
-            </Card>
+            {/* One card per alert, with a small space between them. */}
+            {group.items.map((notification) => (
+              <Card key={notification.id} style={styles.list}>
+                <NotificationRow
+                  notification={notification}
+                  now={now}
+                  onPress={() => handlePress(notification)}
+                />
+              </Card>
+            ))}
           </View>
         ))
       )}

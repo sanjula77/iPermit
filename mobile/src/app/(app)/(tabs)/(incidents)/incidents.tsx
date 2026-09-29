@@ -29,7 +29,7 @@ type Tab = 'incidents' | 'zones';
 
 export default function IncidentsScreen() {
   const theme = useTheme();
-  const { location, note: locationNote } = useCurrentLocation();
+  const { location, note: locationNote, isFallback } = useCurrentLocation();
   const [tab, setTab] = useState<Tab>('incidents');
   const [incidents, setIncidents] = useState<RoadIncident[] | null>(null);
   const [zones, setZones] = useState<DangerZone[] | null>(null);
@@ -169,7 +169,13 @@ export default function IncidentsScreen() {
           Map view is only available on the native app.
         </ThemedText>
       ) : location ? (
-        <IncidentsMap center={location} incidents={incidents ?? []} zones={zones ?? []} focus={focus} />
+        <IncidentsMap
+          center={location}
+          incidents={incidents ?? []}
+          zones={zones ?? []}
+          focus={focus}
+          userLocation={isFallback ? null : location}
+        />
       ) : (
         <View style={[styles.mapPlaceholder, { backgroundColor: theme.backgroundElement }]}>
           <ScreenState />

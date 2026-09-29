@@ -8,6 +8,7 @@ import { markDangerZone } from '@/api/danger-zones';
 import { reportIncident } from '@/api/road-incidents';
 import { Banner } from '@/components/banner';
 import { Button } from '@/components/button';
+import { LocationPicker } from '@/components/location-picker';
 import { PressableScale } from '@/components/pressable-scale';
 import { SegmentedControl } from '@/components/segmented-control';
 import { TextField } from '@/components/text-field';
@@ -22,7 +23,7 @@ import {
   ZONE_RADIUS_OPTIONS,
 } from '@/constants/incidents';
 import { Radius, Shadows, Spacing, tint } from '@/constants/theme';
-import { useCurrentLocation } from '@/hooks/use-current-location';
+import { useCurrentLocation, type LatLng } from '@/hooks/use-current-location';
 import { useTheme } from '@/hooks/use-theme';
 import type { RoadIncidentSeverity, RoadIncidentType } from '@/types/road-incident';
 
@@ -32,9 +33,12 @@ const SEVERITY_OPTIONS = SEVERITIES.map((s) => ({ label: SEVERITY_LABEL[s], valu
 
 export default function ReportScreen() {
   const theme = useTheme();
-  // A report records where it happened, so the Colombo fallback must never be
-  // submitted as the driver's position.
+  // A report records where it happened. The place is the point the user picked
+  // on the map, or else their real position -- never the Colombo fallback.
   const { location, isFallback } = useCurrentLocation();
+  const [picked, setPicked] = useState<LatLng | null>(null);
+  const userLocation = location && !isFallback ? location : null;
+  const point = picked ?? userLocation;
   const [kind, setKind] = useState<Kind>('incident');
   const [incidentType, setIncidentType] = useState<RoadIncidentType | null>(null);
   const [severity, setSeverity] = useState<RoadIncidentSeverity>('MEDIUM');
@@ -46,19 +50,19 @@ export default function ReportScreen() {
   const submittingRef = useRef(false);
 
   const canSubmit =
-    !!location && !isFallback && !isSubmitting && (kind === 'zone' || incidentType !== null);
+    !!point && !isSubmitting && (kind === 'zone' || incidentType !== null);
 
   async function handleSubmit() {
-    if (!location || isFallback || submittingRef.current) return;
+    if (!point || submittingRef.current) return;
     if (kind === 'incident' && !incidentType) return;
     submittingRef.current = true;
     setError(null);
     setIsSubmitting(true);
     try {
       if (kind === 'incident' && incidentType) {
-        await reportIncident(incidentType, severity, location.lat, location.lng);
+        await reportIncident(incidentType, severity, point.lat, point.lng);
       } else {
-        await markDangerZone(location.lat, location.lng, radius, severity, reason.trim() || undefined);
+        await markDangerZone(point.lat, point.lng, radius, severity, reason.trim() || undefined);
       }
       // Return to the list (which reloads on focus) and tell it what was sent,
       // so it can confirm the report.
@@ -172,15 +176,23 @@ export default function ReportScreen() {
         />
       ) : null}
 
-      <View style={styles.locationRow}>
-        <Ionicons name="location-outline" size={18} color={theme.textSecondary} />
-        <ThemedText type="small" themeColor="textSecondary" style={styles.locationText}>
-          {!location
-            ? 'Finding your location…'
-            : isFallback
-              ? 'Turn on location access to report from where you are.'
-              : 'Uses your current location.'}
-        </ThemedText>
+      <View style={styles.section}>
+        <SectionLabel text="Where?" />
+        {location ? (
+          <LocationPicker start={location} userLocation={userLocation} onPick={setPicked} />
+        ) : null}
+        <View style={styles.locationRow}>
+          <Ionicons name="location-outline" size={18} color={theme.textSecondary} />
+          <ThemedText type="small" themeColor="textSecondary" style={styles.locationText} testID="report-location-status">
+            {!location
+              ? 'Finding your location…'
+              : picked
+                ? 'Using the place under the pin. Drag the map to adjust it.'
+                : userLocation
+                  ? 'Using your current location. Drag the map to choose another place.'
+                  : 'Location is off. Drag the map to put the pin where it happened.'}
+          </ThemedText>
+        </View>
       </View>
 
       {error ? <Banner tone="danger" text={error} testID="report-error" /> : null}

@@ -1,4 +1,4 @@
-import { router, useFocusEffect } from 'expo-router';
+import { Stack, router, useFocusEffect } from 'expo-router';
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 
@@ -85,6 +85,23 @@ export default function NotificationsScreen() {
       });
   }
 
+  const unreadIds = (notifications ?? []).filter((n) => !n.read_at).map((n) => n.id);
+  const [markingAll, setMarkingAll] = useState(false);
+
+  // No bulk endpoint: mark each unread alert concurrently, then apply whichever
+  // succeeded in one update (the tab badge follows via the effect above).
+  async function markAllRead() {
+    if (markingAll || unreadIds.length === 0) return;
+    setMarkingAll(true);
+    const results = await Promise.allSettled(unreadIds.map((id) => markNotificationRead(id)));
+    const updated = new Map(
+      results.flatMap((r) => (r.status === 'fulfilled' ? [[r.value.id, r.value] as const] : [])),
+    );
+    setNotifications((current) => (current ?? []).map((n) => updated.get(n.id) ?? n));
+    if (updated.size < unreadIds.length) setError("Couldn't mark every alert as read. Pull to refresh and try again.");
+    setMarkingAll(false);
+  }
+
   const groups = (['Today', 'Yesterday', 'Earlier'] as const)
     .map((label) => ({
       label,
@@ -96,6 +113,26 @@ export default function NotificationsScreen() {
     <ScreenScroll
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
     >
+      <Stack.Screen
+        options={{
+          headerRight: () =>
+            unreadIds.length > 0 ? (
+              <Pressable
+                onPress={markAllRead}
+                disabled={markingAll}
+                hitSlop={12}
+                accessibilityRole="button"
+                accessibilityLabel="Mark all alerts as read"
+                testID="notifications-mark-all"
+                style={({ pressed }) => ({ opacity: pressed || markingAll ? 0.6 : 1 })}
+              >
+                <ThemedText type="smallBold" themeColor="onBrand">
+                  {markingAll ? 'Marking…' : 'Mark all read'}
+                </ThemedText>
+              </Pressable>
+            ) : null,
+        }}
+      />
       {notifications !== null && error ? (
         <Banner tone="danger" text={`Couldn't refresh: ${error}`} testID="notifications-error" />
       ) : null}

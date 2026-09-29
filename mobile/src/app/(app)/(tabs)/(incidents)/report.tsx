@@ -1,13 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useRef, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { extractErrorMessage } from '@/api/client';
 import { markDangerZone } from '@/api/danger-zones';
 import { reportIncident } from '@/api/road-incidents';
 import { Banner } from '@/components/banner';
 import { Button } from '@/components/button';
+import { PressableScale } from '@/components/pressable-scale';
 import { SegmentedControl } from '@/components/segmented-control';
 import { TextField } from '@/components/text-field';
 import { ThemedText } from '@/components/themed-text';
@@ -20,7 +21,7 @@ import {
   SEVERITY_LABEL,
   ZONE_RADIUS_OPTIONS,
 } from '@/constants/incidents';
-import { Radius, Spacing, tint } from '@/constants/theme';
+import { Radius, Shadows, Spacing, tint } from '@/constants/theme';
 import { useCurrentLocation } from '@/hooks/use-current-location';
 import { useTheme } from '@/hooks/use-theme';
 import type { RoadIncidentSeverity, RoadIncidentType } from '@/types/road-incident';
@@ -103,22 +104,24 @@ export default function ReportScreen() {
             {INCIDENT_TYPES.map((type) => {
               const selected = incidentType === type;
               return (
-                <Pressable
+                <PressableScale
                   key={type}
                   onPress={() => setIncidentType(type)}
                   accessibilityRole="radio"
                   accessibilityState={{ checked: selected }}
                   accessibilityLabel={INCIDENT_LABEL[type]}
                   testID={`type-${type}`}
-                  style={({ pressed }) => [
+                  style={styles.typeCell}
+                  contentStyle={[
                     styles.typeTile,
-                    {
-                      backgroundColor: selected ? tint(theme.primary) : theme.backgroundElement,
-                      borderColor: selected ? theme.primary : 'transparent',
-                      opacity: pressed ? 0.7 : 1,
-                    },
+                    selected
+                      ? { backgroundColor: tint(theme.primary), borderColor: theme.primary }
+                      : { backgroundColor: theme.backgroundElement, borderColor: 'transparent', boxShadow: Shadows.card },
                   ]}
                 >
+                  {selected ? (
+                    <Ionicons name="checkmark-circle" size={18} color={theme.primary} style={styles.typeCheck} />
+                  ) : null}
                   <Ionicons name={INCIDENT_ICON[type]} size={22} color={selected ? theme.primary : theme.text} />
                   <ThemedText
                     type="smallBold"
@@ -130,7 +133,7 @@ export default function ReportScreen() {
                   >
                     {INCIDENT_LABEL[type]}
                   </ThemedText>
-                </Pressable>
+                </PressableScale>
               );
             })}
           </View>
@@ -215,11 +218,9 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: Spacing.two,
   },
+  // Two columns: half the row minus half the gap.
+  typeCell: { flexBasis: '48%', flexGrow: 1, minWidth: 0 },
   typeTile: {
-    // Two columns: half the row minus half the gap.
-    flexBasis: '48%',
-    flexGrow: 1,
-    minWidth: 0,
     alignItems: 'center',
     gap: Spacing.one,
     paddingVertical: Spacing.three,
@@ -229,6 +230,7 @@ const styles = StyleSheet.create({
     borderCurve: 'continuous',
   },
   typeLabel: { maxWidth: '100%' },
+  typeCheck: { position: 'absolute', top: Spacing.one, right: Spacing.one },
   locationRow: {
     flexDirection: 'row',
     alignItems: 'center',

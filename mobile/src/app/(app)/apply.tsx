@@ -176,7 +176,7 @@ export default function ApplyScreen() {
 
   return (
     <ScreenScroll>
-      <View style={styles.progress}>
+      <Card variant="raised" style={styles.progress}>
         <ThemedText themeColor="textSecondary">
           Add 4 face photos and 3 documents to apply for your digital license.
         </ThemedText>
@@ -194,7 +194,7 @@ export default function ApplyScreen() {
             {filesReadyCount} of {REQUIRED_FILE_COUNT} ready
           </ThemedText>
         </View>
-      </View>
+      </Card>
 
       <View style={styles.section}>
         <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionLabel}>
@@ -282,7 +282,7 @@ export default function ApplyScreen() {
 }
 
 const styles = StyleSheet.create({
-  progress: { gap: Spacing.two },
+  progress: { gap: Spacing.three, padding: Spacing.four },
   progressRow: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -22,7 +22,8 @@ export default function AuthLayout() {
 
   return (
     <>
-      <StatusBar style="auto" />
+      {/* The auth screens open on the brand gradient too. */}
+      <StatusBar style="light" />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="login" />
         <Stack.Screen name="register" />

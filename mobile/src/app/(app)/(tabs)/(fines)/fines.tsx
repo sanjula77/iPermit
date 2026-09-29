@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { RefreshControl, StyleSheet, View } from 'react-native';
@@ -43,6 +44,12 @@ export default function FinesScreen() {
   return (
     <HeroScreen
       title="Fines"
+      summary="Track, pay and appeal your traffic fines"
+      accessory={
+        <View style={styles.badge}>
+          <Ionicons name="receipt-outline" size={24} color={theme.onBrand} />
+        </View>
+      }
       testID="fines-screen"
       refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[theme.brand]} tintColor={theme.onBrand} />
@@ -50,36 +57,26 @@ export default function FinesScreen() {
       heroContent={
         summary ? (
           <>
-            <ThemedText type="small" themeColor="onBrand" style={styles.heroLabel}>
-              Outstanding balance
-            </ThemedText>
-            <ThemedText
-              type="display"
-              themeColor="onBrand"
-              testID="outstanding-total"
-              numberOfLines={1}
-              adjustsFontSizeToFit
-              minimumFontScale={0.4}
-            >
-              {formatLkr(summary.outstanding)}
-            </ThemedText>
-            {summary.unpaidCount ? (
-              <HeroChip
-                icon="alert-circle"
-                label={`${summary.unpaidCount} unpaid ${summary.unpaidCount === 1 ? 'fine' : 'fines'}`}
-                testID="fines-unpaid-chip"
-              />
-            ) : (
-              <HeroChip icon="checkmark-circle" label="All clear" testID="fines-all-clear" />
-            )}
-            {summary.oldestPayableId ? (
-              <HeroAction
-                icon="card-outline"
-                label={summary.payableCount > 1 ? 'Pay oldest fine' : 'Pay fine'}
-                onPress={openOldestPayable}
-                testID="fines-hero-pay"
-              />
-            ) : null}
+            <BalanceFigure amount={summary.outstanding} />
+            <View style={styles.heroFooter}>
+              {summary.unpaidCount ? (
+                <HeroChip
+                  icon="alert-circle"
+                  label={`${summary.unpaidCount} unpaid ${summary.unpaidCount === 1 ? 'fine' : 'fines'}`}
+                  testID="fines-unpaid-chip"
+                />
+              ) : (
+                <HeroChip icon="checkmark-circle" label="All clear" testID="fines-all-clear" />
+              )}
+              {summary.oldestPayableId ? (
+                <HeroAction
+                  icon="card-outline"
+                  label={summary.payableCount > 1 ? 'Pay oldest' : 'Pay fine'}
+                  onPress={openOldestPayable}
+                  testID="fines-hero-pay"
+                />
+              ) : null}
+            </View>
           </>
         ) : error && !isLoading ? undefined : (
           // First load: placeholders; after a failed first load the hero stays
@@ -112,6 +109,44 @@ export default function FinesScreen() {
         <FinesContent fines={fines} appeals={appeals} summary={summary} />
       ) : null}
     </HeroScreen>
+  );
+}
+
+// The balance as a designed figure: a spaced label, then a small "LKR" beside
+// a large number. Split from formatLkr's output, so its formatting (grouping,
+// the missing-amount dash) stays in one place. Read as one phrase.
+function BalanceFigure({ amount }: { amount: number }) {
+  const formatted = formatLkr(amount);
+  const [currency, figure] = formatted.includes('\u00A0') ? formatted.split('\u00A0') : ['', formatted];
+
+  return (
+    <View
+      style={styles.balance}
+      testID="outstanding-total"
+      accessible
+      accessibilityLabel={`Outstanding balance ${formatted}`}
+    >
+      <ThemedText type="smallBold" themeColor="onBrand" style={styles.eyebrow}>
+        OUTSTANDING BALANCE
+      </ThemedText>
+      <View style={styles.amountRow}>
+        {currency ? (
+          <ThemedText type="subtitle" themeColor="onBrand" style={styles.currency}>
+            {currency}
+          </ThemedText>
+        ) : null}
+        <ThemedText
+          type="display"
+          themeColor="onBrand"
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.4}
+          style={styles.figure}
+        >
+          {figure}
+        </ThemedText>
+      </View>
+    </View>
   );
 }
 
@@ -213,7 +248,29 @@ function FineRow({ fine, appeal }: { fine: FineWithViolation; appeal: Appeal | n
 }
 
 const styles = StyleSheet.create({
-  heroLabel: { opacity: 0.85 },
+  badge: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    // Translucent white: only used on the brand gradient.
+    backgroundColor: 'rgba(255, 255, 255, 0.18)',
+  },
+  balance: { gap: Spacing.half, alignSelf: 'stretch' },
+  eyebrow: { fontSize: 12, letterSpacing: 1.2, opacity: 0.8 },
+  amountRow: { flexDirection: 'row', alignItems: 'baseline', gap: Spacing.two },
+  currency: { opacity: 0.85, fontWeight: 600 },
+  figure: { flexShrink: 1, fontSize: 44, lineHeight: 52, letterSpacing: -0.5 },
+  heroFooter: {
+    alignSelf: 'stretch',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: Spacing.two,
+    marginTop: Spacing.one,
+  },
   heroSkeleton: { gap: Spacing.two },
   // Skeleton blocks on the blue hero: white at low opacity instead of grey.
   onHero: { backgroundColor: 'rgba(255, 255, 255, 0.25)' },

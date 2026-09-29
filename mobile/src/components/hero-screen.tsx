@@ -17,6 +17,7 @@ import { useTheme } from '@/hooks/use-theme';
 export function HeroScreen({
   ref,
   title,
+  accessory,
   summary,
   heroContent,
   refreshControl,
@@ -27,6 +28,8 @@ export function HeroScreen({
 }: {
   ref?: Ref<ScrollView>;
   title?: string;
+  // Shown at the right of the title and summary (e.g. a section badge).
+  accessory?: ReactNode;
   summary?: string;
   // The key figure and any chip/action, rendered below the title.
   heroContent?: ReactNode;
@@ -68,16 +71,21 @@ export function HeroScreen({
           ]}
         >
           <View style={styles.inner}>
-            {title ? (
-              <ThemedText type="subtitle" themeColor="onBrand" accessibilityRole="header">
-                {title}
-              </ThemedText>
-            ) : null}
-            {summary ? (
-              <ThemedText type="small" themeColor="onBrand" style={styles.summary}>
-                {summary}
-              </ThemedText>
-            ) : null}
+            <View style={styles.titleRow}>
+              <View style={styles.titleText}>
+                {title ? (
+                  <ThemedText type="subtitle" themeColor="onBrand" accessibilityRole="header">
+                    {title}
+                  </ThemedText>
+                ) : null}
+                {summary ? (
+                  <ThemedText type="small" themeColor="onBrand" style={styles.summary}>
+                    {summary}
+                  </ThemedText>
+                ) : null}
+              </View>
+              {accessory}
+            </View>
             {heroContent ? <View style={styles.heroContent}>{heroContent}</View> : null}
           </View>
         </LinearGradient>
@@ -162,6 +170,8 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.six,
   },
   inner: { width: '100%', maxWidth: MaxContentWidth },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
+  titleText: { flex: 1, minWidth: 0, gap: Spacing.half },
   summary: { opacity: 0.85 },
   heroContent: { marginTop: Spacing.three, gap: Spacing.two, alignItems: 'flex-start' },
   sheet: {
@@ -187,7 +197,7 @@ const styles = StyleSheet.create({
   },
   chipLarge: { paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, gap: Spacing.two },
   chipLargeText: { fontWeight: 700 },
-  actionOuter: { alignSelf: 'flex-start', marginTop: Spacing.one },
+  actionOuter: { alignSelf: 'flex-start' },
   action: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -10,13 +10,14 @@ import type { RoadIncident } from '@/types/road-incident';
 
 // Android's Google base map needs a Maps API key (and a custom build) to load
 // tiles; without one it renders blank grey. So Android draws its own tiles:
-// CARTO's Voyager basemap (OpenStreetMap data). It needs no key; OSM's own tile
-// servers refuse apps that don't identify themselves (the phone showed their
-// "not following the tile usage policy" tile). CARTO's free tier suits a
-// prototype and requires the attribution shown below.
+// Esri's World Street Map, which serves apps without a key. (Tried first and
+// refused on the phone: OSM's own servers, which block apps that don't
+// identify themselves, and CARTO, which now needs an API key.) Fine for a
+// prototype; Esri's terms need an ArcGIS account for production use. Esri's
+// URL takes the row before the column: {z}/{y}/{x}.
 // iOS keeps Apple Maps, which works without a key.
 const USE_CUSTOM_TILES = Platform.OS === 'android';
-const TILE_URL = 'https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png';
+const TILE_URL = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}';
 
 export function IncidentsMap({
   center,
@@ -79,7 +80,7 @@ export function IncidentsMap({
       </MapView>
       {USE_CUSTOM_TILES ? (
         <View style={styles.attribution} pointerEvents="none">
-          <Text style={styles.attributionText}>© OpenStreetMap contributors © CARTO</Text>
+          <Text style={styles.attributionText} numberOfLines={2}>Tiles © Esri · Esri, HERE, Garmin, © OpenStreetMap contributors and others</Text>
         </View>
       ) : null}
     </View>
@@ -95,6 +96,8 @@ const styles = StyleSheet.create({
   },
   attribution: {
     position: 'absolute',
+    // The Esri credit is long: keep it inside the map, wrapping to two lines.
+    maxWidth: '100%',
     right: 0,
     bottom: 0,
     backgroundColor: 'rgba(255, 255, 255, 0.8)',

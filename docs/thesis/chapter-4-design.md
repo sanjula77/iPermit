@@ -547,7 +547,7 @@ Fig. 4.26. Appealing a fine from the fine details screen
 **Insert Figure 4.27:** `docs/thesis/screens/incidents-map.png`
 
 ```text
-Fig. 4.27. Map of nearby road incidents and danger zones (map data © OpenStreetMap contributors, basemap © CARTO)
+Fig. 4.27. Map of nearby road incidents and danger zones (map tiles © Esri; sources include OpenStreetMap contributors)
 ```
 
 **Insert Figure 4.28:** `docs/thesis/screens/report.png`
@@ -848,7 +848,7 @@ repository's README. [1] and [2] are also [1] and [2] in Chapter 3.
    non-commercial research purposes only" [3]. The chapter states this in
    4.1.1. Chapter 5 should credit InsightFace, FAISS, FastAPI, Expo/React
    Native, Next.js, react-native-maps and OpenStreetMap as well. Keep the
-   "© OpenStreetMap contributors, © CARTO" credit in the Fig. 4.27 caption.
+   Esri credit in the Fig. 4.27 caption (the screenshot shows Esri tiles).
 7. **"Unstable API" in TABLE 4.1** refers to `expo-router/unstable-native-tabs`,
    which the tab layout imports. That's accurate for Expo SDK 57; check it
    hasn't become stable if you upgrade.

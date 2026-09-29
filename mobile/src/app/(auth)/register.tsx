@@ -110,6 +110,7 @@ export default function RegisterScreen() {
     <AuthScreen subtitle="Create a driver account">
       <TextField
         label="Email"
+        icon="mail-outline"
         value={email}
         onChangeText={(value) => {
           setEmail(value);
@@ -128,6 +129,7 @@ export default function RegisterScreen() {
       <TextField
         ref={nicRef}
         label="NIC"
+        icon="card-outline"
         value={nic}
         onChangeText={(value) => {
           setNic(value);
@@ -145,6 +147,7 @@ export default function RegisterScreen() {
       <TextField
         ref={passwordRef}
         label="Password"
+        icon="lock-closed-outline"
         value={password}
         onChangeText={setPassword}
         onBlur={() => markTouched('password')}
@@ -161,6 +164,7 @@ export default function RegisterScreen() {
       <TextField
         ref={confirmPasswordRef}
         label="Confirm password"
+        icon="lock-closed-outline"
         value={confirmPassword}
         onChangeText={setConfirmPassword}
         onBlur={() => markTouched('confirmPassword')}

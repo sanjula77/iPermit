@@ -12,29 +12,54 @@ interface TextFieldProps extends TextInputProps {
   error?: string;
   // Guidance shown below the input while there's no error.
   hint?: string;
+  // With an icon the field is the compact "inset" style (auth screens): the
+  // icon sits inside on the left and the label becomes the placeholder (still
+  // announced to screen readers). Without one, the label sits above.
+  icon?: keyof typeof Ionicons.glyphMap;
   ref?: Ref<TextInput>;
 }
 
-export function TextField({ label, error, hint, ref, style, secureTextEntry, ...rest }: TextFieldProps) {
+export function TextField({
+  label,
+  error,
+  hint,
+  icon,
+  ref,
+  style,
+  secureTextEntry,
+  placeholder,
+  ...rest
+}: TextFieldProps) {
   const theme = useTheme();
   const [isRevealed, setIsRevealed] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
   const isPasswordField = secureTextEntry === true;
+  const inset = icon !== undefined;
+  const borderColor = error ? theme.danger : isFocused ? theme.primary : theme.textSecondary;
 
   return (
     <ThemedView style={styles.container}>
-      <ThemedText type="smallBold">{label}</ThemedText>
+      {inset ? null : <ThemedText type="smallBold">{label}</ThemedText>}
       <View style={styles.inputWrapper}>
+        {inset ? (
+          <Ionicons
+            name={icon}
+            size={22}
+            color={error ? theme.danger : isFocused ? theme.primary : theme.textSecondary}
+            style={styles.leadingIcon}
+            pointerEvents="none"
+          />
+        ) : null}
         <TextInput
           ref={ref}
+          accessibilityLabel={label}
+          placeholder={inset ? (placeholder ?? label) : placeholder}
           style={[
             styles.input,
+            inset && styles.inputInset,
             isPasswordField && styles.inputWithToggle,
             // Filled white so the field stands out on the grey canvas.
-            {
-              color: theme.text,
-              backgroundColor: theme.backgroundElement,
-              borderColor: error ? theme.danger : theme.textSecondary,
-            },
+            { color: theme.text, backgroundColor: theme.backgroundElement, borderColor },
             style,
           ]}
           placeholderTextColor={theme.textSecondary}
@@ -42,6 +67,14 @@ export function TextField({ label, error, hint, ref, style, secureTextEntry, ...
           autoCorrect={false}
           secureTextEntry={isPasswordField && !isRevealed}
           {...rest}
+          onFocus={(e) => {
+            setIsFocused(true);
+            rest.onFocus?.(e);
+          }}
+          onBlur={(e) => {
+            setIsFocused(false);
+            rest.onBlur?.(e);
+          }}
         />
         {isPasswordField ? (
           <Pressable
@@ -53,7 +86,7 @@ export function TextField({ label, error, hint, ref, style, secureTextEntry, ...
           >
             <Ionicons
               name={isRevealed ? 'eye-off-outline' : 'eye-outline'}
-              size={20}
+              size={22}
               color={theme.textSecondary}
             />
           </Pressable>
@@ -75,6 +108,7 @@ export function TextField({ label, error, hint, ref, style, secureTextEntry, ...
 const styles = StyleSheet.create({
   container: {
     gap: Spacing.one,
+    backgroundColor: 'transparent',
   },
   inputWrapper: {
     justifyContent: 'center',
@@ -85,6 +119,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
     fontSize: 16,
+  },
+  inputInset: {
+    minHeight: 56,
+    borderRadius: Radius.medium,
+    borderCurve: 'continuous',
+    paddingLeft: Spacing.six - Spacing.two,
+  },
+  leadingIcon: {
+    position: 'absolute',
+    left: Spacing.three,
+    zIndex: 1,
   },
   inputWithToggle: {
     paddingRight: Spacing.six,

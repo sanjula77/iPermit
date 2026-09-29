@@ -1,4 +1,5 @@
 import { Redirect, Stack } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { ActivityIndicator } from 'react-native';
 
 import { ThemedView } from '@/components/themed-view';
@@ -20,9 +21,12 @@ export default function AuthLayout() {
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="login" />
-      <Stack.Screen name="register" />
-    </Stack>
+    <>
+      <StatusBar style="auto" />
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="login" />
+        <Stack.Screen name="register" />
+      </Stack>
+    </>
   );
 }

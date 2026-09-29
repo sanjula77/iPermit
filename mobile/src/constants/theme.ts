@@ -10,8 +10,9 @@ import { Platform } from 'react-native';
 export const Colors = {
   light: {
     text: '#000000',
-    background: '#ffffff',
-    backgroundElement: '#F0F0F3',
+    // Cards and tiles (backgroundElement) float white on a cool-grey canvas.
+    background: '#F4F6FA',
+    backgroundElement: '#FFFFFF',
     backgroundSelected: '#E0E1E6',
     textSecondary: '#60646C',
     // 5.7:1 on white; the old #208AEF was 3.5:1, below AA for 14sp text.
@@ -20,6 +21,11 @@ export const Colors = {
     warning: '#b54708',
     danger: '#d92d20',
     onPrimary: '#ffffff',
+    // Style-B brand: gradient hero and blue app bar. White text passes AA on all three.
+    brandDeep: '#0B3D91',
+    brand: '#1565C0',
+    brandBright: '#3B8CF0',
+    onBrand: '#ffffff',
   },
   dark: {
     text: '#ffffff',
@@ -32,6 +38,10 @@ export const Colors = {
     warning: '#f79009',
     danger: '#f04438',
     onPrimary: '#ffffff',
+    brandDeep: '#061E4A',
+    brand: '#0B3D91',
+    brandBright: '#1552B0',
+    onBrand: '#ffffff',
   },
 } as const;
 
@@ -75,10 +85,12 @@ export const Spacing = {
 export const Radius = {
   small: Spacing.two, // 8 -- chips, inputs, small controls
   medium: Spacing.three, // 16 -- cards, buttons
+  large: 22, // hero sheet corners
 } as const;
 
 export const Shadows = {
-  card: '0 1px 3px rgba(0, 0, 0, 0.08)',
+  card: '0 2px 10px rgba(15, 40, 90, 0.08)',
+  raised: '0 8px 24px rgba(11, 61, 145, 0.18)',
 } as const;
 
 export const MaxContentWidth = 800;

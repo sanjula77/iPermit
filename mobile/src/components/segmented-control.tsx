@@ -21,7 +21,14 @@ export function SegmentedControl<T extends string | number>({
 
   return (
     <View
-      style={[styles.container, { backgroundColor: theme.backgroundElement }]}
+      style={[
+        styles.container,
+        {
+          backgroundColor: theme.backgroundElement,
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: theme.backgroundSelected,
+        },
+      ]}
       accessibilityRole="radiogroup"
       testID={testID}
     >
@@ -36,7 +43,7 @@ export function SegmentedControl<T extends string | number>({
             testID={testID && `${testID}-${option.value}`}
             style={[
               styles.segment,
-              selected && { backgroundColor: theme.background, boxShadow: '0 1px 2px rgba(0, 0, 0, 0.12)' },
+              selected && { backgroundColor: theme.backgroundSelected },
             ]}
           >
             <ThemedText

@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, View } from 'react-native';
+import Animated, { FadeIn, ReduceMotion } from 'react-native-reanimated';
 
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing, tint, type ThemeColor } from '@/constants/theme';
@@ -13,6 +14,10 @@ const TONE: Record<BannerTone, { color: ThemeColor; icon: keyof typeof Ionicons.
   warning: { color: 'warning', icon: 'warning' },
   info: { color: 'textSecondary', icon: 'information-circle' },
 };
+
+// Banners explain a state change (a payment went through, a refresh failed), so
+// they fade in rather than pop. Module scope: the builder isn't rebuilt per render.
+const ENTERING = FadeIn.duration(200).reduceMotion(ReduceMotion.System);
 
 // The one inline message style: action results, refresh failures and notes.
 // Announced to screen readers when it appears.
@@ -38,7 +43,8 @@ export function Banner({
   const { color, icon: defaultIcon } = TONE[tone];
 
   return (
-    <View
+    <Animated.View
+      entering={ENTERING}
       style={[styles.banner, { backgroundColor: tint(theme[color], 'subtle') }]}
       accessibilityLiveRegion="polite"
       testID={testID}
@@ -69,7 +75,7 @@ export function Banner({
           </Pressable>
         ) : null}
       </View>
-    </View>
+    </Animated.View>
   );
 }
 

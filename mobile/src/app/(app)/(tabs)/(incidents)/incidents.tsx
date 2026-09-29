@@ -152,8 +152,8 @@ export default function IncidentsScreen() {
               testID="open-report"
               style={styles.headerButton}
             >
-              <Ionicons name="add-circle" size={22} color={theme.primary} />
-              <ThemedText type="smallBold" themeColor="primary">
+              <Ionicons name="add-circle" size={22} color={theme.onBrand} />
+              <ThemedText type="smallBold" themeColor="onBrand">
                 Report
               </ThemedText>
             </Pressable>

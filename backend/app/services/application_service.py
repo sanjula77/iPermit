@@ -2,6 +2,7 @@ import uuid
 from pathlib import Path
 
 from fastapi import UploadFile
+from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -14,7 +15,7 @@ from app.core.file_storage import (
 )
 from app.models.application import Application, ApplicationStatus, DocumentType
 from app.models.notification import NotificationType
-from app.repositories import application_repository
+from app.repositories import application_repository, license_repository
 from app.services import (
     badge_service,
     face_service,
@@ -56,6 +57,22 @@ class InvalidStateError(Exception):
     status -- e.g. approving an application that's already been decided."""
 
 
+def _ensure_license_not_issued(db: Session, driver_id: uuid.UUID) -> None:
+    # One license per driver: approving again would issue a second license
+    # and replace the enrolled face without comparing it to the old one.
+    if license_repository.get_latest_for_driver(db, driver_id) is not None:
+        raise InvalidStateError("Driver already has a license")
+
+
+def _ensure_can_apply(db: Session, driver_id: uuid.UUID) -> None:
+    """Re-applying is only for drivers whose earlier applications were all
+    rejected -- matches the app, which offers "Apply again" only then."""
+    _ensure_license_not_issued(db, driver_id)
+    applications = application_repository.list_by_driver(db, driver_id)
+    if any(a.status == ApplicationStatus.PENDING for a in applications):
+        raise InvalidStateError("An application is already under review")
+
+
 async def submit_application(
     db: Session,
     *,
@@ -69,6 +86,7 @@ async def submit_application(
     each, persists them, and creates a PENDING application in one DB transaction.
     Any already-saved files are cleaned up if a later file fails validation, so a
     failed submission never leaves orphaned uploads on disk."""
+    _ensure_can_apply(db, driver_id)
     if len(face_photos) != REQUIRED_FACE_PHOTOS:
         raise ApplicationError(
             f"Exactly {REQUIRED_FACE_PHOTOS} face photos are required, "
@@ -95,7 +113,11 @@ async def submit_application(
             saved_path = Path(settings.upload_dir) / path
             # Then assess photo quality (face detection, blur, brightness, etc.)
             raw_photo = saved_path.read_bytes()
-            face_service.assess_enrollment_photo_quality(raw_photo)
+            # Inference is CPU-bound and blocking; off the event loop so
+            # other requests aren't stalled while it runs.
+            await run_in_threadpool(
+                face_service.assess_enrollment_photo_quality, raw_photo
+            )
 
         for field, doc_type, upload in (
             ("nic_document", DocumentType.NIC, nic_document),
@@ -197,8 +219,14 @@ def approve_application(db: Session, *, application_id: uuid.UUID) -> Applicatio
        lazy compute-on-read in the badge endpoints.
     """
     application = _get_pending_or_raise(db, application_id)
+    _ensure_license_not_issued(db, application.driver_id)
 
-    face_embedding = face_service.build_enrollment_embedding(application)
+    try:
+        face_embedding = face_service.build_enrollment_embedding(application)
+    except FaceEngineError as exc:
+        raise ServiceUnavailableError(
+            "Face enrollment is temporarily unavailable. Please try again later."
+        ) from exc
 
     application_repository.set_status(
         application, status=ApplicationStatus.APPROVED, reason=None

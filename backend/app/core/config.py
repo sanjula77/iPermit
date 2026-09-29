@@ -20,10 +20,16 @@ class Settings(BaseSettings):
 
     upload_dir: str = "uploads"
     max_upload_size_bytes: int = 10 * 1024 * 1024  # 10 MB per file
+    # Decoded size cap: a small compressed file can expand to a huge bitmap.
+    # 50 MP is above any phone camera's default photo size.
+    max_image_pixels: int = 50_000_000
 
     license_validity_years: int = 5
 
     face_template_db_path: str = "face_templates.db"
+    # Local time zone for day-based figures (e.g. an officer's "today").
+    # Timestamps are stored as naive UTC.
+    app_timezone: str = "Asia/Colombo"
     # Pairwise cosine similarity threshold for "same person" (used both for
     # enrollment consistency checks and future match lookups). This default
     # is a commonly-cited starting point for ArcFace, NOT independently
@@ -35,11 +41,13 @@ class Settings(BaseSettings):
     # This flag exists so that disabled-state is an explicit, checkable
     # fact (see GET /face/status) rather than a silently skipped step.
     liveness_check_enabled: bool = False
-    # REQ-5: CLAHE contrast enhancement before face detection, closing the
-    # gap between design.md's documented pipeline and what Phase 4 actually
-    # shipped. Toggle-able in case real evaluation data (Task 9.1) later
-    # shows it hurts rather than helps accuracy.
-    face_clahe_enabled: bool = True
+    # REQ-5: CLAHE contrast enhancement before face detection. Off since
+    # 2026-09-29: the LFW ablation (docs/evaluation/results/clahe_ablation.md)
+    # found it more than doubles FRR at 0.42 (2.95% vs 1.37%) with no FAR or
+    # EER benefit -- ArcFace was trained on unprocessed photos. After changing
+    # this, run `python -m app.scripts.reembed_templates` so stored templates
+    # match the new pipeline.
+    face_clahe_enabled: bool = False
     # Enrollment-photo quality gate thresholds (REQ-2 AC2). Commonly-cited
     # starting points (detection score, blur/brightness heuristics), NOT
     # independently validated on iPermit's own data -- same honesty
@@ -47,7 +55,11 @@ class Settings(BaseSettings):
     # real data to test against.
     face_min_detection_score: float = 0.7
     face_min_face_size_px: int = 80
-    face_min_sharpness: float = 100.0  # Laplacian variance
+    # Laplacian variance of the face resized to 112x112 (see
+    # face_preprocessing.SHARPNESS_CROP_SIZE). Calibrated 2026-09-29: sharp LFW
+    # faces p5 = 43, real phone selfies ~550; Gaussian blur at 2% of face width
+    # p75 = 22, at 4% ~7. Still not validated on Sri Lankan driver photos.
+    face_min_sharpness: float = 30.0
     face_min_brightness: int = 30
     face_max_brightness: int = 220
 

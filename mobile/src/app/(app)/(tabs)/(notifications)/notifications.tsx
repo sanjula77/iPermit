@@ -1,41 +1,22 @@
-import { Ionicons } from '@expo/vector-icons';
-import { router, useFocusEffect, type Href } from 'expo-router';
-import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { Stack, router, useFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 
 import { extractErrorMessage } from '@/api/client';
 import { getMyNotifications, markNotificationRead } from '@/api/notifications';
+import { Banner } from '@/components/banner';
 import { Card } from '@/components/card';
 import { EmptyState } from '@/components/empty-state';
+import { IconTile } from '@/components/icon-tile';
 import { ScreenState } from '@/components/screen-state';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, Spacing, type ThemeColor } from '@/constants/theme';
+import { ScreenScroll } from '@/components/screen-scroll';
+import { KIND_COLOR, TYPE_INFO } from '@/constants/notifications';
+import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { relativeTime } from '@/lib/relative-time';
 import { setUnreadCount } from '@/lib/unread-count';
-import type { AppNotification, NotificationType } from '@/types/notification';
-
-type Kind = 'good' | 'bad' | 'info';
-
-// UPHELD means the fine stands (appeal rejected); OVERTURNED means it was
-// reversed -- same plain wording as the Fine details screen.
-const TYPE_INFO: Record<
-  NotificationType,
-  { title: string; icon: keyof typeof Ionicons.glyphMap; kind: Kind; target: Href }
-> = {
-  LICENSE_APPROVED: { title: 'License approved', icon: 'checkmark-circle', kind: 'good', target: '/(app)/(tabs)/(home)' },
-  LICENSE_REJECTED: { title: 'Application not approved', icon: 'close-circle', kind: 'bad', target: '/(app)/(tabs)/(home)' },
-  FINE_ISSUED: { title: 'Fine issued', icon: 'receipt-outline', kind: 'bad', target: '/(app)/(tabs)/(fines)/fines' },
-  LICENSE_SUSPENDED: { title: 'License suspended', icon: 'ban', kind: 'bad', target: '/(app)/(tabs)/(home)' },
-  PAYMENT_CONFIRMED: { title: 'Payment confirmed', icon: 'card', kind: 'good', target: '/(app)/(tabs)/(fines)/fines' },
-  APPEAL_UPHELD: { title: 'Appeal rejected', icon: 'close-circle', kind: 'bad', target: '/(app)/(tabs)/(fines)/fines' },
-  APPEAL_OVERTURNED: { title: 'Appeal accepted', icon: 'arrow-undo-circle', kind: 'good', target: '/(app)/(tabs)/(fines)/fines' },
-  BADGE_CHANGED: { title: 'Standing changed', icon: 'medal-outline', kind: 'info', target: '/(app)/(tabs)/(home)' },
-  NEARBY_INCIDENT: { title: 'Nearby incident', icon: 'location', kind: 'info', target: '/(app)/(tabs)/(incidents)/incidents' },
-};
-
-const KIND_COLOR: Record<Kind, ThemeColor> = { good: 'success', bad: 'danger', info: 'primary' };
+import type { AppNotification } from '@/types/notification';
 
 function dayGroup(iso: string, now: number): 'Today' | 'Yesterday' | 'Earlier' {
   const today = new Date(now);
@@ -103,6 +84,23 @@ export default function NotificationsScreen() {
       });
   }
 
+  const unreadIds = (notifications ?? []).filter((n) => !n.read_at).map((n) => n.id);
+  const [markingAll, setMarkingAll] = useState(false);
+
+  // No bulk endpoint: mark each unread alert concurrently, then apply whichever
+  // succeeded in one update (the tab badge follows via the effect above).
+  async function markAllRead() {
+    if (markingAll || unreadIds.length === 0) return;
+    setMarkingAll(true);
+    const results = await Promise.allSettled(unreadIds.map((id) => markNotificationRead(id)));
+    const updated = new Map(
+      results.flatMap((r) => (r.status === 'fulfilled' ? [[r.value.id, r.value] as const] : [])),
+    );
+    setNotifications((current) => (current ?? []).map((n) => updated.get(n.id) ?? n));
+    if (updated.size < unreadIds.length) setError("Couldn't mark every alert as read. Pull to refresh and try again.");
+    setMarkingAll(false);
+  }
+
   const groups = (['Today', 'Yesterday', 'Earlier'] as const)
     .map((label) => ({
       label,
@@ -111,62 +109,69 @@ export default function NotificationsScreen() {
     .filter((group) => group.items.length > 0);
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      contentInsetAdjustmentBehavior="automatic"
+    <ScreenScroll
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
     >
-      <ThemedView style={styles.form}>
-        {notifications !== null && error ? (
-          <ThemedText type="small" themeColor="danger" selectable testID="notifications-error">
-            Couldn&apos;t refresh: {error}
-          </ThemedText>
-        ) : null}
-        {notifications === null ? (
-          <ScreenState error={refreshing ? null : error} onRetry={handleRefresh} testID="notifications" />
-        ) : notifications.length === 0 ? (
-          <EmptyState
-            testID="notifications-empty"
-            icon="notifications-outline"
-            title="No notifications yet"
-            message="We'll let you know about your license, fines and appeals here."
-          />
-        ) : (
-          groups.map((group) => (
-            <View key={group.label} style={styles.section}>
-              <ThemedText
-                type="smallBold"
-                themeColor="textSecondary"
-                style={styles.sectionLabel}
-                accessibilityRole="header"
+      <Stack.Screen
+        options={{
+          headerRight: () =>
+            unreadIds.length > 0 ? (
+              <Pressable
+                onPress={markAllRead}
+                disabled={markingAll}
+                hitSlop={12}
+                accessibilityRole="button"
+                accessibilityLabel="Mark all alerts as read"
+                testID="notifications-mark-all"
+                style={({ pressed }) => ({ opacity: pressed || markingAll ? 0.6 : 1 })}
               >
-                {group.label}
-              </ThemedText>
-              <Card style={styles.list}>
-                {group.items.map((notification, i) => (
-                  <Fragment key={notification.id}>
-                    {i > 0 ? <Separator /> : null}
-                    <NotificationRow
-                      notification={notification}
-                      now={now}
-                      onPress={() => handlePress(notification)}
-                    />
-                  </Fragment>
-                ))}
+                <ThemedText type="smallBold" themeColor="onBrand">
+                  {markingAll ? 'Marking…' : 'Mark all read'}
+                </ThemedText>
+              </Pressable>
+            ) : null,
+        }}
+      />
+      {notifications !== null && error ? (
+        <Banner tone="danger" text={`Couldn't refresh: ${error}`} testID="notifications-error" />
+      ) : null}
+      {notifications === null ? (
+        <ScreenState error={refreshing ? null : error} onRetry={handleRefresh} testID="notifications" />
+      ) : notifications.length === 0 ? (
+        <EmptyState
+          testID="notifications-empty"
+          icon="notifications-outline"
+          title="No notifications yet"
+          message="We'll let you know about your license, fines and appeals here."
+        />
+      ) : (
+        groups.map((group) => (
+          <View key={group.label} style={styles.section}>
+            <ThemedText
+              type="smallBold"
+              themeColor="textSecondary"
+              style={styles.sectionLabel}
+              accessibilityRole="header"
+            >
+              {group.label}
+            </ThemedText>
+            {/* One card per alert, with a small space between them. */}
+            {group.items.map((notification) => (
+              <Card key={notification.id} style={styles.list}>
+                <NotificationRow
+                  notification={notification}
+                  now={now}
+                  onPress={() => handlePress(notification)}
+                />
               </Card>
-            </View>
-          ))
-        )}
-      </ThemedView>
-    </ScrollView>
+            ))}
+          </View>
+        ))
+      )}
+    </ScreenScroll>
   );
 }
 
-function Separator() {
-  const theme = useTheme();
-  return <View style={[styles.separator, { backgroundColor: theme.backgroundSelected }]} />;
-}
 
 function NotificationRow({
   notification,
@@ -192,9 +197,7 @@ function NotificationRow({
       accessibilityLabel={`${unread ? 'Unread. ' : ''}${info.title}. ${notification.message}. ${age}`}
       style={({ pressed }) => [styles.row, { opacity: pressed ? 0.6 : 1 }]}
     >
-      <View style={[styles.iconCircle, { backgroundColor: `${color}1F` }]}>
-        <Ionicons name={info.icon} size={20} color={color} />
-      </View>
+      <IconTile icon={info.icon} color={color} />
       <View style={styles.rowText}>
         <View style={styles.titleRow}>
           <ThemedText type={unread ? 'smallBold' : 'small'} style={styles.title} numberOfLines={1}>
@@ -214,19 +217,6 @@ function NotificationRow({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  content: {
-    flexGrow: 1,
-    alignItems: 'center',
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.three,
-  },
-  form: {
-    flexGrow: 1,
-    width: '100%',
-    maxWidth: MaxContentWidth,
-    gap: Spacing.four,
-  },
   section: { gap: Spacing.two },
   sectionLabel: {
     textTransform: 'uppercase',
@@ -236,21 +226,11 @@ const styles = StyleSheet.create({
     paddingVertical: 0,
     gap: 0,
   },
-  separator: {
-    height: StyleSheet.hairlineWidth,
-  },
   row: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: Spacing.three,
     paddingVertical: Spacing.three,
-  },
-  iconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   rowText: {
     flex: 1,

@@ -1,0 +1,85 @@
+@startuml usecase-proposed
+!pragma layout smetana
+left to right direction
+title \n\n
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam actorStyle awesome
+skinparam packageStyle rectangle
+skinparam usecase {
+  BackgroundColor #FFFFFF
+  BorderColor #333333
+}
+skinparam rectangle {
+  BorderColor #333333
+}
+
+
+actor "Driver" as D
+actor "Police Officer" as P
+actor "Administrator\n(licensing staff)" as A
+actor "Face Recognition\nModule" as FR <<system>>
+
+rectangle "iPermit" {
+  usecase "Log in\n(drivers self-register)" as UC1
+  usecase "Submit licence application\n(4 face photos, NIC, medical\nand birth certificates)" as UC2
+  usecase "Track application status" as UC3
+  usecase "View digital licence and QR code" as UC4
+  usecase "View points and behaviour badge" as UC5
+  usecase "View and pay fines (mock payment)" as UC6
+  usecase "Appeal a fine" as UC7
+  usecase "Receive notifications" as UC8
+  usecase "Report road incident or\nmark danger zone" as UC9
+  usecase "View, confirm and clear\nincidents and danger zones on map" as UC10
+
+  usecase "Verify driver by face scan" as UC11
+  usecase "Verify driver by QR code" as UC12
+  usecase "Look up driver by NIC\nor licence number" as UC13
+  usecase "View driver record\n(points, status, violations)" as UC14
+  usecase "Record violation\n(points, fine, suspension)" as UC15
+  usecase "Confirm AI-flagged violation\n<<planned>>" as UC16 #EEEEEE
+
+  usecase "Review applications\n(approve or reject)" as UC17
+  usecase "Resolve appeals" as UC18
+  usecase "View badge distribution\nand attention queue" as UC19
+
+  usecase "Enrol face template" as UC20
+  usecase "Match face (one-to-many)" as UC21
+}
+
+D --> UC1
+D --> UC2
+D --> UC3
+D --> UC4
+D --> UC5
+D --> UC6
+D --> UC7
+D --> UC8
+D --> UC9
+D --> UC10
+
+P --> UC1
+P --> UC11
+P --> UC12
+P --> UC13
+P --> UC15
+P --> UC16
+P --> UC9
+P --> UC10
+
+A --> UC1
+A --> UC17
+A --> UC18
+A --> UC19
+
+UC17 ..> UC20 : <<include>>
+UC11 ..> UC21 : <<include>>
+UC11 ..> UC14 : <<include>>
+UC12 ..> UC14 : <<include>>
+UC13 ..> UC14 : <<include>>
+
+UC20 <-- FR
+UC21 <-- FR
+
+@enduml

@@ -27,11 +27,18 @@ def _connect() -> sqlite3.Connection:
     return conn
 
 
-def save_template(driver_id: str, embedding: np.ndarray) -> int:
-    """Upserts by driver_id (one active template per driver) and returns the
+def save_template(driver_id: str, embedding: np.ndarray) -> tuple[int, list[int]]:
+    """Upserts by driver_id (one active template per driver). Returns the new
     sqlite rowid -- used as the integer ID in the FAISS index, since FAISS
-    needs int64 IDs and driver_id is a UUID string."""
+    needs int64 IDs and driver_id is a UUID string -- and the rowids it
+    replaced, which the index must drop."""
     with _connect() as conn:
+        replaced = [
+            rowid
+            for (rowid,) in conn.execute(
+                "SELECT rowid FROM face_templates WHERE driver_id = ?", (driver_id,)
+            )
+        ]
         conn.execute("DELETE FROM face_templates WHERE driver_id = ?", (driver_id,))
         cursor = conn.execute(
             "INSERT INTO face_templates (driver_id, embedding, created_at) "
@@ -42,7 +49,7 @@ def save_template(driver_id: str, embedding: np.ndarray) -> int:
                 datetime.utcnow().isoformat(),
             ),
         )
-        return cursor.lastrowid
+        return cursor.lastrowid, replaced
 
 
 def get_driver_id_by_rowid(rowid: int) -> str | None:

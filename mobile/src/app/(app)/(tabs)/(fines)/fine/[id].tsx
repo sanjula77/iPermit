@@ -1,21 +1,24 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { Fragment, useRef, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 
 import { submitAppeal } from '@/api/appeals';
 import { extractErrorMessage } from '@/api/client';
 import { payFine } from '@/api/fines';
+import { Banner } from '@/components/banner';
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
 import { EmptyState } from '@/components/empty-state';
+import { IconTile } from '@/components/icon-tile';
 import { ScreenState } from '@/components/screen-state';
 import { StatusBadge } from '@/components/status-badge';
 import { TextField } from '@/components/text-field';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
-import { VIOLATION_ICON, VIOLATION_LABEL } from '@/constants/violations';
+import { ScreenScroll } from '@/components/screen-scroll';
+import { Spacing } from '@/constants/theme';
+import { VIOLATION_COLOR, VIOLATION_ICON, VIOLATION_LABEL } from '@/constants/violations';
 import { useMyFines } from '@/hooks/use-my-fines';
 import { useTheme } from '@/hooks/use-theme';
 import {
@@ -26,8 +29,8 @@ import {
   canAppealFine,
   canPayFine,
   fineBadge,
-  formatLkr,
 } from '@/lib/fine-status';
+import { formatDate, formatLkr } from '@/lib/format';
 import type { Appeal, FineWithViolation, PaymentMethod } from '@/types/fine';
 
 const PAYMENT_METHODS: PaymentMethod[] = ['CARD', 'BANK', 'WALLET'];
@@ -39,28 +42,21 @@ export default function FineDetailScreen() {
   const fine = fines?.find((f) => f.id === id) ?? null;
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      contentInsetAdjustmentBehavior="automatic"
+    <ScreenScroll
       keyboardShouldPersistTaps="handled"
     >
       <Stack.Screen options={{ title: 'Fine details', headerLargeTitleEnabled: false }} />
-      <ThemedView style={styles.form}>
-        {fines !== null && error ? (
-          <ThemedText type="small" themeColor="danger" selectable testID="fine-refresh-error">
-            Couldn&apos;t refresh: {error}
-          </ThemedText>
-        ) : null}
-        {fines === null ? (
-          <ScreenState error={isLoading ? null : error} onRetry={reload} testID="fine" />
-        ) : !fine ? (
-          <EmptyState icon="document-outline" title="Fine not found" message="It may have been removed." />
-        ) : (
-          <FineDetail fine={fine} appeal={appealForFine(appeals, fine.id)} onChanged={reload} />
-        )}
-      </ThemedView>
-    </ScrollView>
+      {fines !== null && error ? (
+        <Banner tone="danger" text={`Couldn't refresh: ${error}`} testID="fine-refresh-error" />
+      ) : null}
+      {fines === null ? (
+        <ScreenState error={isLoading ? null : error} onRetry={reload} testID="fine" />
+      ) : !fine ? (
+        <EmptyState icon="document-outline" title="Fine not found" message="It may have been removed." />
+      ) : (
+        <FineDetail fine={fine} appeal={appealForFine(appeals, fine.id)} onChanged={reload} />
+      )}
+    </ScreenScroll>
   );
 }
 
@@ -98,11 +94,14 @@ function FineDetail({
     setIsSubmitting(true);
     try {
       const message = await task();
+      // Same moment the success banner appears; one haptic per committed action.
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       setAction(null);
       setResolved(true);
       setNotice(message);
       await onChanged();
     } catch (err) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
       setError(extractErrorMessage(err));
     } finally {
       submittingRef.current = false;
@@ -144,39 +143,33 @@ function FineDetail({
   }
 
   const rows: [string, string][] = [
-    ['Date', new Date(fine.violation.confirmed_at).toLocaleDateString()],
-    ['Points deducted', String(fine.violation.points_deducted)],
+    ['Date', formatDate(fine.violation.confirmed_at)],
+    // Demerit points count up towards suspension (the license card shows n / 10).
+    ['Demerit points', `+${fine.violation.points_deducted}`],
   ];
   if (fine.status === 'PAID') {
     if (fine.payment_method) rows.push(['Paid by', PAYMENT_METHOD_LABEL[fine.payment_method]]);
-    if (fine.paid_at) rows.push(['Paid on', new Date(fine.paid_at).toLocaleDateString()]);
+    if (fine.paid_at) rows.push(['Paid on', formatDate(fine.paid_at)]);
   }
 
   return (
     <>
-      <View style={styles.hero}>
-        <View style={[styles.iconCircle, { backgroundColor: theme.backgroundElement }]}>
-          <Ionicons name={VIOLATION_ICON[fine.violation.type]} size={28} color={theme.text} />
-        </View>
-        <ThemedText type="subtitle">{label}</ThemedText>
-        <ThemedText type="title" style={styles.tabular}>
+      <Card variant="raised" style={styles.summary}>
+        <IconTile
+          icon={VIOLATION_ICON[fine.violation.type]}
+          color={theme[VIOLATION_COLOR[fine.violation.type]]}
+          size={56}
+        />
+        <ThemedText type="subtitle" style={styles.centered}>
+          {label}
+        </ThemedText>
+        <ThemedText type="display" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.4}>
           {formatLkr(fine.amount)}
         </ThemedText>
         <StatusBadge testID="fine-detail-status" tone={badge.tone} icon={badge.icon} label={badge.label} />
-      </View>
+      </Card>
 
-      {notice ? (
-        <View
-          style={[styles.banner, { borderColor: theme.success, backgroundColor: `${theme.success}14` }]}
-          accessibilityLiveRegion="polite"
-          testID="fine-notice"
-        >
-          <Ionicons name="checkmark-circle" size={20} color={theme.success} />
-          <ThemedText type="small" themeColor="success" style={styles.bannerText}>
-            {notice}
-          </ThemedText>
-        </View>
-      ) : null}
+      {notice ? <Banner tone="success" text={notice} testID="fine-notice" /> : null}
 
       <DetailRows rows={rows} />
 
@@ -189,18 +182,14 @@ function FineDetail({
             <StatusBadge {...APPEAL_STATUS_BADGE[appeal.status]} />
             <ThemedText selectable>{appeal.reason}</ThemedText>
             <ThemedText type="small" themeColor="textSecondary">
-              Submitted {new Date(appeal.created_at).toLocaleDateString()}
-              {appeal.resolved_at ? ` · Resolved ${new Date(appeal.resolved_at).toLocaleDateString()}` : ''}
+              Submitted {formatDate(appeal.created_at)}
+              {appeal.resolved_at ? ` · Resolved ${formatDate(appeal.resolved_at)}` : ''}
             </ThemedText>
           </Card>
         </View>
       ) : null}
 
-      {error ? (
-        <ThemedText type="small" themeColor="danger" selectable accessibilityLiveRegion="polite">
-          {error}
-        </ThemedText>
-      ) : null}
+      {error ? <Banner tone="danger" text={error} testID="fine-action-error" /> : null}
 
       {!resolved && (canPay || canAppeal) ? (
         action === 'pay' ? (
@@ -235,7 +224,7 @@ function FineDetail({
                 {isSubmitting ? 'Paying…' : `Pay ${formatLkr(fine.amount)}`}
               </ThemedText>
             </Button>
-            <Button variant="secondary" onPress={() => setAction(null)} disabled={isSubmitting}>
+            <Button variant="ghost" onPress={() => setAction(null)} disabled={isSubmitting}>
               <ThemedText type="smallBold">Cancel</ThemedText>
             </Button>
           </View>
@@ -248,6 +237,7 @@ function FineDetail({
               multiline
               autoCapitalize="sentences"
               autoCorrect
+              style={styles.appealInput}
               testID="appeal-reason-input"
             />
             <Button onPress={handleAppeal} disabled={isSubmitting} testID="confirm-appeal-button">
@@ -255,7 +245,7 @@ function FineDetail({
                 {isSubmitting ? 'Submitting…' : 'Submit appeal'}
               </ThemedText>
             </Button>
-            <Button variant="secondary" onPress={() => setAction(null)} disabled={isSubmitting}>
+            <Button variant="ghost" onPress={() => setAction(null)} disabled={isSubmitting}>
               <ThemedText type="smallBold">Cancel</ThemedText>
             </Button>
           </View>
@@ -302,46 +292,15 @@ function DetailRows({ rows }: { rows: [string, string][] }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  content: {
-    flexGrow: 1,
-    alignItems: 'center',
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.four,
-  },
-  form: {
-    flexGrow: 1,
-    width: '100%',
-    maxWidth: MaxContentWidth,
-    gap: Spacing.four,
-  },
-  hero: {
-    alignItems: 'center',
-    gap: Spacing.two,
-  },
-  iconCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tabular: { fontVariant: ['tabular-nums'] },
-  banner: {
-    flexDirection: 'row',
-    gap: Spacing.two,
-    borderWidth: 1,
-    borderRadius: Spacing.two,
-    borderCurve: 'continuous',
-    padding: Spacing.three,
-  },
-  bannerText: { flex: 1 },
+  summary: { alignItems: 'center', gap: Spacing.two, padding: Spacing.four },
+  centered: { textAlign: 'center' },
   section: { gap: Spacing.two },
   sectionLabel: {
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   appealCard: { gap: Spacing.two },
+  appealInput: { minHeight: 96, textAlignVertical: 'top' },
   list: {
     paddingVertical: 0,
     gap: 0,

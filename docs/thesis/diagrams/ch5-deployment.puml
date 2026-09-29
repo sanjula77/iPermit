@@ -1,0 +1,43 @@
+@startuml ch5-deployment
+!pragma layout smetana
+title \n\n
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam node {
+  BackgroundColor #FFFFFF
+  BorderColor #333333
+}
+skinparam cloud {
+  BackgroundColor #FFFFFF
+  BorderColor #333333
+}
+skinparam arrow {
+  Color #333333
+}
+
+node "Android phone\n(Expo Go)" as PHONE
+
+node "Development machine: Dell Latitude 5520, Ubuntu 26.04 LTS" as DEV {
+  node "Web browser\n(administrator)" as BROWSER
+  node "next dev\nNode.js 24, :3000\n(admin web)" as NEXT
+  node "expo start (Metro)\nNode.js 24, :8081\n(mobile JS bundle)" as METRO
+  node "Docker Compose" as DC {
+    node "backend container\nimage built on python:3.11-slim\nuvicorn --reload, port 8000:8000\n----\nbind mounts:\n./backend -> /app\n(code, uploads/, face_templates.db)\n./.data/insightface -> /root/.insightface\n(buffalo_l ONNX models)" as BE
+    node "db container\npostgres:16-alpine\nport 5432:5432\n----\nbind mount:\n./.data/pgdata ->\n/var/lib/postgresql/data" as DB
+  }
+}
+
+node "Expo push API\nexp.host" as EXPO
+node "Esri World Street Map\nserver.arcgisonline.com" as OSM
+node "GitHub releases\ninsightface v0.7\nbuffalo_l.zip" as GH
+
+BROWSER -down-> NEXT : pages
+BROWSER -down-> BE : REST :8000
+PHONE -down-> METRO : bundle over LAN
+PHONE -down-> BE : REST http://<LAN IP>:8000
+BE -right-> DB : SQL
+PHONE -right-> OSM : map tiles\n(Android)
+BE -down-> EXPO : push, best effort
+BE -down-> GH : model download,\nfirst use only
+@enduml

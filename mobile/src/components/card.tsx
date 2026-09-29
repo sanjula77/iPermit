@@ -5,10 +5,13 @@ import { Radius, Shadows, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 export function Card({
+  variant = 'flat',
   style,
   testID,
   children,
 }: {
+  // 'raised' lifts hero-adjacent tiles and summary cards above ordinary cards.
+  variant?: 'flat' | 'raised';
   style?: StyleProp<ViewStyle>;
   testID?: string;
   children: ReactNode;
@@ -20,7 +23,10 @@ export function Card({
       testID={testID}
       style={[
         styles.card,
-        { backgroundColor: theme.backgroundElement, boxShadow: Shadows.card },
+        {
+          backgroundColor: theme.backgroundElement,
+          boxShadow: variant === 'raised' ? Shadows.raised : Shadows.card,
+        },
         style,
       ]}
     >

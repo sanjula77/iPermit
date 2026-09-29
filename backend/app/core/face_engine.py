@@ -8,6 +8,7 @@ docker-compose.yml) so it only downloads once, not on every rebuild.
 """
 
 import os
+import threading
 import time
 import zipfile
 from dataclasses import dataclass
@@ -98,15 +99,22 @@ def _ensure_models_downloaded() -> None:
         raise FaceEngineError("Model extraction did not produce the expected files")
 
 
+# Requests run inference in worker threads; without this, two first requests
+# would both download the model zip to the same path and load the models twice.
+_face_app_lock = threading.Lock()
+
+
 def _get_face_app():
     global _face_app
     if _face_app is None:
-        _ensure_models_downloaded()
-        from insightface.app import FaceAnalysis
+        with _face_app_lock:
+            if _face_app is None:
+                _ensure_models_downloaded()
+                from insightface.app import FaceAnalysis
 
-        app = FaceAnalysis(name="buffalo_l", providers=["CPUExecutionProvider"])
-        app.prepare(ctx_id=0, det_size=(640, 640))
-        _face_app = app
+                app = FaceAnalysis(name="buffalo_l", providers=["CPUExecutionProvider"])
+                app.prepare(ctx_id=0, det_size=(640, 640))
+                _face_app = app
     return _face_app
 
 

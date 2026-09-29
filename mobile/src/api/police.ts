@@ -2,6 +2,7 @@ import { apiClient } from '@/api/client';
 import { appendFilePart, type PickedFile } from '@/lib/file-upload';
 import type {
   DriverSummary,
+  OfficerSummary,
   RecordViolationResponse,
   ViolationType,
   VerifyFaceResponse,
@@ -37,4 +38,8 @@ export async function recordViolation(payload: {
     type: payload.type,
     evidence_ref: payload.evidenceRef || undefined,
   });
+}
+
+export async function getMySummary(): Promise<OfficerSummary> {
+  return apiClient.get<OfficerSummary>('/police/me/summary');
 }

@@ -1,3 +1,6 @@
+// Imported by lib/fine-summary.ts with a relative ".ts" path so Node can run
+// scripts/check-fine-summary.mjs directly. Keep this file's imports type-only:
+// a value import via the @/ alias would break that check (not tsc or Metro).
 import type { Ionicons } from '@expo/vector-icons';
 
 import type { StatusTone } from '@/components/status-badge';
@@ -47,8 +50,4 @@ export function canAppealFine(fine: FineWithViolation, appeal: Appeal | null): b
 
 export function appealForFine(appeals: Appeal[], fineId: string): Appeal | null {
   return appeals.find((a) => a.fine.id === fineId) ?? null;
-}
-
-export function formatLkr(amount: number): string {
-  return `LKR ${amount.toLocaleString()}`;
 }

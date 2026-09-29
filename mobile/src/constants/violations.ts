@@ -1,5 +1,6 @@
 import type { Ionicons } from '@expo/vector-icons';
 
+import type { ThemeColor } from '@/constants/theme';
 import type { ViolationType } from '@/types/police';
 
 export const VIOLATION_TYPES: ViolationType[] = ['WHITE_LINE', 'SPEEDING', 'RED_LIGHT', 'DRUNK_DRIVING'];
@@ -36,4 +37,12 @@ export const VIOLATION_FINE: Record<ViolationType, number> = {
   SPEEDING: 5000,
   RED_LIGHT: 10000,
   DRUNK_DRIVING: 25000,
+};
+
+// Icon-tile colour per violation, so rows are scannable at a glance.
+export const VIOLATION_COLOR: Record<ViolationType, ThemeColor> = {
+  WHITE_LINE: 'primary',
+  SPEEDING: 'warning',
+  RED_LIGHT: 'danger',
+  DRUNK_DRIVING: 'danger',
 };

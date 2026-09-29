@@ -11,6 +11,8 @@ export function IncidentsMap(_props: {
   center: { lat: number; lng: number };
   incidents: RoadIncident[];
   zones?: DangerZone[];
+  focus?: { lat: number; lng: number } | null;
+  userLocation?: { lat: number; lng: number } | null;
 }) {
   return null;
 }

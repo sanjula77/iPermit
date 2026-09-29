@@ -1,0 +1,69 @@
+@startuml usecase-existing
+!pragma layout smetana
+left to right direction
+title \n\n
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam actorStyle awesome
+skinparam packageStyle rectangle
+skinparam usecase {
+  BackgroundColor #FFFFFF
+  BorderColor #333333
+}
+skinparam rectangle {
+  BorderColor #333333
+}
+
+
+actor "Applicant /\nDriver" as D
+actor "NTMI Medical\nOfficer" as M
+actor "DMT Officer /\nExaminer" as DMT
+actor "Traffic Police\nOfficer" as P
+actor "Post Office" as PO
+actor "GovPay\n(online payment)" as GP <<system>>
+
+rectangle "Licensing (Department of Motor Traffic)" {
+  usecase "Obtain medical certificate" as E1
+  usecase "Register and sit written test" as E2
+  usecase "Receive learner's permit" as E3
+  usecase "Sit practical driving test" as E4
+  usecase "Issue smart-card licence" as E5
+}
+
+rectangle "Roadside enforcement (Sri Lanka Police)" {
+  usecase "Present physical licence" as E6
+  usecase "Check licence and driver visually" as E7
+  usecase "Issue spot-fine ticket\nand keep licence" as E8
+  usecase "Pay fine at post office" as E9
+  usecase "Pay fine online" as E10
+  usecase "Return licence\n(receipt or payment SMS)" as E11
+}
+
+D --> E1
+D --> E2
+D --> E4
+D --> E6
+D --> E9
+D --> E10
+D --> E11
+
+E1 <-- M
+E2 <-- DMT
+E3 <-- DMT
+E4 <-- DMT
+E5 <-- DMT
+
+E7 <-- P
+E8 <-- P
+E11 <-- P
+
+E9 <-- PO
+E10 <-- GP
+
+E2 ..> E3 : <<include>>
+E4 ..> E5 : <<include>>
+E6 ..> E7 : <<include>>
+E8 ..> E7 : <<extend>>
+
+@enduml

@@ -1,3 +1,5 @@
+import asyncio
+
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -65,3 +67,26 @@ def client(db_session):
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()
+
+
+@pytest.fixture()
+def face_inference_threads(monkeypatch):
+    """Records, per face-inference call, whether it ran on the event loop.
+    Inference is CPU-bound and blocking, so on the loop it stalls every
+    other request until it finishes."""
+    from app.core import face_engine
+    from app.services import face_service, police_service
+
+    calls: list[str] = []
+
+    def spy(image_bytes):
+        try:
+            asyncio.get_running_loop()
+            calls.append("event-loop")
+        except RuntimeError:
+            calls.append("worker-thread")
+        return face_engine.detect_faces(image_bytes)
+
+    monkeypatch.setattr(face_service, "detect_faces", spy)
+    monkeypatch.setattr(police_service, "detect_faces", spy)
+    return calls

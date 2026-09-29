@@ -1,38 +1,39 @@
 import { useEffect, useRef } from 'react';
-import MapView, { Circle, Marker, UrlTile } from 'react-native-maps';
-import { Platform, StyleSheet, Text, View } from 'react-native';
+import MapView, { Circle, Marker } from 'react-native-maps';
+import { StyleSheet, View } from 'react-native';
 
-import { INCIDENT_LABEL, SEVERITY_LABEL } from '@/constants/incidents';
+import { LocateButton, MAP_TYPE, MapAttribution, MapTiles, UserDot } from '@/components/map-parts';
+import { INCIDENT_LABEL, SEVERITY_COLOR, SEVERITY_LABEL } from '@/constants/incidents';
+import { Radius, tint } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import type { DangerZone } from '@/types/danger-zone';
 import type { RoadIncident } from '@/types/road-incident';
-
-const SEVERITY_PIN_COLOR: Record<RoadIncident['severity'], string> = {
-  HIGH: '#d92d20',
-  MEDIUM: '#208AEF',
-  LOW: '#60646C',
-};
-
-// Android's Google base map needs a Maps API key (and a custom build) to load
-// tiles; without one it renders blank grey. OpenStreetMap tiles need no key and
-// work in Expo Go. OSM's public tile servers are fine for development/demo use,
-// not heavy production traffic, and require the attribution shown below.
-// iOS keeps Apple Maps, which works without a key.
-const USE_OSM_TILES = Platform.OS === 'android';
-const OSM_TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 
 export function IncidentsMap({
   center,
   incidents,
   zones = [],
   focus,
+  userLocation,
 }: {
   center: { lat: number; lng: number };
+  /** The device's real position (not the Colombo fallback): drawn as a dot, with a locate button. */
+  userLocation?: { lat: number; lng: number } | null;
   incidents: RoadIncident[];
   zones?: DangerZone[];
   /** When set, the map pans and zooms to this point (e.g. a tapped list row). */
   focus?: { lat: number; lng: number } | null;
 }) {
+  const theme = useTheme();
   const mapRef = useRef<MapView>(null);
+
+  function goToUser() {
+    if (!userLocation) return;
+    mapRef.current?.animateToRegion(
+      { latitude: userLocation.lat, longitude: userLocation.lng, latitudeDelta: 0.02, longitudeDelta: 0.02 },
+      400,
+    );
+  }
 
   useEffect(() => {
     if (focus) {
@@ -48,7 +49,7 @@ export function IncidentsMap({
       <MapView
         ref={mapRef}
         style={StyleSheet.absoluteFill}
-        mapType={USE_OSM_TILES ? 'none' : 'standard'}
+        mapType={MAP_TYPE}
         initialRegion={{
           latitude: center.lat,
           longitude: center.lng,
@@ -57,14 +58,14 @@ export function IncidentsMap({
         }}
         testID="incidents-map"
       >
-        {USE_OSM_TILES ? <UrlTile urlTemplate={OSM_TILE_URL} maximumZ={19} shouldReplaceMapContent /> : null}
+        <MapTiles />
         {zones.map((zone) => (
           <Circle
             key={zone.id}
             center={{ latitude: zone.lat, longitude: zone.lng }}
             radius={zone.radius_m}
-            strokeColor={SEVERITY_PIN_COLOR[zone.severity]}
-            fillColor={`${SEVERITY_PIN_COLOR[zone.severity]}33`}
+            strokeColor={theme[SEVERITY_COLOR[zone.severity]]}
+            fillColor={tint(theme[SEVERITY_COLOR[zone.severity]], 'strong')}
             strokeWidth={2}
           />
         ))}
@@ -74,15 +75,13 @@ export function IncidentsMap({
             coordinate={{ latitude: incident.lat, longitude: incident.lng }}
             title={INCIDENT_LABEL[incident.type]}
             description={`${SEVERITY_LABEL[incident.severity]} severity`}
-            pinColor={SEVERITY_PIN_COLOR[incident.severity]}
+            pinColor={theme[SEVERITY_COLOR[incident.severity]]}
           />
         ))}
+        {userLocation ? <UserDot lat={userLocation.lat} lng={userLocation.lng} /> : null}
       </MapView>
-      {USE_OSM_TILES ? (
-        <View style={styles.attribution} pointerEvents="none">
-          <Text style={styles.attributionText}>© OpenStreetMap contributors</Text>
-        </View>
-      ) : null}
+      {userLocation ? <LocateButton onPress={goToUser} /> : null}
+      <MapAttribution />
     </View>
   );
 }
@@ -91,20 +90,7 @@ const styles = StyleSheet.create({
   container: {
     width: '100%',
     height: 280,
-    borderRadius: 16,
+    borderRadius: Radius.medium,
     overflow: 'hidden',
-  },
-  attribution: {
-    position: 'absolute',
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderTopLeftRadius: 6,
-  },
-  attributionText: {
-    fontSize: 10,
-    color: '#333333',
   },
 });

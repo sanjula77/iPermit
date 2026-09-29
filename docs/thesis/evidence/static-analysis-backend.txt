@@ -1,0 +1,8 @@
+# Backend static analysis, 2026-09-28
+ruff 0.8.4
+ruff exit 0
+
+black, 24.10.0 (compiled: yes)
+All done! ✨ 🍰 ✨
+102 files would be left unchanged.
+black exit 0

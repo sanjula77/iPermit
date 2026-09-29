@@ -1,0 +1,13 @@
+# Static analysis, 2026-09-27
+
+## mobile: npx tsc --noEmit (exit 0)
+## mobile: npx eslint . (exit 0)
+
+/data/iPermit/mobile/.expo/types/router.d.ts
+  1:1  warning  Unused eslint-disable directive (no problems were reported)
+
+✖ 1 problem (0 errors, 1 warning)
+  0 errors and 1 warning potentially fixable with the `--fix` option.
+
+## admin-web: npx tsc --noEmit (exit 0)
+## admin-web: npx eslint . (exit 0)

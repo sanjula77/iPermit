@@ -8,7 +8,7 @@ import type { User } from '@/types/auth';
 interface AuthContextValue {
   user: User | null;
   isLoading: boolean;
-  login: (identifier: string, password: string) => Promise<void>;
+  login: (identifier: string, password: string, remember?: boolean) => Promise<void>;
   register: (email: string, nic: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -35,9 +35,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
     })();
   }, []);
 
-  const login = useCallback(async (identifier: string, password: string) => {
+  const login = useCallback(async (identifier: string, password: string, remember = true) => {
     const { access_token } = await authApi.login({ identifier, password });
-    await saveToken(access_token);
+    // remember=false keeps the session in memory only (see token-storage).
+    await saveToken(access_token, { persist: remember });
     const currentUser = await authApi.fetchCurrentUser();
     setUser(currentUser);
   }, []);

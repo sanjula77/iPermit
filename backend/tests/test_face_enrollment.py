@@ -1,6 +1,7 @@
 import io
 from pathlib import Path
 
+import numpy as np
 import pytest
 from PIL import Image
 
@@ -9,6 +10,7 @@ from app.core.config import settings
 from app.core.security import hash_password
 from app.models.user import UserRole
 from app.repositories import user_repository
+from app.services import face_service
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
@@ -156,3 +158,27 @@ def test_face_status_endpoint_discloses_liveness_is_disabled(client):
     body = response.json()
     assert body["liveness_check_enabled"] is False
     assert "not implemented" in body["note"]
+
+
+def _unit_vector(seed: int) -> np.ndarray:
+    vector = np.random.default_rng(seed).standard_normal(512).astype(np.float32)
+    return vector / np.linalg.norm(vector)
+
+
+def test_re_enrollment_replaces_the_old_vector_in_the_index():
+    # A stale vector would still occupy a top-k slot and resolve to no
+    # driver, hiding a real candidate from police verification.
+    face_service.store_template("driver-1", _unit_vector(1))
+    face_service.store_template("driver-1", _unit_vector(2))
+
+    matches = face_index.search(_unit_vector(2), k=3)
+
+    assert len(matches) == 1
+    assert face_template_store.get_driver_id_by_rowid(matches[0][1]) == "driver-1"
+
+
+def test_first_enrollment_after_startup_is_indexed_once():
+    # The index is built lazily from SQLite, which already holds the new row.
+    face_service.store_template("driver-1", _unit_vector(1))
+
+    assert len(face_index.search(_unit_vector(1), k=3)) == 1

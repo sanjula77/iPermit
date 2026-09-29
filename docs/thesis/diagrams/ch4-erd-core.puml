@@ -1,0 +1,108 @@
+@startuml ch4-erd-core
+!pragma layout smetana
+title \n\n
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam monochrome true
+skinparam linetype ortho
+hide circle
+set separator none
+
+entity "users" as users {
+  * id : uuid <<PK>>
+  --
+  * email : varchar(255) <<UQ>>
+  * nic : varchar(20) <<UQ>>
+  * password_hash : varchar(255)
+  * role : userrole
+  * created_at : timestamp
+  push_token : varchar(255)
+}
+
+entity "applications" as applications {
+  * id : uuid <<PK>>
+  --
+  * driver_id : uuid <<FK>>
+  * status : applicationstatus
+  reason : text
+  * created_at : timestamp
+  * updated_at : timestamp
+}
+
+entity "application_documents" as docs {
+  * id : uuid <<PK>>
+  --
+  * application_id : uuid <<FK>>
+  * doc_type : documenttype
+  * file_path : varchar(512)
+  * created_at : timestamp
+}
+
+entity "licenses" as licenses {
+  * id : uuid <<PK>>
+  --
+  * driver_id : uuid <<FK>>
+  * application_id : uuid <<FK, UQ>>
+  * license_no : varchar(32) <<UQ>>
+  * qr_token : varchar(64) <<UQ>>
+  * status : licensestatus
+  * points : integer
+  * issued_at : timestamp
+  * expiry_at : timestamp
+}
+
+entity "violations" as violations {
+  * id : uuid <<PK>>
+  --
+  * driver_id : uuid <<FK>>
+  * officer_id : uuid <<FK>>
+  * type : violationtype
+  * points_deducted : integer
+  evidence_ref : text
+  * confirmed_at : timestamp
+}
+
+entity "fines" as fines {
+  * id : uuid <<PK>>
+  --
+  * violation_id : uuid <<FK, UQ>>
+  * amount : integer
+  * status : finestatus
+  * created_at : timestamp
+  paid_at : timestamp
+  payment_method : paymentmethod
+}
+
+entity "appeals" as appeals {
+  * id : uuid <<PK>>
+  --
+  * fine_id : uuid <<FK, UQ>>
+  * driver_id : uuid <<FK>>
+  * reason : text
+  * status : appealstatus
+  resolved_by : uuid <<FK>>
+  * created_at : timestamp
+  resolved_at : timestamp
+}
+
+entity "badges" as badges {
+  * driver_id : uuid <<PK, FK>>
+  --
+  * tier : badgetier
+  * safety_score : integer
+  * updated_at : timestamp
+}
+
+users ||--o{ applications : driver_id
+applications ||--|{ docs : application_id
+applications ||--o| licenses : application_id
+users ||--o{ licenses : driver_id
+users ||--o{ violations : driver_id
+users ||--o{ violations : officer_id
+violations ||--|| fines : violation_id
+fines ||--o| appeals : fine_id
+users ||--o{ appeals : driver_id
+users |o--o{ appeals : resolved_by
+users ||--o| badges : driver_id
+@enduml

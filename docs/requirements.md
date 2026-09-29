@@ -266,3 +266,23 @@ targets to aim for and sanity-check against, not results you can currently cite:
   accuracy using YOLOv8 on a lane dataset (JPJ Lane Dataset, ~1,000+ images). Use this
   as your target once you train your own model (see [tasks.md](tasks.md) Task 9.2) —
   you'll need to source or rebuild a similar dataset, since you don't have theirs.
+
+## Measured Results (This System's Own Data)
+
+- Face recognition (REQ-5/REQ-6), evaluated 2026-09-26 on two public celebrity
+  datasets through the backend's exact pipeline — full results in
+  [evaluation/results/results_tables.md](evaluation/results/results_tables.md).
+  At the deployed `face_match_threshold` of 0.42:
+
+  | Dataset | FAR | FRR | EER |
+  |---|---|---|---|
+  | LFW (96 people, mostly Western) | 0.0013% | 2.91% | 0.32% |
+  | Bollywood Celebrity Faces (100 people, South Asian) | 0.0025% | 9.89% | 1.13% |
+
+  Every false accept was traced to a mislabelled photo in the dataset, not a
+  real match between two different people. FRR is clearly higher on the South
+  Asian set, but that may come from photo style (film stills, make-up) as much
+  as from demographics. **Nothing has been measured on Sri Lankan driver photos
+  yet**, so cite these as indicative results on public data, not field
+  performance. Accuracy is deliberately not reported: with ~100× more impostor
+  than genuine pairs it is meaningless for verification.

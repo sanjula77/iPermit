@@ -1,0 +1,51 @@
+@startuml ch4-usecase-driver
+!pragma layout smetana
+left to right direction
+title \n\n
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam actorStyle awesome
+skinparam packageStyle rectangle
+skinparam usecase {
+  BackgroundColor #FFFFFF
+  BorderColor #333333
+}
+skinparam rectangle {
+  BorderColor #333333
+}
+
+actor "Driver" as D
+actor "Face Recognition\nModule" as FR <<system>>
+
+rectangle "iPermit: driver licensing and fines" {
+  usecase "Register account" as U1
+  usecase "Log in with email\nor NIC" as U2
+  usecase "Submit licence\napplication" as U3
+  usecase "Check photo quality" as U4
+  usecase "Track application\nstatus" as U5
+  usecase "View digital licence\nand QR code" as U6
+  usecase "View points and\nbehaviour badge" as U7
+  usecase "View fines" as U8
+  usecase "Pay fine\n(mock payment)" as U9
+  usecase "Appeal fine" as U10
+  usecase "Restore points" as U11
+  usecase "View notifications" as U12
+}
+
+D --> U1
+D --> U2
+D --> U3
+D --> U5
+D --> U6
+D --> U7
+D --> U8
+D --> U12
+
+U3 ..> U4 : <<include>>
+U9 ..> U8 : <<extend>>
+U10 ..> U8 : <<extend>>
+U9 ..> U11 : <<include>>
+
+U4 <-- FR
+@enduml

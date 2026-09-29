@@ -1,0 +1,75 @@
+@startuml ch4-erd-safety
+!pragma layout smetana
+title \n\n
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam monochrome true
+hide circle
+set separator none
+skinparam package {
+  BorderColor #333333
+}
+
+package "PostgreSQL" {
+entity "users" as users {
+  * id : uuid <<PK>>
+  --
+  (other columns as in\nthe core ERD)
+}
+
+entity "notifications" as notifications {
+  * id : uuid <<PK>>
+  --
+  * user_id : uuid <<FK>>
+  * type : notificationtype
+  * message : text
+  read_at : timestamp
+  * created_at : timestamp
+}
+
+entity "road_incidents" as incidents {
+  * id : uuid <<PK>>
+  --
+  * reporter_id : uuid <<FK>>
+  * type : roadincidenttype
+  * severity : roadincidentseverity
+  * lat : float
+  * lng : float
+  * status : roadincidentstatus
+  * confirmation_count : integer
+  * created_at : timestamp
+  * expires_at : timestamp
+}
+
+entity "danger_zones" as zones {
+  * id : uuid <<PK>>
+  --
+  * creator_id : uuid <<FK>>
+  * lat : float
+  * lng : float
+  * radius_m : float
+  * severity : dangerzoneseverity
+  reason : text
+  * status : dangerzonestatus
+  * confirmation_count : integer
+  * created_at : timestamp
+  cleared_at : timestamp
+  cleared_by : uuid <<FK>>
+}
+}
+
+entity "face_templates\n(separate SQLite file)" as ft {
+  * rowid : integer <<PK>>
+  --
+  * driver_id : text <<UQ>>
+  * embedding : blob
+  * created_at : text
+}
+
+users ||--o{ notifications : user_id
+users ||--o{ incidents : reporter_id
+users ||--o{ zones : creator_id
+users |o--o{ zones : cleared_by
+users ||..o| ft : driver_id = users.id\n(no FK across stores)
+@enduml

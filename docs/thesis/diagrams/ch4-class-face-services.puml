@@ -1,0 +1,78 @@
+@startuml ch4-class-face-services
+!pragma layout smetana
+title \n\n
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam monochrome true
+skinparam classAttributeIconSize 0
+skinparam class {
+  BackgroundColor #FFFFFF
+  BorderColor #333333
+}
+hide circle
+hide empty members
+set separator none
+
+class "admin router" as AR <<router>> {
+  +approve_application(id)
+  +reject_application(id, reason)
+}
+class "police router" as PR <<router>> {
+  +verify_face(photo)
+  +verify_qr(qr_token)
+  +lookup_driver(nic, license_no)
+}
+class "application_service" as AS <<service>> {
+  +submit_application(driver_id, photos, docs)
+  +approve_application(application_id)
+  +reject_application(application_id, reason)
+}
+class "license_service" as LS <<service>> {
+  +issue_license(application) : License
+}
+class "face_service" as FS <<service>> {
+  +assess_enrollment_photo_quality(bytes)
+  +build_enrollment_embedding(app) : vector
+  +check_pairwise_consistency(vectors, t)
+  +store_template(driver_id, vector)
+}
+class "police_service" as PS <<service>> {
+  +verify_face(bytes) : VerifyFaceResponse
+  +verify_qr(token) : DriverSummary
+  +lookup_driver(nic, no) : DriverSummary
+}
+class "face_engine" as FE <<core>> {
+  +detect_faces(bytes) : FaceDetection[]
+  +cosine_similarity(a, b) : float
+}
+class "face_preprocessing" as FP <<core>> {
+  +apply_clahe(image)
+  +assess_photo_quality(image, bbox, score)
+}
+class "face_index" as FI <<core>> {
+  -IndexIDMap(IndexFlatIP(512))
+  +add_to_index(rowid, vector, replaced)
+  +search(vector, k) : (similarity, rowid)[]
+  +rebuild_index() : int
+}
+class "face_template_store" as TS <<core>> {
+  +save_template(driver_id, vector)
+  +get_driver_id_by_rowid(rowid)
+  +list_all_templates()
+}
+
+AR --> AS
+PR --> PS
+AS --> FS
+AS --> LS
+FS --> FE
+FS --> FP
+FS --> FI
+FS --> TS
+PS --> FE
+PS --> FI
+PS --> TS
+FE ..> FP : CLAHE
+FI ..> TS : rebuild from
+@enduml

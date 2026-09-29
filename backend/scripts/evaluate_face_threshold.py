@@ -35,10 +35,14 @@ def main() -> None:
     args = parser.parse_args()
 
     image_paths = sorted(
-        p for p in args.dataset_dir.iterdir() if p.suffix.lower() in {".jpg", ".jpeg", ".png"}
+        p
+        for p in args.dataset_dir.iterdir()
+        if p.suffix.lower() in {".jpg", ".jpeg", ".png"}
     )
     if len(image_paths) < 2:
-        raise SystemExit(f"Need at least 2 images in {args.dataset_dir}, found {len(image_paths)}")
+        raise SystemExit(
+            f"Need at least 2 images in {args.dataset_dir}, found {len(image_paths)}"
+        )
 
     embeddings = {}
     for path in image_paths:
@@ -62,7 +66,9 @@ def main() -> None:
         f"{len(impostor_scores)} impostor pairs"
     )
 
-    current = compute_far_frr(genuine_scores, impostor_scores, settings.face_match_threshold)
+    current = compute_far_frr(
+        genuine_scores, impostor_scores, settings.face_match_threshold
+    )
     print(f"\nAt current threshold ({settings.face_match_threshold}):")
     print(f"  FAR: {current.far:.2%}   FRR: {current.frr:.2%}")
 

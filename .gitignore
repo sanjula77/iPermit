@@ -28,6 +28,10 @@ backend-wheels/
 backend/data/face_eval/*
 !backend/data/face_eval/.gitkeep
 
+# Prior face-recognition prototypes, kept locally for reference only -- each is
+# its own git repo (analysed in docs/superpowers/plans/2026-09-07-face-recognition-enhancement.md)
+face/
+
 # Node / Expo / Next.js
 node_modules/
 .expo/
@@ -47,3 +51,6 @@ out/
 .idea/
 .DS_Store
 *.log
+
+# Superpowers brainstorming companion mockups (local only)
+.superpowers/

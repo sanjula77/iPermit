@@ -1,0 +1,47 @@
+@startuml ch4-usecase-police
+!pragma layout smetana
+left to right direction
+title \n\n
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam actorStyle awesome
+skinparam packageStyle rectangle
+skinparam usecase {
+  BackgroundColor #FFFFFF
+  BorderColor #333333
+}
+skinparam rectangle {
+  BorderColor #333333
+}
+
+actor "Police Officer" as P
+actor "Face Recognition\nModule" as FR <<system>>
+
+rectangle "iPermit: roadside verification and enforcement" {
+  usecase "Verify driver\nby face scan" as V1
+  usecase "Match face\n(one-to-many)" as V2
+  usecase "Confirm identity\nmanually" as V3
+  usecase "Verify driver\nby QR code" as V4
+  usecase "Look up driver by NIC\nor licence number" as V5
+  usecase "View driver record\n(points, status, violations)" as V6
+  usecase "Record violation" as V7
+  usecase "Deduct points, issue fine,\nsuspend at threshold" as V8
+  usecase "Confirm AI-flagged\nviolation <<planned>>" as V9 #EEEEEE
+}
+
+P --> V1
+P --> V4
+P --> V5
+P --> V7
+P --> V9
+
+V1 ..> V2 : <<include>>
+V3 ..> V1 : <<extend>>\n[match uncertain]
+V1 ..> V6 : <<include>>
+V4 ..> V6 : <<include>>
+V5 ..> V6 : <<include>>
+V7 ..> V8 : <<include>>
+
+V2 <-- FR
+@enduml

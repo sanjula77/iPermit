@@ -46,3 +46,21 @@ export interface RecordViolationResponse {
   driver_points: number;
   license_status: LicenseStatus;
 }
+
+export interface RecentViolation {
+  id: string;
+  type: ViolationType;
+  points_deducted: number;
+  confirmed_at: string;
+  driver_email: string;
+  driver_nic: string;
+  fine_amount: number | null;
+}
+
+// GET /police/me/summary: the signed-in officer's own recording activity.
+export interface OfficerSummary {
+  recorded_today: number;
+  recorded_this_week: number;
+  recorded_total: number;
+  recent: RecentViolation[];
+}

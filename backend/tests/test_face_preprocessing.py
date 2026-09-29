@@ -1,3 +1,4 @@
+import cv2
 import numpy as np
 
 from app.core.face_preprocessing import apply_clahe, assess_photo_quality
@@ -82,3 +83,28 @@ def test_assess_photo_quality_rejects_poor_lighting():
 
     assert result.passes is False
     assert any("lighting" in reason for reason in result.reasons)
+
+
+def test_assess_photo_quality_passes_a_sharp_high_resolution_face():
+    # A modern phone selfie: the face spans ~1,000px, so neighbouring pixels
+    # change smoothly even though the face is in focus. Raw Laplacian variance
+    # on such a crop is tiny (real selfies measured ~20); sharpness must be
+    # judged at the scale the recogniser sees, not the camera's resolution.
+    small = _checkerboard(size=120, dark=60, light=200)
+    large = cv2.resize(small, (1200, 1200), interpolation=cv2.INTER_CUBIC)
+
+    result = assess_photo_quality(large, bbox=(0, 0, 1200, 1200), det_score=0.9)
+
+    assert result.passes, result.reasons
+
+
+def test_assess_photo_quality_rejects_a_blurred_high_resolution_face():
+    # Resolution independence must not let real blur through.
+    small = _checkerboard(size=120, dark=60, light=200)
+    large = cv2.resize(small, (1200, 1200), interpolation=cv2.INTER_CUBIC)
+    blurred = cv2.GaussianBlur(large, (0, 0), 48)
+
+    result = assess_photo_quality(blurred, bbox=(0, 0, 1200, 1200), det_score=0.9)
+
+    assert not result.passes
+    assert any("blurry" in reason for reason in result.reasons)

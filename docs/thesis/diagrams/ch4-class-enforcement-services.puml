@@ -1,0 +1,65 @@
+@startuml ch4-class-enforcement-services
+!pragma layout smetana
+title \n\n
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam monochrome true
+skinparam classAttributeIconSize 0
+skinparam class {
+  BackgroundColor #FFFFFF
+  BorderColor #333333
+}
+hide circle
+hide empty members
+set separator none
+
+class "police router" as PR <<router>> {
+  +record_violation(driver_id, type, evidence_ref)
+}
+class "fines router" as FR <<router>> {
+  +list_my_fines()
+  +pay_fine(fine_id, payment_method)
+}
+class "appeals / admin routers" as APR <<router>> {
+  +submit_appeal(fine_id, reason)
+  +resolve_appeal(appeal_id, resolution)
+}
+class "violation_service" as VS <<service>> {
+  SUSPENSION_POINTS_THRESHOLD = 10
+  +record_violation(officer, driver, type, ref)
+  +restore_points_for_violation(violation)
+}
+class "fine_service" as FS <<service>> {
+  +pay_fine(driver_id, fine_id, method)
+}
+class "appeal_service" as AS <<service>> {
+  +submit_appeal(driver_id, fine_id, reason)
+  +resolve_appeal(appeal_id, admin_id, res)
+}
+class "badge_service" as BS <<service>> {
+  +compute_safety_score(...) : int
+  +tier_for_score(score, status) : BadgeTier
+  +recompute_badge(driver_id) : Badge
+}
+class "notification_service" as NS <<service>> {
+  +notify(user_id, type, message)
+}
+class "push_service" as PU <<core>> {
+  +send_push_notification(token, title, body)
+}
+
+PR --> VS
+FR --> FS
+APR --> AS
+FS --> VS : restore points
+AS --> VS : restore points
+VS --> BS
+FS --> BS
+AS --> BS
+VS --> NS
+FS --> NS
+AS --> NS
+BS --> NS : on tier change
+NS --> PU : best effort
+@enduml

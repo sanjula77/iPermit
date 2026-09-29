@@ -2,7 +2,14 @@
 
 ## Overview
 
-**Status: greenfield build — nothing described below exists yet.** iPermit will be a
+**Status: written before the build as the target design; the system is now built.**
+Where this document and the code disagree, the code is the reference (the thesis
+chapters in `docs/thesis/` describe the system as built). The main differences: face
+recognition runs in-process inside the FastAPI backend with an exact FAISS index, and
+automated violation detection was deferred, so officers record violations manually
+(see `docs/tasks.md` 5.4).
+
+iPermit will be a
 mobile-first system (Expo/React Native for drivers and police) backed by a FastAPI
 service and PostgreSQL database, with a Next.js admin web dashboard. Face recognition
 will run as an internal AI module (RetinaFace + ArcFace via ONNX Runtime, matched with
@@ -20,7 +27,7 @@ database only through the FastAPI backend — no direct DB access from mobile or
 |----|------|------|-----------------|----------|
 | COMP-1 | Mobile App | Client (Expo/React Native, TS) | Driver + police UI: auth, license, fines, face capture, incidents | COMP-3 |
 | COMP-2 | Admin Web Dashboard | Client (Next.js, TS) | Admin UI: application review, appeals, analytics | COMP-3 |
-| COMP-3 | API Backend | Service (FastAPI, Python) | Auth, applications, admin, police, road-incidents, uploads routes; orchestrates AI modules and DB | COMP-4, COMP-5, COMP-6 |
+| COMP-3 | API Backend | Service (FastAPI, Python) | Auth, applications, admin, licences, face, police, fines, appeals, badges, notifications, road-incidents and danger-zones routes; orchestrates AI modules and DB | COMP-4, COMP-5, COMP-6 |
 | COMP-4 | Face Recognition Module | AI service (Python) | Enrollment, embedding extraction, FAISS matching | COMP-3, COMP-7 |
 | COMP-5 | Violation Detection Module | AI service (Python) | Lane/vehicle detection, violation flagging | COMP-3 |
 | COMP-6 | Primary Database | Data (PostgreSQL + Alembic) | Users, licenses, applications, violations, fines, appeals, incidents | COMP-3 |
@@ -34,17 +41,21 @@ database only through the FastAPI backend — no direct DB access from mobile or
 │  Mobile App     │     │  Admin Web Dashboard │
 │ (Expo/RN, TS)   │     │  (Next.js, TS)       │
 └────────┬────────┘     └──────────┬───────────┘
-         │        REST (Axios, JWT)│
+         │        REST (fetch, JWT)│
          └───────────┬─────────────┘
                       ▼
              ┌─────────────────┐
              │   API Backend    │
              │   (FastAPI)      │
-             │  /auth /users    │
+             │  /auth /admin    │
              │  /applications   │
-             │  /admin /police  │
+             │  /licenses /face │
+             │  /police /fines  │
+             │  /appeals        │
+             │  /badges         │
+             │  /notifications  │
              │  /road-incidents │
-             │  /uploads        │
+             │  /danger-zones   │
              └───┬──────────┬───┘
                  │          │
      ┌───────────▼─┐      ┌─▼─────────────────┐
@@ -125,7 +136,7 @@ database only through the FastAPI backend — no direct DB access from mobile or
 | API Backend | Face Recognition Module | In-process / internal call | NumPy arrays, JSON | Enrollment + matching |
 | API Backend | Violation Detection Module | In-process / internal call | Image bytes, JSON | Violation detection |
 | Face Recognition Module | SQLite + FAISS | Local file/DB | Embedding vectors | Template persistence + search |
-| API Backend | PostgreSQL | SQLAlchemy/asyncpg | SQL | Core data persistence |
+| API Backend | PostgreSQL | SQLAlchemy/psycopg2 | SQL | Core data persistence |
 
 ### External
 
@@ -133,7 +144,7 @@ database only through the FastAPI backend — no direct DB access from mobile or
 |--------|------|---------|-------|
 | Expo Push Service | Push notification API | Mobile push delivery | Requires Expo push tokens per device |
 | Mock Payment Provider | Simulated | Fine payment demo | **Not a real gateway** — explicitly mock in this version |
-| Map Tiles (react-native-maps) | Map rendering | Road incident display | Uses device's native map provider |
+| Map Tiles (react-native-maps) | Map rendering | Road incident and danger-zone display | Esri World Street Map tiles on Android (no key): Google's base map needs an API key and a custom build, OSM's own tile servers block apps that don't identify themselves, and CARTO now needs a key; Apple Maps on iOS |
 
 ## Components and Interfaces
 
@@ -142,8 +153,10 @@ database only through the FastAPI backend — no direct DB access from mobile or
 **Responsibility:** Single entry point for all clients; owns business rules for
 applications, points, fines, appeals, badges; orchestrates AI modules.
 
-**Routes:** `/auth`, `/users`, `/applications`, `/admin`, `/police`, `/road-incidents`,
-`/uploads`.
+**Routes:** `/auth`, `/applications`, `/admin`, `/licenses`, `/face`, `/police`,
+`/fines`, `/appeals`, `/badges`, `/notifications`, `/road-incidents`, `/danger-zones`,
+plus `/health` and `/ready`. There is no `/users` router, and uploaded files are not
+served over HTTP.
 
 **Key interfaces:**
 ```python
@@ -160,11 +173,30 @@ POST /road-incidents
 ### Face Recognition Module
 
 **Responsibility:** Detect, embed, and match faces.
-**Pipeline:** RetinaFace detection → CLAHE preprocessing → ArcFace embedding (ONNX
-Runtime, 512-dim) → FAISS nearest-neighbor search (threshold-based match).
+**Pipeline:** RetinaFace detection → ArcFace embedding (ONNX Runtime, 512-dim) →
+FAISS nearest-neighbor search (threshold-based match). An optional CLAHE step before
+detection (`face_engine.detect_faces`, `settings.face_clahe_enabled`) is **off** by
+default since 2026-09-29 (see below).
+**Measured performance:** at the 0.42 threshold, FAR ≈ 0 and FRR 2.9% (LFW) / 9.9%
+(South Asian celebrity set) — see
+[evaluation/results/results_tables.md](evaluation/results/results_tables.md). The
+threshold is deliberately conservative: officer verification is a 1:N search, where
+false matches matter more than false rejections (handled by manual confirmation), so
+the lower EER thresholds (~0.19–0.21) are not adopted.
+**CLAHE decision (2026-09-29): off.** An ablation on LFW
+([evaluation/results/clahe_ablation.md](evaluation/results/clahe_ablation.md)) found
+CLAHE more than doubles FRR (2.95% vs 1.37%) with no FAR/EER benefit, likely because
+ArcFace was trained on unprocessed photos. Stored templates were recomputed with
+`python -m app.scripts.reembed_templates`; run it again after any preprocessing change.
+The measured-performance figures above were taken with CLAHE on.
+**Quality gate:** sharpness is the Laplacian variance of the face resized to 112×112
+(the recogniser's input size), limit 30 — resolution-independent, so a sharp
+high-resolution phone selfie (raw variance ~20) passes. Calibrated on LFW, synthetic
+blur and three real selfies; not yet on Sri Lankan driver photos.
 **Data:** face templates in SQLite; FAISS index rebuildable from SQLite at any time.
-**Known limitation:** liveness/anti-spoofing is optional and must be explicitly
-enabled — flag this in any officer-facing UI when disabled.
+**Known limitation:** liveness/anti-spoofing is not implemented. `liveness_check_enabled`
+(default `False`) is only a flag that `/face/status` reports, so the gap is disclosed to
+clients; no liveness code exists behind it.
 
 ### Violation Detection Module
 
@@ -212,9 +244,13 @@ enforce `ON DELETE RESTRICT` — financial/enforcement history must never be orp
   reversal logic).
 - **Integration**: application → approval → license → face template pipeline;
   violation → fine → payment/appeal pipeline.
-- **AI evaluation**: face recognition (Accuracy, FAR, FRR, EER) on a held-out test set
-  large enough to avoid the overfitting seen in the 6-person pilot; violation
-  detection (mAP50, precision/recall) against the JPJ dataset split.
+- **AI evaluation**: face recognition (FAR, FRR, EER, TAR@FAR, with identity-level
+  bootstrap confidence intervals) on a held-out test set large enough to avoid the
+  overfitting seen in the 6-person pilot — done on LFW + a South Asian celebrity set
+  via [evaluation/face_evaluation.ipynb](evaluation/face_evaluation.ipynb); still to
+  do on Sri Lankan driver photos. Accuracy is not used: with ~100× more impostor
+  than genuine pairs it is uninformative. Violation detection (mAP50,
+  precision/recall) against the JPJ dataset split.
 - **UAT**: drivers, police, and admins evaluating ease of use and verification speed,
   per the original research objective 4.
 

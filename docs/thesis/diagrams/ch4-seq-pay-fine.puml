@@ -1,0 +1,41 @@
+@startuml ch4-seq-pay-fine
+title \n\n
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam monochrome true
+skinparam sequenceMessageAlign left
+skinparam maxMessageSize 125
+skinparam ParticipantPadding 4
+hide footbox
+
+actor "Driver\n(mobile app)" as D
+participant "fines\nrouter" as R
+participant "fine_\nservice" as FS
+participant "violation_\nservice" as VS
+database "PostgreSQL" as DB
+participant "badge,\nnotification" as BN
+
+D -> D : choose method; confirm "Pay LKR x?"
+D -> R : POST /fines/{id}/pay {payment_method}
+note over R : DRIVER only (403)
+R -> FS : pay_fine()
+FS -> DB : load fine, violation, appeal
+alt missing or not the driver's
+  R --> D : 404 "No such fine"
+else not UNPAID
+  R --> D : 409 "This fine is already paid"
+else appeal PENDING
+  R --> D : 409 "... pending appeal ..."
+end
+group one PostgreSQL transaction
+  FS -> DB : PAID, paid_at, payment_method
+  FS -> VS : restore_points_for_violation()
+  VS -> DB : points = max(0, points - deducted)
+  VS -> DB : ACTIVE if SUSPENDED and points < 10
+  FS -> DB : COMMIT
+end
+FS -> BN : recompute_badge()
+FS -> BN : notify(PAYMENT_CONFIRMED)
+R --> D : 200 {fine, driver_points, license_status}
+@enduml

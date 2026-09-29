@@ -1,0 +1,36 @@
+@startuml ch4-act-verification
+title \n\n
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam monochrome true
+
+start
+:Officer stops the driver;
+repeat
+  :Choose a method on Police Home\nor the Verify tab;
+  switch (Method?)
+  case (Face)
+    :Capture a photo\nof the driver;
+    :Backend detects one face\nand searches all templates\n(top 3 candidates);
+    if (Best similarity\n>= 0.42?) then (yes)
+      :Open driver record;
+    else (no, error\nor no match)
+      :Show warning and any\nranked candidates;\nofficer may open one;
+    endif
+  case (QR)
+    :Scan the licence QR\n(or type the token if\ncamera access is off);
+    :Backend looks up\nthe QR token;
+  case (NIC)
+    :Enter NIC or\nlicence number;
+    :Backend looks up\nthe driver;
+  endswitch
+repeat while (Driver identified?) is (no: 404, 422/503 error\nor no acceptable candidate)
+->yes;
+:Review points, licence status\nand violation history;
+if (Offence to record?) then (yes)
+  :Confirm dialog, then\nrecord violation;
+else (no)
+endif
+stop
+@enduml

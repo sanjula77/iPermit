@@ -3,7 +3,7 @@ import { Image } from 'expo-image';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Radius, Spacing } from '@/constants/theme';
+import { Radius, Spacing, tint } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type { PickedFile } from '@/lib/file-upload';
 
@@ -23,7 +23,7 @@ export function PhotoTile({
   testID?: string;
 }) {
   const theme = useTheme();
-  const borderColor = hasError ? theme.danger : value ? 'transparent' : theme.backgroundSelected;
+  const borderColor = hasError ? theme.danger : value ? 'transparent' : theme.primary;
 
   return (
     <Pressable
@@ -34,7 +34,8 @@ export function PhotoTile({
       style={({ pressed }) => [
         styles.tile,
         {
-          backgroundColor: theme.backgroundElement,
+          // An empty slot reads as a soft brand drop zone; a filled one shows the photo.
+          backgroundColor: value ? theme.backgroundElement : tint(theme.primary, 'subtle'),
           borderColor,
           // No border on a plain filled tile, so the photo reaches the edges.
           borderWidth: value && !hasError ? 0 : 2,

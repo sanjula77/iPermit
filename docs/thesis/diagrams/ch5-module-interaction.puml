@@ -1,0 +1,55 @@
+@startuml ch5-module-interaction
+!pragma layout smetana
+title \n\n
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam componentStyle rectangle
+skinparam component {
+  BackgroundColor #FFFFFF
+  BorderColor #333333
+}
+skinparam database {
+  BackgroundColor #FFFFFF
+  BorderColor #333333
+}
+skinparam folder {
+  BackgroundColor #FFFFFF
+  BorderColor #333333
+}
+skinparam cloud {
+  BackgroundColor #FFFFFF
+  BorderColor #333333
+}
+skinparam arrow {
+  Color #333333
+}
+
+component "Mobile app\n(Expo / React Native)\ndrivers and police" as MOB
+component "Admin web\n(Next.js)\nlicensing staff" as WEB
+
+component "API routers\n+ require_role" as R
+component "Services\n(business rules)" as S
+component "Repositories" as REPO
+component "Face module\nface_engine, face_preprocessing,\nface_index (FAISS IndexFlatIP),\nface_template_store" as FACE
+component "file_storage" as FS
+component "push_service" as PUSH
+
+database "PostgreSQL\nusers, applications, licences,\nviolations, fines, appeals, badges,\nnotifications, incidents, zones" as PG
+database "SQLite face_templates.db\n(512-d templates)" as SQL
+folder "uploads/\n(application photos\nand documents)" as UP
+cloud "Expo push API\nexp.host" as EXPO
+
+MOB -down-> R : HTTP/JSON and\nmultipart, JWT
+WEB -down-> R : HTTP/JSON, JWT
+R -down-> S
+S -down-> REPO
+REPO -down-> PG : SQLAlchemy
+S -right-> FACE : enrol / search
+FACE -down-> SQL : save, list,\nrebuild index
+S -left-> FS : validate, save
+FS -down-> UP
+S -down-> PUSH : after commit,\nbest effort
+PUSH -down-> EXPO : HTTPS POST
+EXPO ..> MOB : push notification\n(not confirmed on a device)
+@enduml

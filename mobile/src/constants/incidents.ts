@@ -1,5 +1,7 @@
 import type { Ionicons } from '@expo/vector-icons';
 
+import type { StatusTone } from '@/components/status-badge';
+import type { ThemeColor } from '@/constants/theme';
 import type { RoadIncidentSeverity, RoadIncidentType } from '@/types/road-incident';
 
 export const INCIDENT_TYPES: RoadIncidentType[] = [
@@ -50,3 +52,16 @@ export const ZONE_RADIUS_OPTIONS: { label: string; value: number }[] = [
   { label: '500 m', value: 500 },
   { label: '1 km', value: 1000 },
 ];
+
+// One palette for severity in the list, the badges and the map pins.
+export const SEVERITY_COLOR: Record<RoadIncidentSeverity, ThemeColor> = {
+  LOW: 'textSecondary',
+  MEDIUM: 'warning',
+  HIGH: 'danger',
+};
+
+export const SEVERITY_TONE: Record<RoadIncidentSeverity, StatusTone> = {
+  LOW: 'neutral',
+  MEDIUM: 'warning',
+  HIGH: 'danger',
+};

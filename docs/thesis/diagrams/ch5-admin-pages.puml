@@ -1,0 +1,29 @@
+@startwbs ch5-admin-pages
+skinparam shadowing false
+<style>
+wbsDiagram {
+  FontName Arial
+  FontSize 13
+  node {
+    BackgroundColor #FFFFFF
+    LineColor #333333
+    RoundCorner 0
+    Padding 5
+    Margin 6
+  }
+  arrow {
+    LineColor #333333
+  }
+  .group {
+    BackgroundColor #E6E6E6
+  }
+}
+</style>
+* app/layout.tsx\nRoot layout: <AuthProvider>
+** page.tsx  ( / )\nRedirects to /applications\nor /login
+** login/page.tsx  ( /login )\nAdmin login; non-ADMIN\naccounts are refused
+** (dashboard)/layout.tsx\nHeader, navigation links, log out;\nredirects to /login if signed out <<group>>
+*** applications/page.tsx\n( /applications )\nlist, approve, reject with reason
+*** appeals/page.tsx\n( /appeals )\nuphold or overturn appeals
+*** badges/page.tsx\n( /badges )\ntier distribution and\nattention queue
+@endwbs

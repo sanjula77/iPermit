@@ -140,9 +140,11 @@ behavior has not been independently verified by this project (see
   environment. Testing this now, with a real device, is useful new information — if
   it doesn't arrive, check that you accepted the notification permission prompt on
   first launch.
-- **Road incident map view** — `react-native-maps` is expected to render natively in
-  Expo Go, but this has similarly not been visually confirmed by this project (only
-  the web no-op variant has been checked). This is a good thing to verify directly.
+- **Road incident map view** — confirmed on an Android phone in Expo Go. Android uses
+  Esri World Street Map tiles (no key): Google's base map needs an API key and a custom
+  build, otherwise it renders blank grey (commit `774f150`); OSM's own tile servers
+  block apps that don't identify themselves, and CARTO now needs a key. iOS (Apple Maps) has not been
+  checked.
 
 Camera-based face capture (enrollment, police face-scan) and QR scanning both need
 camera permission — accept the OS prompt the first time either screen is opened.
@@ -177,4 +179,15 @@ These are documented, deliberate gaps in the current build (see
   requirement — see [docs/methodology.md](methodology.md) §4.7.
 - Every numeric threshold in the system (face-match similarity, photo quality
   thresholds, point/fine schedule) is an explicitly unvalidated placeholder, not a
-  tuned production value.
+  tuned production value. The one exception is the face-match threshold (0.42),
+  which has been evaluated on public celebrity datasets
+  ([docs/evaluation/](evaluation/results/results_tables.md)): near-zero false
+  accepts, 3–10% false rejects. It has not been tested on Sri Lankan driver photos.
+- The enrollment photo-quality gate is too strict for real phone photos: a clear
+  selfie scored sharpness ~23 against the default `face_min_sharpness = 100`, so
+  the application is rejected. For local testing, set `FACE_MIN_SHARPNESS=15` in
+  `backend/.env` until the gate is calibrated.
+- CLAHE preprocessing (`face_clahe_enabled`, on by default) was found to more than
+  double face false rejections with no accuracy benefit
+  ([clahe_ablation.md](evaluation/results/clahe_ablation.md)); whether to turn it
+  off is still an open decision.

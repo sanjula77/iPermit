@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { ReactElement, ReactNode, Ref } from 'react';
-import { Platform, ScrollView, StyleSheet, View, type RefreshControlProps } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, View, type RefreshControlProps } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PressableScale } from '@/components/pressable-scale';
@@ -18,6 +18,7 @@ export function HeroScreen({
   ref,
   title,
   accessory,
+  onBack,
   summary,
   heroContent,
   refreshControl,
@@ -30,6 +31,9 @@ export function HeroScreen({
   title?: string;
   // Shown at the right of the title and summary (e.g. a section badge).
   accessory?: ReactNode;
+  // A pushed screen that draws its own top bar: shows a back arrow before the
+  // title, so the hero replaces the native header.
+  onBack?: () => void;
   summary?: string;
   // The key figure and any chip/action, rendered below the title.
   heroContent?: ReactNode;
@@ -72,6 +76,18 @@ export function HeroScreen({
         >
           <View style={styles.inner}>
             <View style={styles.titleRow}>
+              {onBack ? (
+                <Pressable
+                  onPress={onBack}
+                  accessibilityRole="button"
+                  accessibilityLabel="Back"
+                  hitSlop={8}
+                  testID="hero-back"
+                  style={({ pressed }) => [styles.back, { opacity: pressed ? 0.6 : 1 }]}
+                >
+                  <Ionicons name="arrow-back" size={24} color={theme.onBrand} />
+                </Pressable>
+              ) : null}
               <View style={styles.titleText}>
                 {title ? (
                   <ThemedText type="subtitle" themeColor="onBrand" accessibilityRole="header">
@@ -172,6 +188,8 @@ const styles = StyleSheet.create({
   inner: { width: '100%', maxWidth: MaxContentWidth },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
   titleText: { flex: 1, minWidth: 0, gap: Spacing.half },
+  // 48dp touch target; pulled left so the arrow lines up with the content edge.
+  back: { width: 48, height: 48, justifyContent: 'center', marginLeft: -Spacing.two },
   summary: { opacity: 0.85 },
   heroContent: { marginTop: Spacing.three, gap: Spacing.two, alignItems: 'flex-start' },
   sheet: {

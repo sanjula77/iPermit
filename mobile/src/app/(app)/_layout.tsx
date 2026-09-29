@@ -41,7 +41,8 @@ export default function AppLayout() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="apply" options={{ ...brandHeader, headerShown: true, title: 'Apply for License' }} />
-        <Stack.Screen name="police-driver" options={{ ...brandHeader, headerShown: true, title: 'Driver Details' }} />
+        {/* Draws its own top bar (back arrow + title) inside the blue hero. */}
+        <Stack.Screen name="police-driver" options={{ headerShown: false, title: 'Driver details' }} />
       </Stack>
     </>
   );

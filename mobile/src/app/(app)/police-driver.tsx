@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams } from 'expo-router';
+import * as Haptics from 'expo-haptics';
+import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { Fragment, useRef, useState } from 'react';
 import { Alert, Platform, Pressable, type ScrollView, StyleSheet, View } from 'react-native';
 
@@ -24,6 +25,7 @@ import {
   VIOLATION_POINTS,
   VIOLATION_TYPES,
 } from '@/constants/violations';
+import { useBrandHeaderOptions } from '@/hooks/use-brand-header';
 import { useTheme } from '@/hooks/use-theme';
 import { matchPercent, parseIdentification, type Identification } from '@/lib/face-match';
 import { formatDateShort, formatLkr } from '@/lib/format';
@@ -47,11 +49,14 @@ export default function PoliceDriverScreen() {
   } = useLocalSearchParams<{ driver?: string; method?: string; similarity?: string; confirmed?: string }>();
   // The driver arrives as a route param from Verify; opened any other way
   // (e.g. a deep link) there's nothing to show.
+  const brandHeader = useBrandHeaderOptions();
   const [initialDriver] = useState(() => parseDriver(driverParam));
   const [identification] = useState(() => parseIdentification({ method, similarity, confirmed }));
   if (!initialDriver) {
     return (
       <ThemedView style={styles.missing}>
+        {/* This screen draws its own top bar normally; here, show the native one. */}
+        <Stack.Screen options={{ ...brandHeader, headerShown: true }} />
         <EmptyState
           icon="person-outline"
           title="No driver selected"
@@ -73,7 +78,7 @@ function DriverDetails({
 }) {
   const theme = useTheme();
   const [driver, setDriver] = useState<DriverSummary>(initialDriver);
-  const [violationType, setViolationType] = useState<ViolationType | null>(null);
+  const [selected, setSelected] = useState<ViolationType[]>([]);
   const [evidenceRef, setEvidenceRef] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   // Blocks a same-frame double submit before isSubmitting has re-rendered.
@@ -83,54 +88,87 @@ function DriverDetails({
 
   const hasLicense = !!driver.license_no;
   const points = driver.points ?? 0;
+  const selectedPoints = selected.reduce((sum, type) => sum + VIOLATION_POINTS[type], 0);
+  const selectedFines = selected.reduce((sum, type) => sum + VIOLATION_FINE[type], 0);
 
-  async function submitViolation(type: ViolationType) {
-    if (submittingRef.current) return;
+  function toggle(type: ViolationType) {
+    setSelected((current) =>
+      current.includes(type) ? current.filter((t) => t !== type) : [...current, type],
+    );
+  }
+
+  // The backend records one violation per request (each in its own
+  // transaction), so they are sent one after another, in list order. If one
+  // fails, the ones before it stay recorded and the message says exactly which.
+  async function submitViolations(types: ViolationType[]) {
+    if (submittingRef.current || types.length === 0) return;
     submittingRef.current = true;
     setNotice(null);
     setIsSubmitting(true);
+    const recorded: string[] = [];
+    let totalPoints = 0;
+    let totalFines = 0;
+    let suspended = false;
     try {
-      const result = await recordViolation({
-        driverId: driver.driver_id,
-        type,
-        evidenceRef: evidenceRef.trim() || undefined,
-      });
-      setDriver((prev) => ({
-        ...prev,
-        points: result.driver_points,
-        license_status: result.license_status,
-        violations: [result.violation, ...prev.violations],
-      }));
+      for (const type of types) {
+        const result = await recordViolation({
+          driverId: driver.driver_id,
+          type,
+          evidenceRef: evidenceRef.trim() || undefined,
+        });
+        recorded.push(VIOLATION_LABEL[type].toLowerCase());
+        totalPoints += result.violation.points_deducted;
+        totalFines += result.fine.amount;
+        suspended = result.license_status === 'SUSPENDED';
+        setDriver((prev) => ({
+          ...prev,
+          points: result.driver_points,
+          license_status: result.license_status,
+          violations: [result.violation, ...prev.violations],
+        }));
+      }
       setEvidenceRef('');
-      setViolationType(null);
+      setSelected([]);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       setNotice({
         kind: 'success',
         text:
-          `Recorded ${VIOLATION_LABEL[result.violation.type].toLowerCase()}: ` +
-          `${result.violation.points_deducted} points and a ${formatLkr(result.fine.amount)} fine.` +
-          (result.license_status === 'SUSPENDED' ? ' The license is now suspended.' : ''),
+          `Recorded ${recorded.join(', ')}: ${totalPoints} points and ${formatLkr(totalFines)} in fines.` +
+          (suspended ? ' The license is now suspended.' : ''),
       });
-      scrollRef.current?.scrollTo({ y: 0, animated: true });
     } catch (err) {
-      setNotice({ kind: 'error', text: extractErrorMessage(err) });
-      scrollRef.current?.scrollTo({ y: 0, animated: true });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+      // Keep only the ones that weren't recorded selected, so a retry doesn't
+      // record the others twice.
+      setSelected(types.slice(recorded.length));
+      setNotice({
+        kind: 'error',
+        text:
+          (recorded.length ? `Recorded ${recorded.join(', ')}, then stopped. ` : '') +
+          `Couldn't record ${VIOLATION_LABEL[types[recorded.length]].toLowerCase()}: ${extractErrorMessage(err)}`,
+      });
     } finally {
+      scrollRef.current?.scrollTo({ y: 0, animated: true });
       submittingRef.current = false;
       setIsSubmitting(false);
     }
   }
 
-  function confirmViolation() {
-    if (!violationType) return;
-    // Recording deducts points, issues a fine and can suspend the license:
-    // show the consequence and ask first.
-    const addPoints = VIOLATION_POINTS[violationType];
-    const newTotal = points + addPoints;
+  function confirmViolations() {
+    if (selected.length === 0) return;
+    // Recording adds points, issues fines and can suspend the license: show
+    // the combined consequence and ask first.
+    const types = VIOLATION_TYPES.filter((t) => selected.includes(t));
+    const newTotal = points + selectedPoints;
     const willSuspend = driver.license_status === 'ACTIVE' && newTotal >= SUSPENSION_POINTS;
-    const title = `Record ${VIOLATION_LABEL[violationType].toLowerCase()}?`;
+    const title =
+      types.length === 1
+        ? `Record ${VIOLATION_LABEL[types[0]].toLowerCase()}?`
+        : `Record ${types.length} violations?`;
     const message =
-      `${driver.email} will receive ${addPoints} points (${newTotal} in total) and a ` +
-      `${formatLkr(VIOLATION_FINE[violationType])} fine.` +
+      (types.length > 1 ? `${types.map((t) => VIOLATION_LABEL[t]).join(', ')}.\n\n` : '') +
+      `${driver.email} will receive ${selectedPoints} points (${newTotal} in total) and ` +
+      `${formatLkr(selectedFines)} in fines.` +
       (willSuspend
         ? ` Licenses are suspended at ${SUSPENSION_POINTS} points, so this suspends their license.`
         : driver.license_status === 'SUSPENDED'
@@ -138,12 +176,12 @@ function DriverDetails({
           : '');
     if (Platform.OS === 'web') {
       // react-native-web's Alert.alert is a no-op.
-      if (window.confirm(`${title}\n${message}`)) submitViolation(violationType);
+      if (window.confirm(`${title}\n${message}`)) submitViolations(types);
       return;
     }
     Alert.alert(title, message, [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Record', style: 'destructive', onPress: () => submitViolation(violationType) },
+      { text: 'Record', style: 'destructive', onPress: () => submitViolations(types) },
     ]);
   }
 
@@ -155,7 +193,8 @@ function DriverDetails({
   return (
     <HeroScreen
       ref={scrollRef}
-      underHeader
+      title="Driver details"
+      onBack={() => router.back()}
       keyboardShouldPersistTaps="handled"
       testID="driver-details"
       heroContent={
@@ -227,25 +266,30 @@ function DriverDetails({
 
       {hasLicense ? (
         <Card variant="raised" style={[styles.recordCard, notice ? null : styles.overlap]}>
-          <ThemedText type="smallBold" accessibilityRole="header">
-            Record a violation
-          </ThemedText>
-          <View accessibilityRole="radiogroup">
+          <View style={styles.recordHeader}>
+            <ThemedText type="smallBold" accessibilityRole="header">
+              Record violations
+            </ThemedText>
+            <ThemedText type="small" themeColor="textSecondary">
+              Select all that apply
+            </ThemedText>
+          </View>
+          <View>
             {VIOLATION_TYPES.map((type, i) => {
-              const selected = violationType === type;
+              const isSelected = selected.includes(type);
               const color = theme[VIOLATION_COLOR[type]];
               return (
                 <Fragment key={type}>
                   {i > 0 ? <ListSeparator /> : null}
                   <Pressable
-                    onPress={() => setViolationType(type)}
-                    accessibilityRole="radio"
-                    accessibilityState={{ checked: selected }}
+                    onPress={() => toggle(type)}
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked: isSelected }}
                     accessibilityLabel={`${VIOLATION_LABEL[type]}, ${VIOLATION_POINTS[type]} points, ${formatLkr(VIOLATION_FINE[type])}`}
                     testID={`violation-type-${type}`}
                     style={({ pressed }) => [
                       styles.typeRow,
-                      selected && { backgroundColor: tint(theme.primary, 'subtle') },
+                      isSelected && { backgroundColor: tint(theme.primary, 'subtle') },
                       { opacity: pressed ? 0.6 : 1 },
                     ]}
                   >
@@ -262,9 +306,9 @@ function DriverDetails({
                       {formatLkr(VIOLATION_FINE[type])}
                     </ThemedText>
                     <Ionicons
-                      name={selected ? 'radio-button-on' : 'radio-button-off'}
+                      name={isSelected ? 'checkbox' : 'square-outline'}
                       size={22}
-                      color={selected ? theme.primary : theme.textSecondary}
+                      color={isSelected ? theme.primary : theme.textSecondary}
                     />
                   </Pressable>
                 </Fragment>
@@ -278,15 +322,29 @@ function DriverDetails({
             onChangeText={setEvidenceRef}
             testID="violation-evidence-ref"
           />
+          {selected.length > 0 ? (
+            <View style={[styles.totals, { backgroundColor: tint(theme.danger, 'subtle') }]} testID="record-violation-totals">
+              <ThemedText type="small" themeColor="textSecondary">
+                {selected.length} selected
+              </ThemedText>
+              <ThemedText type="smallBold" style={styles.tabular}>
+                +{selectedPoints} pts · {formatLkr(selectedFines)}
+              </ThemedText>
+            </View>
+          ) : null}
           <Button
             variant="danger"
-            onPress={confirmViolation}
-            disabled={!violationType || isSubmitting}
+            onPress={confirmViolations}
+            disabled={selected.length === 0 || isSubmitting}
             testID="record-violation-submit"
           >
             <Ionicons name="document-text-outline" size={18} color={theme.onPrimary} />
             <ThemedText type="smallBold" themeColor="onPrimary">
-              {isSubmitting ? 'Recording…' : 'Record violation'}
+              {isSubmitting
+                ? 'Recording…'
+                : selected.length > 1
+                  ? `Record ${selected.length} violations`
+                  : 'Record violation'}
             </ThemedText>
           </Button>
         </Card>
@@ -412,6 +470,15 @@ const styles = StyleSheet.create({
   pillLabel: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one },
   pointsDot: { width: 8, height: 8, borderRadius: 4, borderWidth: 1, borderColor: '#ffffff' },
   pillValue: { fontSize: 20, lineHeight: 26, fontWeight: 700 },
+  recordHeader: { gap: Spacing.half },
+  totals: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+    borderRadius: Radius.small,
+  },
   recordCard: { padding: Spacing.three, gap: Spacing.three, borderRadius: Radius.large },
   typeRow: {
     flexDirection: 'row',

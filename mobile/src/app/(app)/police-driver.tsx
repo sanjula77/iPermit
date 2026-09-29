@@ -13,7 +13,6 @@ import { EmptyState } from '@/components/empty-state';
 import { HeroScreen } from '@/components/hero-screen';
 import { IconTile } from '@/components/icon-tile';
 import { ListRow, ListSeparator } from '@/components/list-row';
-import { TextField } from '@/components/text-field';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Radius, Spacing, tint } from '@/constants/theme';
@@ -79,7 +78,6 @@ function DriverDetails({
   const theme = useTheme();
   const [driver, setDriver] = useState<DriverSummary>(initialDriver);
   const [selected, setSelected] = useState<ViolationType[]>([]);
-  const [evidenceRef, setEvidenceRef] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   // Blocks a same-frame double submit before isSubmitting has re-rendered.
   const submittingRef = useRef(false);
@@ -111,11 +109,7 @@ function DriverDetails({
     let suspended = false;
     try {
       for (const type of types) {
-        const result = await recordViolation({
-          driverId: driver.driver_id,
-          type,
-          evidenceRef: evidenceRef.trim() || undefined,
-        });
+        const result = await recordViolation({ driverId: driver.driver_id, type });
         recorded.push(VIOLATION_LABEL[type].toLowerCase());
         totalPoints += result.violation.points_deducted;
         totalFines += result.fine.amount;
@@ -127,7 +121,6 @@ function DriverDetails({
           violations: [result.violation, ...prev.violations],
         }));
       }
-      setEvidenceRef('');
       setSelected([]);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       setNotice({
@@ -315,13 +308,6 @@ function DriverDetails({
               );
             })}
           </View>
-          <TextField
-            label="Evidence reference (optional)"
-            placeholder="e.g. camera ID or report number"
-            value={evidenceRef}
-            onChangeText={setEvidenceRef}
-            testID="violation-evidence-ref"
-          />
           {selected.length > 0 ? (
             <View style={[styles.totals, { backgroundColor: tint(theme.danger, 'subtle') }]} testID="record-violation-totals">
               <ThemedText type="small" themeColor="textSecondary">

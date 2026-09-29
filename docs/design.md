@@ -173,21 +173,26 @@ POST /road-incidents
 ### Face Recognition Module
 
 **Responsibility:** Detect, embed, and match faces.
-**Pipeline:** CLAHE preprocessing → RetinaFace detection → ArcFace embedding (ONNX
-Runtime, 512-dim) → FAISS nearest-neighbor search (threshold-based match). CLAHE runs
-on the whole image before detection (`face_engine.detect_faces`), gated by
-`settings.face_clahe_enabled`.
+**Pipeline:** RetinaFace detection → ArcFace embedding (ONNX Runtime, 512-dim) →
+FAISS nearest-neighbor search (threshold-based match). An optional CLAHE step before
+detection (`face_engine.detect_faces`, `settings.face_clahe_enabled`) is **off** by
+default since 2026-09-29 (see below).
 **Measured performance:** at the 0.42 threshold, FAR ≈ 0 and FRR 2.9% (LFW) / 9.9%
 (South Asian celebrity set) — see
 [evaluation/results/results_tables.md](evaluation/results/results_tables.md). The
 threshold is deliberately conservative: officer verification is a 1:N search, where
 false matches matter more than false rejections (handled by manual confirmation), so
 the lower EER thresholds (~0.19–0.21) are not adopted.
-**Open decision — CLAHE:** an ablation on LFW
+**CLAHE decision (2026-09-29): off.** An ablation on LFW
 ([evaluation/results/clahe_ablation.md](evaluation/results/clahe_ablation.md)) found
 CLAHE more than doubles FRR (2.95% vs 1.37%) with no FAR/EER benefit, likely because
-ArcFace was trained on unprocessed photos. Disabling it would require re-embedding
-already-enrolled templates.
+ArcFace was trained on unprocessed photos. Stored templates were recomputed with
+`python -m app.scripts.reembed_templates`; run it again after any preprocessing change.
+The measured-performance figures above were taken with CLAHE on.
+**Quality gate:** sharpness is the Laplacian variance of the face resized to 112×112
+(the recogniser's input size), limit 30 — resolution-independent, so a sharp
+high-resolution phone selfie (raw variance ~20) passes. Calibrated on LFW, synthetic
+blur and three real selfies; not yet on Sri Lankan driver photos.
 **Data:** face templates in SQLite; FAISS index rebuildable from SQLite at any time.
 **Known limitation:** liveness/anti-spoofing is not implemented. `liveness_check_enabled`
 (default `False`) is only a flag that `/face/status` reports, so the gap is disclosed to

@@ -237,8 +237,9 @@ TypeScript mobile app, Next.js + TypeScript admin web — per the [ADR](design.m
     as face_match_threshold, to be revisited once 9.1 has real numbers.
     (9.1's evaluation later found CLAHE counterproductive: on LFW it more
     than doubles FRR at 0.42 (2.95% vs 1.37%) with no FAR/EER benefit --
-    see docs/evaluation/results/clahe_ablation.md; disabling it is an open
-    decision.)
+    see docs/evaluation/results/clahe_ablation.md. Decided 2026-09-29:
+    CLAHE is off by default and templates were re-embedded with
+    app/scripts/reembed_templates.py.)
     Two existing enrollment tests were adapted since the no-face/multi-face
     rejection now happens earlier (at POST /applications, asserting a 422
     and that GET /applications returns [] afterward, i.e. nothing was
@@ -532,21 +533,22 @@ TypeScript mobile app, Next.js + TypeScript admin web — per the [ADR](design.m
     text is in docs/paper-fixes.md item 1. Accuracy is
     deliberately not reported (meaningless with ~100x more impostor than
     genuine pairs). Colab embeddings reproduce exactly in the backend
-    container. Still open: (a) a CLAHE ablation on LFW
+    container. Follow-ups resolved 2026-09-29: (a) the CLAHE ablation on LFW
     (results/clahe_ablation.md) found CLAHE more than doubles FRR at 0.42
-    (2.95% vs 1.37%) with no FAR/EER benefit -- decide whether to set
-    `face_clahe_enabled = False` (existing enrolled templates would need
-    re-embedding) and update docs/design.md; (b) nothing has been measured
-    on Sri Lankan driver photos yet.)
-    **Enrollment quality gate is too strict for real phone photos (found
-    2026-09-26):** a clear, well-lit selfie from a physical Android phone
-    scored sharpness (Laplacian variance) ~23 against the default
-    `face_min_sharpness = 100.0`, so every photo was rejected and the
-    application could not be submitted. Local testing currently overrides
-    it with `FACE_MIN_SHARPNESS=15` in `backend/.env` (not committed).
-    Before UAT (9.5), calibrate `face_min_sharpness` (and re-check the
-    brightness/size/detection gates) on real phone photos, otherwise real
-    drivers cannot apply.
+    (2.95% vs 1.37%) with no FAR/EER benefit, so `face_clahe_enabled` now
+    defaults to False and stored templates were recomputed
+    (`python -m app.scripts.reembed_templates`); (b) nothing has been
+    measured on Sri Lankan driver photos yet (still open).
+    **Enrollment quality gate fixed (2026-09-29):** a clear phone selfie
+    scored sharpness ~23 against the old `face_min_sharpness = 100`
+    because Laplacian variance was measured on the full-resolution face
+    (~1,000px wide on a phone). Sharpness is now measured on the face
+    resized to 112x112 (ArcFace's input size), where the real selfies score
+    540-562, sharp LFW faces p5 = 43 and synthetically blurred faces <= ~22;
+    the limit is 30. Two unit tests cover sharp and blurred high-resolution
+    faces (167/167 backend tests pass). The local `FACE_MIN_SHARPNESS=15`
+    override in backend/.env was removed. Still to confirm on real driver
+    photos during UAT.
     - _Requirements: REQ-5_
     - _Dependencies: 4.3_
   - [ ] 9.2 Violation detector evaluation (mAP50, precision/recall) against the JPJ dataset split

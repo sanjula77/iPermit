@@ -22,6 +22,13 @@ import numpy as np
 
 from app.core.config import settings
 
+# Sharpness is judged on the face resized to the recogniser's own input size
+# (ArcFace takes 112x112). Raw Laplacian variance falls as resolution rises --
+# a sharp phone selfie with a ~1,000px face scored ~20, while the same face at
+# 112px scored ~550 -- so measuring at a fixed scale makes the limit mean
+# "too blurry to recognise" on any camera.
+SHARPNESS_CROP_SIZE = 112
+
 
 def apply_clahe(image: np.ndarray) -> np.ndarray:
     """Contrast-enhances the L channel of a BGR image in LAB space, before
@@ -77,8 +84,13 @@ def assess_photo_quality(
         sharpness, brightness = 0.0, 0.0
     else:
         gray = cv2.cvtColor(face_crop, cv2.COLOR_BGR2GRAY)
-        sharpness = float(cv2.Laplacian(gray, cv2.CV_64F).var())
         brightness = float(gray.mean())
+        scaled = cv2.resize(
+            gray,
+            (SHARPNESS_CROP_SIZE, SHARPNESS_CROP_SIZE),
+            interpolation=cv2.INTER_AREA,
+        )
+        sharpness = float(cv2.Laplacian(scaled, cv2.CV_64F).var())
 
     if sharpness < settings.face_min_sharpness:
         reasons.append(

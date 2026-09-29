@@ -137,7 +137,7 @@ export default function RegisterScreen() {
         }}
         onBlur={() => markTouched('nic')}
         error={(touched.nic ? fieldErrors.nic : undefined) ?? serverErrors.nic}
-        hint="As printed on your National Identity Card"
+        placeholder="As printed on your National Identity Card"
         autoCapitalize="characters"
         returnKeyType="next"
         submitBehavior="submit"
@@ -152,7 +152,7 @@ export default function RegisterScreen() {
         onChangeText={setPassword}
         onBlur={() => markTouched('password')}
         error={touched.password ? fieldErrors.password : undefined}
-        hint={`At least ${MIN_PASSWORD_LENGTH} characters`}
+        placeholder={`At least ${MIN_PASSWORD_LENGTH} characters`}
         secureTextEntry
         autoComplete="new-password"
         textContentType="newPassword"

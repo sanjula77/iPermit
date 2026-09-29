@@ -3,7 +3,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { Button } from '@/components/button';
 import { ThemedText } from '@/components/themed-text';
-import { Spacing } from '@/constants/theme';
+import { Spacing, tint } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 export function EmptyState({
@@ -23,7 +23,7 @@ export function EmptyState({
 
   return (
     <View style={styles.container} testID={testID}>
-      <View style={[styles.iconCircle, { backgroundColor: theme.backgroundElement }]}>
+      <View style={[styles.iconCircle, { backgroundColor: tint(theme.primary) }]}>
         <Ionicons name={icon} size={36} color={theme.primary} />
       </View>
       <ThemedText type="subtitle" style={styles.centered}>

@@ -1,5 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
-import { router, useFocusEffect, type Href } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 
@@ -13,32 +12,12 @@ import { ListSeparator } from '@/components/list-row';
 import { ScreenState } from '@/components/screen-state';
 import { ThemedText } from '@/components/themed-text';
 import { ScreenScroll } from '@/components/screen-scroll';
-import { Spacing, type ThemeColor } from '@/constants/theme';
+import { KIND_COLOR, TYPE_INFO } from '@/constants/notifications';
+import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { relativeTime } from '@/lib/relative-time';
 import { setUnreadCount } from '@/lib/unread-count';
-import type { AppNotification, NotificationType } from '@/types/notification';
-
-type Kind = 'good' | 'bad' | 'info';
-
-// UPHELD means the fine stands (appeal rejected); OVERTURNED means it was
-// reversed -- same plain wording as the Fine details screen.
-const TYPE_INFO: Record<
-  NotificationType,
-  { title: string; icon: keyof typeof Ionicons.glyphMap; kind: Kind; target: Href }
-> = {
-  LICENSE_APPROVED: { title: 'License approved', icon: 'checkmark-circle', kind: 'good', target: '/(app)/(tabs)/(home)' },
-  LICENSE_REJECTED: { title: 'Application not approved', icon: 'close-circle', kind: 'bad', target: '/(app)/(tabs)/(home)' },
-  FINE_ISSUED: { title: 'Fine issued', icon: 'receipt-outline', kind: 'bad', target: '/(app)/(tabs)/(fines)/fines' },
-  LICENSE_SUSPENDED: { title: 'License suspended', icon: 'ban', kind: 'bad', target: '/(app)/(tabs)/(home)' },
-  PAYMENT_CONFIRMED: { title: 'Payment confirmed', icon: 'card', kind: 'good', target: '/(app)/(tabs)/(fines)/fines' },
-  APPEAL_UPHELD: { title: 'Appeal rejected', icon: 'close-circle', kind: 'bad', target: '/(app)/(tabs)/(fines)/fines' },
-  APPEAL_OVERTURNED: { title: 'Appeal accepted', icon: 'arrow-undo-circle', kind: 'good', target: '/(app)/(tabs)/(fines)/fines' },
-  BADGE_CHANGED: { title: 'Standing changed', icon: 'medal-outline', kind: 'info', target: '/(app)/(tabs)/(home)' },
-  NEARBY_INCIDENT: { title: 'Nearby incident', icon: 'location', kind: 'info', target: '/(app)/(tabs)/(incidents)/incidents' },
-};
-
-const KIND_COLOR: Record<Kind, ThemeColor> = { good: 'success', bad: 'danger', info: 'primary' };
+import type { AppNotification } from '@/types/notification';
 
 function dayGroup(iso: string, now: number): 'Today' | 'Yesterday' | 'Earlier' {
   const today = new Date(now);

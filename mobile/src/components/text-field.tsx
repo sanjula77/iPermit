@@ -44,7 +44,7 @@ export function TextField({
         {inset ? (
           <Ionicons
             name={icon}
-            size={22}
+            size={20}
             color={error ? theme.danger : isFocused ? theme.primary : theme.textSecondary}
             style={styles.leadingIcon}
             pointerEvents="none"
@@ -121,7 +121,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   inputInset: {
-    minHeight: 56,
+    // Smaller text inside the compact auth fields (typed text and placeholder).
+    fontSize: 14,
+    minHeight: 52,
     borderRadius: Radius.medium,
     borderCurve: 'continuous',
     paddingLeft: Spacing.six - Spacing.two,

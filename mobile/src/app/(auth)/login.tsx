@@ -1,6 +1,6 @@
 import { Link } from 'expo-router';
 import { useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, TextInput, View } from 'react-native';
 
 import { extractErrorMessage } from '@/api/client';
 import { AuthScreen } from '@/components/auth-screen';
@@ -68,13 +68,6 @@ export default function LoginScreen() {
 
       <View style={styles.optionsRow}>
         <Checkbox label="Remember me" checked={remember} onChange={setRemember} testID="login-remember" />
-        <Link href="/(auth)/forgot-password" asChild>
-          <Pressable accessibilityRole="link" hitSlop={8} testID="login-forgot-password" style={styles.forgot}>
-            <ThemedText type="smallBold" themeColor="primary">
-              Forgot password?
-            </ThemedText>
-          </Pressable>
-        </Link>
       </View>
 
       {error ? <Banner tone="danger" text={error} testID="login-error" /> : null}
@@ -114,5 +107,4 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
     marginTop: -Spacing.two,
   },
-  forgot: { minHeight: 48, justifyContent: 'center' },
 });

@@ -26,6 +26,7 @@ import {
   VIOLATION_TYPES,
 } from '@/constants/violations';
 import { useTheme } from '@/hooks/use-theme';
+import { FACE_MATCH_THRESHOLD, matchPercent, parseIdentification, type Identification } from '@/lib/face-match';
 import { formatDate, formatLkr } from '@/lib/format';
 import { SUSPENSION_POINTS, pointsColorKey } from '@/lib/points';
 import type { DriverSummary, ViolationType } from '@/types/police';
@@ -39,10 +40,16 @@ function parseDriver(param: string | undefined): DriverSummary | null {
 }
 
 export default function PoliceDriverScreen() {
-  const { driver: driverParam } = useLocalSearchParams<{ driver?: string }>();
+  const {
+    driver: driverParam,
+    method,
+    similarity,
+    confirmed,
+  } = useLocalSearchParams<{ driver?: string; method?: string; similarity?: string; confirmed?: string }>();
   // The driver arrives as a route param from Verify; opened any other way
   // (e.g. a deep link) there's nothing to show.
   const [initialDriver] = useState(() => parseDriver(driverParam));
+  const [identification] = useState(() => parseIdentification({ method, similarity, confirmed }));
   if (!initialDriver) {
     return (
       <ThemedView style={styles.missing}>
@@ -54,10 +61,17 @@ export default function PoliceDriverScreen() {
       </ThemedView>
     );
   }
-  return <DriverDetails initialDriver={initialDriver} />;
+  return <DriverDetails initialDriver={initialDriver} identification={identification} />;
 }
 
-function DriverDetails({ initialDriver }: { initialDriver: DriverSummary }) {
+function DriverDetails({
+  initialDriver,
+  identification,
+}: {
+  initialDriver: DriverSummary;
+  // How the officer found this driver (null when opened from Police Home).
+  identification: Identification | null;
+}) {
   const theme = useTheme();
   const [driver, setDriver] = useState<DriverSummary>(initialDriver);
   const [violationType, setViolationType] = useState<ViolationType | null>(null);
@@ -170,6 +184,7 @@ function DriverDetails({ initialDriver }: { initialDriver: DriverSummary }) {
             icon={!hasLicense ? 'alert-circle' : driver.license_status === 'ACTIVE' ? 'checkmark-circle' : 'ban'}
             label={!hasLicense ? 'No license' : `License ${driver.license_status === 'ACTIVE' ? 'active' : 'suspended'}`}
           />
+          {identification ? <IdentificationNote identification={identification} /> : null}
         </>
       }
     >
@@ -298,6 +313,59 @@ function DriverDetails({ initialDriver }: { initialDriver: DriverSummary }) {
   );
 }
 
+// How the driver was identified. For a face scan: the match score (the
+// officer's "confidence" in the result) against the backend's threshold, and
+// whether the officer confirmed it themselves from the candidate list.
+function IdentificationNote({ identification }: { identification: Identification }) {
+  const theme = useTheme();
+  if (identification.method !== 'face') {
+    return (
+      <View style={styles.idRow} testID="driver-identification">
+        <Ionicons
+          name={identification.method === 'qr' ? 'qr-code-outline' : 'search-outline'}
+          size={16}
+          color={theme.onBrand}
+        />
+        <ThemedText type="small" themeColor="onBrand" style={styles.dim}>
+          {identification.method === 'qr' ? 'Verified by license QR' : 'Found by NIC / license number'}
+        </ThemedText>
+      </View>
+    );
+  }
+
+  const percent = matchPercent(identification.similarity);
+  const aboveThreshold = identification.similarity >= FACE_MATCH_THRESHOLD;
+  return (
+    <View
+      style={styles.faceMatch}
+      testID="driver-face-match"
+      accessible
+      accessibilityLabel={`Face match ${percent} percent, ${aboveThreshold ? 'above' : 'below'} the match threshold${identification.confirmedByOfficer ? ', confirmed by you' : ''}`}
+    >
+      <View style={styles.faceMatchHeader}>
+        <View style={styles.idRow}>
+          <Ionicons name="scan-outline" size={16} color={theme.onBrand} />
+          <ThemedText type="smallBold" themeColor="onBrand">
+            Face match
+          </ThemedText>
+        </View>
+        <ThemedText type="subtitle" themeColor="onBrand" style={styles.tabular}>
+          {percent}%
+        </ThemedText>
+      </View>
+      {/* Score bar with a tick at the threshold. */}
+      <View style={styles.scoreTrack}>
+        <View style={[styles.scoreFill, { width: `${percent}%` }]} />
+        <View style={[styles.scoreTick, { left: `${matchPercent(FACE_MATCH_THRESHOLD)}%` }]} />
+      </View>
+      <ThemedText type="small" themeColor="onBrand" style={styles.dim}>
+        {aboveThreshold ? 'Above' : 'Below'} the match threshold ({matchPercent(FACE_MATCH_THRESHOLD)}%)
+        {identification.confirmedByOfficer ? ' · You confirmed this match' : ''}
+      </ThemedText>
+    </View>
+  );
+}
+
 function SectionLabel({ text }: { text: string }) {
   return (
     <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionLabel} accessibilityRole="header">
@@ -332,6 +400,20 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.18)',
   },
   dim: { opacity: 0.85 },
+  idRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one },
+  // Translucent white panel on the brand hero.
+  faceMatch: {
+    alignSelf: 'stretch',
+    gap: Spacing.two,
+    padding: Spacing.three,
+    borderRadius: Radius.medium,
+    borderCurve: 'continuous',
+    backgroundColor: 'rgba(255, 255, 255, 0.14)',
+  },
+  faceMatchHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  scoreTrack: { height: 6, borderRadius: 3, backgroundColor: 'rgba(255, 255, 255, 0.25)' },
+  scoreFill: { height: 6, borderRadius: 3, backgroundColor: '#ffffff' },
+  scoreTick: { position: 'absolute', top: -3, width: 2, height: 12, borderRadius: 1, backgroundColor: '#ffffff' },
   section: { gap: Spacing.two },
   sectionLabel: {
     textTransform: 'uppercase',

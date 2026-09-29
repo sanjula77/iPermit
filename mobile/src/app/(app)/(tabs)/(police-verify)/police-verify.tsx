@@ -17,6 +17,7 @@ import { TextField } from '@/components/text-field';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { identificationParams, matchPercent, type Identification } from '@/lib/face-match';
 import { takePhoto } from '@/lib/file-upload';
 import type { DriverSummary, FaceMatchCandidate } from '@/types/police';
 
@@ -65,11 +66,14 @@ export default function PoliceVerifyScreen() {
     setUncertainCandidates(null);
   }
 
-  function openDriver(driver: DriverSummary) {
+  function openDriver(driver: DriverSummary, identification: Identification) {
     // Candidate summaries go stale once the officer acts on the driver (e.g.
     // records a violation), so don't leave them to be reopened on return.
     setUncertainCandidates(null);
-    router.push({ pathname: '/(app)/police-driver', params: { driver: JSON.stringify(driver) } });
+    router.push({
+      pathname: '/(app)/police-driver',
+      params: { driver: JSON.stringify(driver), ...identificationParams(identification) },
+    });
   }
 
   async function run(task: () => Promise<void>) {
@@ -96,7 +100,11 @@ export default function PoliceVerifyScreen() {
       // A single confident match goes straight to the driver -- REQ-6 AC4 only
       // requires officer-in-the-loop confirmation when the match is uncertain.
       if (!result.requires_manual_confirmation && result.best_match) {
-        openDriver(result.best_match.driver);
+        openDriver(result.best_match.driver, {
+          method: 'face',
+          similarity: result.best_match.similarity,
+          confirmedByOfficer: false,
+        });
       } else {
         setUncertainCandidates(result.candidates);
       }
@@ -104,12 +112,14 @@ export default function PoliceVerifyScreen() {
   }
 
   function handleQrToken(qrToken: string) {
-    run(async () => openDriver(await verifyQr(qrToken)));
+    run(async () => openDriver(await verifyQr(qrToken), { method: 'qr' }));
   }
 
   function handleLookup(nic: string, licenseNo: string) {
     run(async () =>
-      openDriver(await lookupDriver({ nic: nic || undefined, licenseNo: licenseNo || undefined })),
+      openDriver(await lookupDriver({ nic: nic || undefined, licenseNo: licenseNo || undefined }), {
+        method: 'lookup',
+      }),
     );
   }
 
@@ -144,7 +154,16 @@ export default function PoliceVerifyScreen() {
               {uncertainCandidates.map((candidate, i) => (
                 <Fragment key={candidate.driver.driver_id}>
                   {i > 0 ? <ListSeparator /> : null}
-                  <CandidateRow candidate={candidate} onPress={() => openDriver(candidate.driver)} />
+                  <CandidateRow
+                    candidate={candidate}
+                    onPress={() =>
+                      openDriver(candidate.driver, {
+                        method: 'face',
+                        similarity: candidate.similarity,
+                        confirmedByOfficer: true,
+                      })
+                    }
+                  />
                 </Fragment>
               ))}
             </Card>
@@ -160,8 +179,7 @@ export default function PoliceVerifyScreen() {
 function CandidateRow({ candidate, onPress }: { candidate: FaceMatchCandidate; onPress: () => void }) {
   const theme = useTheme();
   const { driver } = candidate;
-  // Cosine similarity can be negative for poor matches; show 0-100%.
-  const match = `${Math.round(Math.min(Math.max(candidate.similarity, 0), 1) * 100)}% match`;
+  const match = `${matchPercent(candidate.similarity)}% match`;
 
   const status = driver.license_status
     ? driver.license_status === 'ACTIVE'

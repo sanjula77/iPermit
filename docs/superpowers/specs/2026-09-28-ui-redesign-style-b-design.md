@@ -232,6 +232,20 @@ Dark mode must remain legible: a deeper navy hero, dark-grey cards, and tone pai
 defined for both schemes. It isn't polished screen by screen (as agreed in the
 2026-09-26 redesign spec).
 
+### As built in batch 1 (2026-09-29)
+
+- No `surface` token: light `background` is the `#F4F6FA` canvas and light
+  `backgroundElement` is `#FFFFFF`, so every card and tile floats white.
+- Tone pairs weren't added; `tint()` from Phase 1 already derives soft backgrounds.
+- Only `display` was added to typography; `title`/`subtitle` are retuned in the
+  batches that restyle their screens.
+- `PressableScale` has no ripple and no haptic prop (expo-animation skill: same scale
+  on both platforms; haptics only at commit points). List rows keep an opacity
+  highlight.
+- The skeleton is used on the Fines list only so far; the segmented-control slide and
+  badge-change animations move to batch 4.
+- iOS large titles are off: the compact blue bar replaces them.
+
 ## Phase 2 batches (phone check after each)
 
 1. **Foundation + Fines/fine detail.**

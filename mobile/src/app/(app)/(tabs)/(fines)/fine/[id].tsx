@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { Fragment, useRef, useState } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
@@ -17,7 +18,7 @@ import { TextField } from '@/components/text-field';
 import { ThemedText } from '@/components/themed-text';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { Spacing } from '@/constants/theme';
-import { VIOLATION_ICON, VIOLATION_LABEL } from '@/constants/violations';
+import { VIOLATION_COLOR, VIOLATION_ICON, VIOLATION_LABEL } from '@/constants/violations';
 import { useMyFines } from '@/hooks/use-my-fines';
 import { useTheme } from '@/hooks/use-theme';
 import {
@@ -93,11 +94,14 @@ function FineDetail({
     setIsSubmitting(true);
     try {
       const message = await task();
+      // Same moment the success banner appears; one haptic per committed action.
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setAction(null);
       setResolved(true);
       setNotice(message);
       await onChanged();
     } catch (err) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       setError(extractErrorMessage(err));
     } finally {
       submittingRef.current = false;
@@ -150,14 +154,20 @@ function FineDetail({
 
   return (
     <>
-      <View style={styles.hero}>
-        <IconTile icon={VIOLATION_ICON[fine.violation.type]} color={theme.text} size={64} />
-        <ThemedText type="subtitle">{label}</ThemedText>
-        <ThemedText type="title" style={styles.tabular}>
+      <Card variant="raised" style={styles.summary}>
+        <IconTile
+          icon={VIOLATION_ICON[fine.violation.type]}
+          color={theme[VIOLATION_COLOR[fine.violation.type]]}
+          size={56}
+        />
+        <ThemedText type="subtitle" style={styles.centered}>
+          {label}
+        </ThemedText>
+        <ThemedText type="display" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
           {formatLkr(fine.amount)}
         </ThemedText>
         <StatusBadge testID="fine-detail-status" tone={badge.tone} icon={badge.icon} label={badge.label} />
-      </View>
+      </Card>
 
       {notice ? <Banner tone="success" text={notice} testID="fine-notice" /> : null}
 
@@ -214,7 +224,7 @@ function FineDetail({
                 {isSubmitting ? 'Paying…' : `Pay ${formatLkr(fine.amount)}`}
               </ThemedText>
             </Button>
-            <Button variant="secondary" onPress={() => setAction(null)} disabled={isSubmitting}>
+            <Button variant="ghost" onPress={() => setAction(null)} disabled={isSubmitting}>
               <ThemedText type="smallBold">Cancel</ThemedText>
             </Button>
           </View>
@@ -235,7 +245,7 @@ function FineDetail({
                 {isSubmitting ? 'Submitting…' : 'Submit appeal'}
               </ThemedText>
             </Button>
-            <Button variant="secondary" onPress={() => setAction(null)} disabled={isSubmitting}>
+            <Button variant="ghost" onPress={() => setAction(null)} disabled={isSubmitting}>
               <ThemedText type="smallBold">Cancel</ThemedText>
             </Button>
           </View>
@@ -282,11 +292,8 @@ function DetailRows({ rows }: { rows: [string, string][] }) {
 }
 
 const styles = StyleSheet.create({
-  hero: {
-    alignItems: 'center',
-    gap: Spacing.two,
-  },
-  tabular: { fontVariant: ['tabular-nums'] },
+  summary: { alignItems: 'center', gap: Spacing.two, padding: Spacing.four },
+  centered: { textAlign: 'center' },
   section: { gap: Spacing.two },
   sectionLabel: {
     textTransform: 'uppercase',

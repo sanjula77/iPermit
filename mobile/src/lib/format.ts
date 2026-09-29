@@ -10,6 +10,15 @@ export function formatDate(iso: string): string {
   return `${date.getDate()} ${MONTHS[date.getMonth()]} ${date.getFullYear()}`;
 }
 
+// "26 Sep" for list rows; the year only when it isn't the current one
+// ("31 Dec 2025"). "—" for a missing or unparseable timestamp.
+export function formatDateShort(iso: string, now: Date = new Date()): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '—';
+  const dayMonth = `${date.getDate()} ${MONTHS[date.getMonth()]}`;
+  return date.getFullYear() === now.getFullYear() ? dayMonth : `${dayMonth} ${date.getFullYear()}`;
+}
+
 // "LKR 10,000". The no-break space (U+00A0) keeps "LKR" and the number on one
 // line, and the grouping is fixed rather than locale-dependent. "—" for a
 // missing (non-finite) amount, matching formatDate.

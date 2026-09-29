@@ -1,12 +1,20 @@
 import { Redirect, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import * as SystemUI from 'expo-system-ui';
+import { useEffect } from 'react';
 import { ActivityIndicator } from 'react-native';
 
 import { ThemedView } from '@/components/themed-view';
 import { useAuth } from '@/context/auth-context';
+import { useTheme } from '@/hooks/use-theme';
 
 export default function AuthLayout() {
   const { user, isLoading } = useAuth();
+  const theme = useTheme();
+  // Same window colour as the signed-in area (see app/(app)/_layout.tsx).
+  useEffect(() => {
+    SystemUI.setBackgroundColorAsync(theme.brandDeep).catch(() => {});
+  }, [theme.brandDeep]);
 
   if (isLoading) {
     return (

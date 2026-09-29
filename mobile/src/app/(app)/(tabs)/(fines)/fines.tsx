@@ -1,4 +1,3 @@
-import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { RefreshControl, StyleSheet, View } from 'react-native';
@@ -12,7 +11,6 @@ import { IconTile } from '@/components/icon-tile';
 import { ListRow } from '@/components/list-row';
 import { ScreenState } from '@/components/screen-state';
 import { Skeleton } from '@/components/skeleton';
-import { StatTile } from '@/components/stat-tile';
 import { StatusBadge } from '@/components/status-badge';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
@@ -21,7 +19,7 @@ import { useMyFines } from '@/hooks/use-my-fines';
 import { useTheme } from '@/hooks/use-theme';
 import { appealForFine, fineBadge } from '@/lib/fine-status';
 import { summarizeFines, type FineSummary } from '@/lib/fine-summary';
-import { formatDate, formatLkr } from '@/lib/format';
+import { formatDate, formatDateShort, formatLkr } from '@/lib/format';
 import type { Appeal, FineWithViolation } from '@/types/fine';
 
 export default function FinesScreen() {
@@ -44,12 +42,6 @@ export default function FinesScreen() {
   return (
     <HeroScreen
       title="Fines"
-      summary="Track, pay and appeal your traffic fines"
-      accessory={
-        <View style={styles.badge}>
-          <Ionicons name="receipt-outline" size={24} color={theme.onBrand} />
-        </View>
-      }
       testID="fines-screen"
       refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[theme.brand]} tintColor={theme.onBrand} />
@@ -126,8 +118,8 @@ function BalanceFigure({ amount }: { amount: number }) {
       accessible
       accessibilityLabel={`Outstanding balance ${formatted}`}
     >
-      <ThemedText type="smallBold" themeColor="onBrand" style={styles.eyebrow}>
-        OUTSTANDING BALANCE
+      <ThemedText type="small" themeColor="onBrand" style={styles.eyebrow}>
+        Outstanding balance
       </ThemedText>
       <View style={styles.amountRow}>
         {currency ? (
@@ -146,6 +138,25 @@ function BalanceFigure({ amount }: { amount: number }) {
           {figure}
         </ThemedText>
       </View>
+    </View>
+  );
+}
+
+function Stat({ label, value, testID }: { label: string; value: string; testID?: string }) {
+  return (
+    <View style={styles.stat} testID={testID} accessible accessibilityLabel={`${label}: ${value}`}>
+      <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+        {label}
+      </ThemedText>
+      <ThemedText
+        type="smallBold"
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.6}
+        style={styles.statValue}
+      >
+        {value}
+      </ThemedText>
     </View>
   );
 }
@@ -173,15 +184,18 @@ function FinesContent({
   appeals: Appeal[];
   summary: FineSummary;
 }) {
+  const theme = useTheme();
   const unpaid = fines.filter((f) => f.status === 'UNPAID');
   const history = fines.filter((f) => f.status !== 'UNPAID');
 
   return (
     <>
-      <View style={styles.stats}>
-        <StatTile label="Paid this year" value={formatLkr(summary.paidThisYear)} testID="fines-paid-this-year" />
-        <StatTile label="Fines this year" value={String(summary.finesThisYear)} testID="fines-this-year" />
-      </View>
+      {/* Both yearly figures in one slim card over the hero's edge. */}
+      <Card variant="raised" style={[styles.statsCard, styles.overlap]}>
+        <Stat label="Paid this year" value={formatLkr(summary.paidThisYear)} testID="fines-paid-this-year" />
+        <View style={[styles.statDivider, { backgroundColor: theme.backgroundSelected }]} />
+        <Stat label="Fines this year" value={String(summary.finesThisYear)} testID="fines-this-year" />
+      </Card>
 
       <FineSection title="Unpaid" fines={unpaid} appeals={appeals} startIndex={0} />
       <FineSection title="History" fines={history} appeals={appeals} startIndex={unpaid.length} />
@@ -236,7 +250,7 @@ function FineRow({ fine, appeal }: { fine: FineWithViolation; appeal: Appeal | n
       leading={<IconTile icon={VIOLATION_ICON[fine.violation.type]} color={theme[VIOLATION_COLOR[fine.violation.type]]} />}
       title={label}
       value={formatLkr(fine.amount)}
-      meta={`${formatDate(fine.violation.confirmed_at)} · ${points} pts`}
+      meta={`${formatDateShort(fine.violation.confirmed_at)} · ${points} pts`}
       badge={
         showBadge ? (
           <StatusBadge testID={`fine-status-${fine.id}`} tone={badge.tone} icon={badge.icon} label={badge.label} />
@@ -248,20 +262,11 @@ function FineRow({ fine, appeal }: { fine: FineWithViolation; appeal: Appeal | n
 }
 
 const styles = StyleSheet.create({
-  badge: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    // Translucent white: only used on the brand gradient.
-    backgroundColor: 'rgba(255, 255, 255, 0.18)',
-  },
   balance: { gap: Spacing.half, alignSelf: 'stretch' },
-  eyebrow: { fontSize: 12, letterSpacing: 1.2, opacity: 0.8 },
+  eyebrow: { opacity: 0.85 },
   amountRow: { flexDirection: 'row', alignItems: 'baseline', gap: Spacing.two },
   currency: { opacity: 0.85, fontWeight: 600 },
-  figure: { flexShrink: 1, fontSize: 44, lineHeight: 52, letterSpacing: -0.5 },
+  figure: { flexShrink: 1, fontSize: 40, lineHeight: 46, letterSpacing: -0.5 },
   heroFooter: {
     alignSelf: 'stretch',
     flexDirection: 'row',
@@ -276,6 +281,12 @@ const styles = StyleSheet.create({
   onHero: { backgroundColor: 'rgba(255, 255, 255, 0.25)' },
   skeleton: { gap: Spacing.three },
   stats: { flexDirection: 'row', gap: Spacing.three },
+  statsCard: { flexDirection: 'row', alignItems: 'center', paddingVertical: Spacing.three, paddingHorizontal: Spacing.four },
+  stat: { flex: 1, minWidth: 0, gap: Spacing.half },
+  statValue: { fontSize: 18, lineHeight: 24, fontVariant: ['tabular-nums'] },
+  statDivider: { width: StyleSheet.hairlineWidth, alignSelf: 'stretch', marginHorizontal: Spacing.three },
+  // Lifts the first card over the hero's lower edge.
+  overlap: { marginTop: -(Spacing.four + Spacing.three) },
   flex: { flex: 1 },
   rowCard: { paddingVertical: 0 },
   section: { gap: Spacing.two },

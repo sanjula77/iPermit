@@ -9,10 +9,9 @@ import { Banner } from '@/components/banner';
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
 import { EmptyState } from '@/components/empty-state';
-import { HeroChip, HeroScreen } from '@/components/hero-screen';
+import { HeroScreen } from '@/components/hero-screen';
 import { IconTile } from '@/components/icon-tile';
 import { ListRow, ListSeparator } from '@/components/list-row';
-import { ProgressBar } from '@/components/progress-bar';
 import { TextField } from '@/components/text-field';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -27,7 +26,7 @@ import {
 } from '@/constants/violations';
 import { useTheme } from '@/hooks/use-theme';
 import { matchPercent, parseIdentification, type Identification } from '@/lib/face-match';
-import { formatDate, formatLkr } from '@/lib/format';
+import { formatDateShort, formatLkr } from '@/lib/format';
 import { SUSPENSION_POINTS, pointsColorKey } from '@/lib/points';
 import type { DriverSummary, ViolationType } from '@/types/police';
 
@@ -148,6 +147,11 @@ function DriverDetails({
     ]);
   }
 
+  const statusShort = !hasLicense ? 'No license' : driver.license_status === 'ACTIVE' ? 'Active' : 'Suspended';
+  const statusLabel = !hasLicense ? 'No license issued' : `License ${statusShort.toLowerCase()}`;
+  const statusColor = !hasLicense || driver.license_status !== 'ACTIVE' ? theme.danger : theme.success;
+  const statusIcon = !hasLicense ? 'alert-circle' : driver.license_status === 'ACTIVE' ? 'checkmark-circle' : 'ban';
+
   return (
     <HeroScreen
       ref={scrollRef}
@@ -158,61 +162,60 @@ function DriverDetails({
         <>
           <View style={styles.identity}>
             <View style={styles.avatar}>
-              <Ionicons name="person" size={28} color={theme.onBrand} />
+              <ThemedText type="subtitle" themeColor="onBrand">
+                {driver.email.charAt(0).toUpperCase()}
+              </ThemedText>
             </View>
             <View style={styles.flex}>
-              <ThemedText
-                type="subtitle"
-                themeColor="onBrand"
-                selectable
-                numberOfLines={1}
-                adjustsFontSizeToFit
-                minimumFontScale={0.5}
-              >
+              <ThemedText themeColor="onBrand" selectable numberOfLines={1} style={styles.bold}>
                 {driver.email}
               </ThemedText>
-              <ThemedText type="small" themeColor="onBrand" selectable style={styles.dim}>
+              <ThemedText type="small" themeColor="onBrand" selectable numberOfLines={1} style={styles.dim}>
                 NIC {driver.nic}
-                {hasLicense ? ` · ${driver.license_no}` : ''}
+              </ThemedText>
+            </View>
+            {/* The result an officer needs first, at a glance. */}
+            <View
+              testID="driver-license-status"
+              accessible
+              accessibilityLabel={statusLabel}
+              style={[styles.status, { backgroundColor: statusColor }]}
+            >
+              <Ionicons name={statusIcon} size={14} color="#ffffff" />
+              <ThemedText type="smallBold" style={styles.statusText}>
+                {statusShort}
               </ThemedText>
             </View>
           </View>
-          {/* The result an officer needs first, at a glance. */}
-          <HeroChip
-            large
-            testID="driver-license-status"
-            icon={!hasLicense ? 'alert-circle' : driver.license_status === 'ACTIVE' ? 'checkmark-circle' : 'ban'}
-            label={!hasLicense ? 'No license' : `License ${driver.license_status === 'ACTIVE' ? 'active' : 'suspended'}`}
-          />
-          {identification ? <IdentificationNote identification={identification} /> : null}
+          <View style={styles.pills}>
+            {identification ? <IdentificationPill identification={identification} /> : null}
+            {hasLicense ? (
+              <View
+                style={styles.pill}
+                accessible
+                accessibilityLabel={`Demerit points, ${points} of ${SUSPENSION_POINTS}`}
+              >
+                <View style={styles.pillLabel}>
+                  {/* Green / amber / red as points near the suspension limit. */}
+                  <View style={[styles.pointsDot, { backgroundColor: theme[pointsColorKey(points)] }]} />
+                  <ThemedText type="small" themeColor="onBrand" style={styles.dim}>
+                    Points
+                  </ThemedText>
+                </View>
+                <ThemedText themeColor="onBrand" style={[styles.pillValue, styles.tabular]}>
+                  {points}/{SUSPENSION_POINTS}
+                </ThemedText>
+              </View>
+            ) : null}
+          </View>
         </>
       }
     >
-      {hasLicense ? (
-        <Card variant="raised" style={[styles.pointsCard, styles.overlap]}>
-          <View
-            style={styles.pointsBlock}
-            accessible
-            accessibilityRole="progressbar"
-            accessibilityLabel={`Demerit points, ${points} of ${SUSPENSION_POINTS}`}
-            accessibilityValue={{ min: 0, max: SUSPENSION_POINTS, now: Math.min(points, SUSPENSION_POINTS) }}
-          >
-            <View style={styles.spread}>
-              <ThemedText type="small" themeColor="textSecondary">
-                Demerit points
-              </ThemedText>
-              <ThemedText type="smallBold" style={styles.tabular}>
-                {points} / {SUSPENSION_POINTS}
-              </ThemedText>
-            </View>
-            <ProgressBar value={points} max={SUSPENSION_POINTS} color={theme[pointsColorKey(points)]} />
-          </View>
-        </Card>
-      ) : (
+      {!hasLicense ? (
         <View style={styles.overlap}>
           <Banner tone="danger" text="No license issued. A violation cannot be recorded." />
         </View>
-      )}
+      ) : null}
 
       {notice ? (
         <Banner
@@ -223,40 +226,48 @@ function DriverDetails({
       ) : null}
 
       {hasLicense ? (
-        <View style={styles.section}>
-          <SectionLabel text="Record a violation" />
-          <View style={styles.typeGrid} accessibilityRole="radiogroup">
-            {VIOLATION_TYPES.map((type) => {
+        <Card variant="raised" style={[styles.recordCard, notice ? null : styles.overlap]}>
+          <ThemedText type="smallBold" accessibilityRole="header">
+            Record a violation
+          </ThemedText>
+          <View accessibilityRole="radiogroup">
+            {VIOLATION_TYPES.map((type, i) => {
               const selected = violationType === type;
+              const color = theme[VIOLATION_COLOR[type]];
               return (
-                <Pressable
-                  key={type}
-                  onPress={() => setViolationType(type)}
-                  accessibilityRole="radio"
-                  accessibilityState={{ checked: selected }}
-                  accessibilityLabel={`${VIOLATION_LABEL[type]}, ${VIOLATION_POINTS[type]} points, ${formatLkr(VIOLATION_FINE[type])}`}
-                  testID={`violation-type-${type}`}
-                  style={({ pressed }) => [
-                    styles.typeTile,
-                    {
-                      backgroundColor: selected ? tint(theme.danger, 'subtle') : theme.backgroundElement,
-                      borderColor: selected ? theme.danger : 'transparent',
-                      opacity: pressed ? 0.7 : 1,
-                    },
-                  ]}
-                >
-                  <Ionicons name={VIOLATION_ICON[type]} size={22} color={selected ? theme.danger : theme.text} />
-                  <ThemedText type="smallBold" themeColor={selected ? 'danger' : 'text'} numberOfLines={2}>
-                    {VIOLATION_LABEL[type]}
-                  </ThemedText>
-                  {/* Points and fine on separate lines, so "LKR" never splits from its amount. */}
-                  <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
-                    {VIOLATION_POINTS[type]} pts
-                  </ThemedText>
-                  <ThemedText type="small" themeColor="textSecondary" numberOfLines={1} style={styles.tabular}>
-                    {formatLkr(VIOLATION_FINE[type])}
-                  </ThemedText>
-                </Pressable>
+                <Fragment key={type}>
+                  {i > 0 ? <ListSeparator /> : null}
+                  <Pressable
+                    onPress={() => setViolationType(type)}
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked: selected }}
+                    accessibilityLabel={`${VIOLATION_LABEL[type]}, ${VIOLATION_POINTS[type]} points, ${formatLkr(VIOLATION_FINE[type])}`}
+                    testID={`violation-type-${type}`}
+                    style={({ pressed }) => [
+                      styles.typeRow,
+                      selected && { backgroundColor: tint(theme.primary, 'subtle') },
+                      { opacity: pressed ? 0.6 : 1 },
+                    ]}
+                  >
+                    <IconTile icon={VIOLATION_ICON[type]} color={color} size={36} />
+                    <View style={styles.flex}>
+                      <ThemedText type="smallBold" numberOfLines={1}>
+                        {VIOLATION_LABEL[type]}
+                      </ThemedText>
+                      <ThemedText type="small" themeColor="textSecondary">
+                        +{VIOLATION_POINTS[type]} pts
+                      </ThemedText>
+                    </View>
+                    <ThemedText type="smallBold" style={styles.tabular}>
+                      {formatLkr(VIOLATION_FINE[type])}
+                    </ThemedText>
+                    <Ionicons
+                      name={selected ? 'radio-button-on' : 'radio-button-off'}
+                      size={22}
+                      color={selected ? theme.primary : theme.textSecondary}
+                    />
+                  </Pressable>
+                </Fragment>
               );
             })}
           </View>
@@ -278,10 +289,11 @@ function DriverDetails({
               {isSubmitting ? 'Recording…' : 'Record violation'}
             </ThemedText>
           </Button>
-        </View>
+        </Card>
       ) : null}
+
       <View style={styles.section}>
-        <SectionLabel text="Violation history" />
+        <SectionLabel text={`History (${driver.violations.length})`} />
         {driver.violations.length === 0 ? (
           <Card>
             <ThemedText themeColor="textSecondary">No violations on record.</ThemedText>
@@ -294,7 +306,7 @@ function DriverDetails({
                 <ListRow
                   leading={<IconTile icon={VIOLATION_ICON[violation.type]} color={theme[VIOLATION_COLOR[violation.type]]} />}
                   title={VIOLATION_LABEL[violation.type]}
-                  meta={`${formatDate(violation.confirmed_at)} · ${violation.points_deducted} pts`}
+                  meta={`${formatDateShort(violation.confirmed_at)} · ${violation.points_deducted} pts`}
                   footer={
                     violation.evidence_ref ? (
                       <ThemedText type="small" themeColor="textSecondary" selectable>
@@ -308,48 +320,44 @@ function DriverDetails({
           </Card>
         )}
       </View>
-
     </HeroScreen>
   );
 }
 
-// How the driver was identified. For a face scan: the match score.
-function IdentificationNote({ identification }: { identification: Identification }) {
-  const theme = useTheme();
-  if (identification.method !== 'face') {
-    return (
-      <View style={styles.idRow} testID="driver-identification">
-        <Ionicons
-          name={identification.method === 'qr' ? 'qr-code-outline' : 'search-outline'}
-          size={16}
-          color={theme.onBrand}
-        />
-        <ThemedText type="small" themeColor="onBrand" style={styles.dim}>
-          {identification.method === 'qr' ? 'Verified by license QR' : 'Found by NIC / license number'}
-        </ThemedText>
-      </View>
-    );
-  }
-
-  const percent = matchPercent(identification.similarity);
+// A figure pill on the hero for how the driver was identified: the face-match
+// percentage after a scan, or the method for QR / lookup.
+function IdentificationPill({ identification }: { identification: Identification }) {
+  const label =
+    identification.method === 'face'
+      ? 'Face match'
+      : identification.method === 'qr'
+        ? 'Verified by'
+        : 'Found by';
+  const value =
+    identification.method === 'face'
+      ? `${matchPercent(identification.similarity)}%`
+      : identification.method === 'qr'
+        ? 'QR'
+        : 'NIC';
   return (
     <View
-      style={styles.faceMatch}
-      testID="driver-face-match"
+      style={styles.pill}
+      testID={identification.method === 'face' ? 'driver-face-match' : 'driver-identification'}
       accessible
-      accessibilityLabel={`Face match ${percent} percent`}
+      accessibilityLabel={
+        identification.method === 'face'
+          ? `Face match ${matchPercent(identification.similarity)} percent`
+          : identification.method === 'qr'
+            ? 'Verified by license QR'
+            : 'Found by NIC or license number'
+      }
     >
-      <View style={styles.faceMatchHeader}>
-        <View style={styles.idRow}>
-          <Ionicons name="scan-outline" size={16} color={theme.onBrand} />
-          <ThemedText type="smallBold" themeColor="onBrand">
-            Face match
-          </ThemedText>
-        </View>
-        <ThemedText type="subtitle" themeColor="onBrand" style={styles.tabular}>
-          {percent}%
-        </ThemedText>
-      </View>
+      <ThemedText type="small" themeColor="onBrand" style={styles.dim}>
+        {label}
+      </ThemedText>
+      <ThemedText themeColor="onBrand" style={[styles.pillValue, styles.tabular]}>
+        {value}
+      </ThemedText>
     </View>
   );
 }
@@ -368,37 +376,53 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   centered: { textAlign: 'center' },
   tabular: { fontVariant: ['tabular-nums'] },
-  spread: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: Spacing.two,
-  },
-  pointsBlock: { gap: Spacing.two },
-  pointsCard: { padding: Spacing.four },
   // The first card lifts over the hero's lower edge.
   overlap: { marginTop: -(Spacing.four + Spacing.three) },
   identity: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, alignSelf: 'stretch' },
   avatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.18)',
   },
   dim: { opacity: 0.85 },
-  idRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one },
-  // Translucent white panel on the brand hero.
-  faceMatch: {
-    alignSelf: 'stretch',
-    gap: Spacing.two,
-    padding: Spacing.three,
+  bold: { fontWeight: 700 },
+  status: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
+    paddingHorizontal: Spacing.two + Spacing.half,
+    paddingVertical: Spacing.one,
+    borderRadius: 999,
+  },
+  // White on the success/danger fill in both themes.
+  statusText: { color: '#ffffff' },
+  pills: { flexDirection: 'row', gap: Spacing.two, alignSelf: 'stretch' },
+  // Translucent white figure pills on the brand hero.
+  pill: {
+    flex: 1,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
     borderRadius: Radius.medium,
     borderCurve: 'continuous',
     backgroundColor: 'rgba(255, 255, 255, 0.14)',
   },
-  faceMatchHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  pillLabel: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one },
+  pointsDot: { width: 8, height: 8, borderRadius: 4, borderWidth: 1, borderColor: '#ffffff' },
+  pillValue: { fontSize: 20, lineHeight: 26, fontWeight: 700 },
+  recordCard: { padding: Spacing.three, gap: Spacing.three, borderRadius: Radius.large },
+  typeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+    minHeight: 60,
+    paddingHorizontal: Spacing.two,
+    borderRadius: Radius.small,
+    borderCurve: 'continuous',
+  },
+  // Translucent white panel on the brand hero.
   section: { gap: Spacing.two },
   sectionLabel: {
     textTransform: 'uppercase',
@@ -407,21 +431,5 @@ const styles = StyleSheet.create({
   list: {
     paddingVertical: 0,
     gap: 0,
-  },
-  typeGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.two,
-  },
-  typeTile: {
-    // Two columns: half the row minus half the gap.
-    flexBasis: '48%',
-    flexGrow: 1,
-    minWidth: 0,
-    gap: Spacing.one,
-    padding: Spacing.three,
-    borderWidth: 2,
-    borderRadius: Radius.small,
-    borderCurve: 'continuous',
   },
 });

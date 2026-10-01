@@ -9,12 +9,16 @@ violation detection from images/video, and manages a point-based penalty system 
 fines, appeals, and driver behavior analytics. The system serves three user types:
 **Drivers**, **Police Officers**, and **Administrators** (licensing department staff).
 
-**Status: nothing has been built yet.** This document defines the *target* system to
-build, based on the source thesis/proposal documents' most implementation-accurate
-descriptions (`METHODOLOGY.md.docx` and `FRONTEND_TOOLS_AND_TECHNOLOGIES.md.docx`),
-with the white-line violation detector included as an integrated core module per
-project decision. No code, trained models, or repos from those documents are
-available to reuse — every module described below is being built from scratch. Where
+**Status (2026-10-01): built, except REQ-7.** This document defines the *target* system,
+written before the build, based on the source thesis/proposal documents' most
+implementation-accurate descriptions (`METHODOLOGY.md.docx` and
+`FRONTEND_TOOLS_AND_TECHNOLOGIES.md.docx`). The prototype implements these requirements
+with the exceptions noted in the thesis (REQ-7 white-line detection deferred, REQ-13 AC5
+left out for privacy, push delivery unverified on a device); see
+[methodology.md](methodology.md) and
+[thesis Chapter 7](thesis/chapter-7-conclusion-and-recommendations.md). No code, trained
+models, or repos from the source documents were available to reuse — every module was
+built from scratch. Where
 earlier thesis drafts (Chapters 3/5) described a different stack or scope, that is
 noted as superseded — see [design.md § Architecture Decision Record](design.md#architecture-decision-record-adr).
 

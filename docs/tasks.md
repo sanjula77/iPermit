@@ -1,9 +1,14 @@
 # Implementation Plan — iPermit
 
-> Status: **nothing has been built yet.** This is a from-scratch build plan derived
-> from [requirements.md](requirements.md) and [design.md](design.md). Earlier drafts
-> of this file assumed an existing codebase (based on how the source thesis documents
-> were worded) — that assumption was wrong; every task below starts at zero.
+> Status (2026-10-01): **built.** This was the from-scratch build plan derived from
+> [requirements.md](requirements.md) and [design.md](design.md); phases 0-8 are
+> implemented and verified. Not done: automated white-line violation detection
+> (Phase 5.4/5.5, deferred — no labelled lane dataset or GPU), push-notification
+> delivery on a physical device, and a user acceptance study. Danger zones were
+> added after this plan was written. Task wording below is kept as originally
+> planned; see [methodology.md](methodology.md) and
+> [thesis/chapter-6-testing-and-evaluation.md](thesis/chapter-6-testing-and-evaluation.md)
+> for what was actually delivered and tested.
 
 ## Project Boundaries
 
@@ -600,6 +605,8 @@ TypeScript mobile app, Next.js + TypeScript admin web — per the [ADR](design.m
 
 ## What's Next
 
-Start with **Phase 0 (Project Scaffolding)** and **Phase 1 (Backend Foundation)** —
-every other phase depends on having a running backend with auth. See the next message
-for a concrete first-task breakdown.
+The build phases are complete. Remaining work, in priority order (see
+[thesis Chapter 7, TABLE 7.3](thesis/chapter-7-conclusion-and-recommendations.md)):
+validate the photo-quality gate and match threshold on Sri Lankan driver photos, add a
+recorded biometric consent step, run the user acceptance test, then add liveness
+detection and the white-line detector.

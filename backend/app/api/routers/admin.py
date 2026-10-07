@@ -1,17 +1,20 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db, require_role
 from app.models.appeal import AppealStatus
 from app.models.application import ApplicationStatus
 from app.models.user import User, UserRole
+from app.schemas.admin_user import AdminUserDetail, AdminUserListItem
 from app.schemas.appeal import AppealRead, ResolveAppealRequest
 from app.schemas.application import ApplicationRead, RejectApplicationRequest
 from app.schemas.badge import BadgeDistributionResponse
 from app.schemas.behaviour import AdminBehaviourOverview
 from app.services import (
+    admin_user_service,
     appeal_service,
     application_service,
     badge_service,
@@ -33,6 +36,22 @@ def list_applications(
     _admin: User = Depends(_admin_only),
 ):
     return application_service.list_applications_for_admin(db, status=status_filter)
+
+
+@router.get("/applications/{application_id}", response_model=ApplicationRead)
+def get_application(
+    application_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    _admin: User = Depends(_admin_only),
+):
+    try:
+        return application_service.get_application_for_admin(
+            db, application_id=application_id
+        )
+    except application_service.NotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
 
 
 @router.post("/applications/{application_id}/approve", response_model=ApplicationRead)
@@ -132,3 +151,75 @@ def get_behaviour_overview(
     _admin: User = Depends(_admin_only),
 ):
     return behaviour_service.get_admin_overview(db)
+
+
+@router.get(
+    "/applications/{application_id}/documents/{document_id}",
+    response_class=FileResponse,
+)
+def get_application_document(
+    application_id: uuid.UUID,
+    document_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    _admin: User = Depends(_admin_only),
+):
+    try:
+        path, media_type = application_service.get_document_file(
+            db, application_id=application_id, document_id=document_id
+        )
+    except application_service.NotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
+    # Identity documents and face photos: never cached by browsers or proxies.
+    return FileResponse(
+        path,
+        media_type=media_type,
+        headers={"Cache-Control": "private, no-store"},
+    )
+
+
+@router.get("/users", response_model=list[AdminUserListItem])
+def list_users(
+    role: UserRole | None = None,
+    db: Session = Depends(get_db),
+    _admin: User = Depends(_admin_only),
+):
+    return admin_user_service.list_users(db, role=role)
+
+
+@router.get("/users/{user_id}", response_model=AdminUserDetail)
+def get_user(
+    user_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    _admin: User = Depends(_admin_only),
+):
+    try:
+        return admin_user_service.get_user_detail(db, user_id)
+    except admin_user_service.NotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
+
+
+@router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_user(
+    user_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    admin: User = Depends(_admin_only),
+):
+    try:
+        admin_user_service.delete_user(db, user_id=user_id, acting_admin_id=admin.id)
+    except admin_user_service.NotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
+    except admin_user_service.ProtectedAccountError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)
+        ) from exc
+    except admin_user_service.HasRecordsError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail=str(exc)
+        ) from exc
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

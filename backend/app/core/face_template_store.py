@@ -84,3 +84,17 @@ def list_all_templates() -> list[tuple[int, str, np.ndarray]]:
         (rowid, driver_id, np.frombuffer(blob, dtype=np.float32))
         for rowid, driver_id, blob in rows
     ]
+
+
+def delete_template(driver_id: str) -> list[int]:
+    """Removes the driver's template (right to erasure for biometric data);
+    returns the SQLite rowids removed so the FAISS index can drop them."""
+    with _connect() as conn:
+        rowids = [
+            rowid
+            for (rowid,) in conn.execute(
+                "SELECT rowid FROM face_templates WHERE driver_id = ?", (driver_id,)
+            )
+        ]
+        conn.execute("DELETE FROM face_templates WHERE driver_id = ?", (driver_id,))
+    return rowids

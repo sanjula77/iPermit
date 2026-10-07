@@ -6,6 +6,14 @@ export async function listApplications(status?: ApplicationStatus): Promise<Appl
   return apiClient.get<Application[]>(`/admin/applications${query}`);
 }
 
+export async function getApplication(applicationId: string): Promise<Application> {
+  return apiClient.get<Application>(`/admin/applications/${applicationId}`);
+}
+
+export function documentPath(applicationId: string, documentId: string): string {
+  return `/admin/applications/${applicationId}/documents/${documentId}`;
+}
+
 export async function approveApplication(applicationId: string): Promise<Application> {
   return apiClient.post<Application>(`/admin/applications/${applicationId}/approve`);
 }

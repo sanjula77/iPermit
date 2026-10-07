@@ -122,3 +122,9 @@ def store_template(driver_id: str, embedding: np.ndarray) -> None:
     committed in Postgres -- see application_service.approve_application."""
     rowid, replaced_rowids = face_template_store.save_template(driver_id, embedding)
     face_index.add_to_index(rowid, embedding, replaced_rowids)
+
+
+def delete_template(driver_id: str) -> None:
+    """Deletes a driver's biometric template from SQLite and the FAISS index."""
+    rowids = face_template_store.delete_template(driver_id)
+    face_index.remove_from_index(rowids)

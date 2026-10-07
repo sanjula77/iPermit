@@ -176,6 +176,13 @@ def list_applications_for_driver(
     return application_repository.list_by_driver(db, driver_id)
 
 
+def get_application_for_admin(db: Session, *, application_id: uuid.UUID) -> Application:
+    application = application_repository.get_by_id(db, application_id)
+    if application is None:
+        raise NotFoundError("Application not found")
+    return application
+
+
 def list_applications_for_admin(
     db: Session, *, status: ApplicationStatus | None = None
 ) -> list[Application]:
@@ -264,3 +271,26 @@ def reject_application(
         message=f"Your license application was rejected: {reason.strip()}",
     )
     return application
+
+
+_MEDIA_TYPES = {
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+    ".pdf": "application/pdf",
+}
+
+
+def get_document_file(
+    db: Session, *, application_id: uuid.UUID, document_id: uuid.UUID
+) -> tuple[Path, str]:
+    """The stored file for one application document, for an administrator to
+    review. The path is resolved and must stay inside the upload directory."""
+    document = application_repository.get_document(db, application_id, document_id)
+    if document is None:
+        raise NotFoundError("Document not found")
+    base = Path(settings.upload_dir).resolve()
+    path = (base / document.file_path).resolve()
+    if base not in path.parents or not path.is_file():
+        raise NotFoundError("Document file not found")
+    return path, _MEDIA_TYPES.get(path.suffix.lower(), "application/octet-stream")

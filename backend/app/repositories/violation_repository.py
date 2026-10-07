@@ -92,3 +92,22 @@ def list_with_fine_status_all(
         .order_by(Violation.confirmed_at.desc())
     )
     return [(violation, status) for violation, status in db.execute(stmt)]
+
+
+def count_for_driver(db: Session, driver_id: uuid.UUID) -> int:
+    stmt = select(func.count(Violation.id)).where(Violation.driver_id == driver_id)
+    return db.scalar(stmt) or 0
+
+
+def count_per_driver(db: Session) -> dict[uuid.UUID, int]:
+    stmt = select(Violation.driver_id, func.count(Violation.id)).group_by(
+        Violation.driver_id
+    )
+    return {driver_id: count for driver_id, count in db.execute(stmt)}
+
+
+def count_per_officer(db: Session) -> dict[uuid.UUID, int]:
+    stmt = select(Violation.officer_id, func.count(Violation.id)).group_by(
+        Violation.officer_id
+    )
+    return {officer_id: count for officer_id, count in db.execute(stmt)}

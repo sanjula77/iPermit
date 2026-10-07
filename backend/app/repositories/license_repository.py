@@ -55,3 +55,8 @@ def list_all(db: Session) -> list[License]:
     """Every issued licence with its driver loaded (one licence per driver)."""
     stmt = select(License).options(joinedload(License.driver))
     return list(db.scalars(stmt))
+
+
+def delete_for_driver(db: Session, driver_id: uuid.UUID) -> None:
+    for license_ in db.scalars(select(License).where(License.driver_id == driver_id)):
+        db.delete(license_)

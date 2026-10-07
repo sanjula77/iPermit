@@ -78,3 +78,28 @@ def update_status(
     db.commit()
     db.refresh(application)
     return application
+
+
+def get_document(
+    db: Session, application_id: uuid.UUID, document_id: uuid.UUID
+) -> ApplicationDocument | None:
+    """A document only if it belongs to that application, so an id from one
+    application can never be used to read another's file."""
+    stmt = select(ApplicationDocument).where(
+        ApplicationDocument.id == document_id,
+        ApplicationDocument.application_id == application_id,
+    )
+    return db.scalar(stmt)
+
+
+def delete_for_driver(db: Session, driver_id: uuid.UUID) -> list[str]:
+    """Deletes the driver's applications (their documents go with them) without
+    committing; returns the stored file paths so the caller can remove the
+    files once the transaction has committed."""
+    applications = list(
+        db.scalars(select(Application).where(Application.driver_id == driver_id))
+    )
+    paths = [doc.file_path for app in applications for doc in app.documents]
+    for application in applications:
+        db.delete(application)
+    return paths

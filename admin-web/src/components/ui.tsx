@@ -213,11 +213,13 @@ export function Dialog({
   open,
   title,
   onClose,
+  size = 'md',
   children,
 }: {
   open: boolean;
   title: string;
   onClose: () => void;
+  size?: 'md' | 'xl';
   children: ReactNode;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
@@ -232,7 +234,7 @@ export function Dialog({
     <dialog
       ref={ref}
       onClose={onClose}
-      className="m-auto w-full max-w-md rounded-2xl bg-white p-0 shadow-raised backdrop:bg-gray-900/40"
+      className={`m-auto w-full rounded-2xl bg-white p-0 shadow-raised backdrop:bg-gray-900/40 ${size === 'xl' ? 'max-w-3xl' : 'max-w-md'}`}
     >
       <div className="p-6">
         <h2 className="text-lg font-semibold text-gray-900">{title}</h2>

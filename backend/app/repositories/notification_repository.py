@@ -54,3 +54,10 @@ def count_per_user_by_type(
         .group_by(Notification.user_id)
     )
     return {user_id: count for user_id, count in db.execute(stmt)}
+
+
+def delete_for_user(db: Session, user_id: uuid.UUID) -> None:
+    for notification in db.scalars(
+        select(Notification).where(Notification.user_id == user_id)
+    ):
+        db.delete(notification)

@@ -38,8 +38,24 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   return response.json();
 }
 
+// Authenticated file download (photos and documents need the bearer token, so
+// they can't be plain <img src> or <a href> links).
+export async function fetchBlob(path: string): Promise<Blob> {
+  const token = getToken();
+  const response = await fetch(`${API_URL}${path}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    const detail = body?.detail;
+    throw new ApiError(typeof detail === 'string' ? detail : `HTTP ${response.status}`, response.status, detail);
+  }
+  return response.blob();
+}
+
 export const apiClient = {
   get: <T>(path: string): Promise<T> => request<T>(path, { method: 'GET' }),
+  delete: <T = void>(path: string): Promise<T> => request<T>(path, { method: 'DELETE' }),
   post: <T>(path: string, body?: unknown): Promise<T> =>
     request<T>(path, {
       method: 'POST',

@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.models.license import License, LicenseStatus
 
@@ -49,3 +49,9 @@ def get_by_qr_token(db: Session, qr_token: str) -> License | None:
 
 def get_by_license_no(db: Session, license_no: str) -> License | None:
     return db.scalar(select(License).where(License.license_no == license_no))
+
+
+def list_all(db: Session) -> list[License]:
+    """Every issued licence with its driver loaded (one licence per driver)."""
+    stmt = select(License).options(joinedload(License.driver))
+    return list(db.scalars(stmt))

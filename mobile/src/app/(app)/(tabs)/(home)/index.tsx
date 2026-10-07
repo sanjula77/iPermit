@@ -4,10 +4,12 @@ import { useCallback, useEffect, useState } from 'react';
 import { Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 
 import { getMyBadge } from '@/api/badges';
+import { getMyBehaviour } from '@/api/behaviour';
 import { listApplications } from '@/api/applications';
 import { ApiError, extractErrorMessage } from '@/api/client';
 import { getMyLicense } from '@/api/licenses';
 import { getMyNotifications } from '@/api/notifications';
+import { BehaviourCard } from '@/components/behaviour-card';
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
 import { EmptyState } from '@/components/empty-state';
@@ -33,6 +35,7 @@ import { greeting } from '@/lib/greeting';
 import { relativeTime } from '@/lib/relative-time';
 import type { Application } from '@/types/application';
 import type { Badge } from '@/types/badge';
+import type { Behaviour } from '@/types/behaviour';
 import type { License } from '@/types/license';
 import type { AppNotification } from '@/types/notification';
 
@@ -67,6 +70,7 @@ function DriverHomeScreen() {
   const [license, setLicense] = useState<License | null | undefined>(undefined);
   const [licenseError, setLicenseError] = useState<string | null>(null);
   const [badge, setBadge] = useState<Badge | null>(null);
+  const [behaviour, setBehaviour] = useState<Behaviour | null>(null);
   const [recent, setRecent] = useState<AppNotification[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   // Fines reload on focus, so the outstanding tile reflects a payment just made.
@@ -107,6 +111,16 @@ function DriverHomeScreen() {
     }
   }, []);
 
+  const loadBehaviour = useCallback(async () => {
+    // Same tolerance as the badge: a courtesy summary, so a failure just
+    // leaves the card out (or the last good one in place).
+    try {
+      setBehaviour(await getMyBehaviour());
+    } catch {
+      // keep whatever was already there
+    }
+  }, []);
+
   const loadRecent = useCallback(async () => {
     // A courtesy preview of the Alerts tab: a failure just leaves it empty.
     try {
@@ -117,8 +131,8 @@ function DriverHomeScreen() {
   }, []);
 
   const loadAll = useCallback(
-    () => Promise.all([loadApplications(), loadLicense(), loadBadge(), loadRecent()]),
-    [loadApplications, loadLicense, loadBadge, loadRecent],
+    () => Promise.all([loadApplications(), loadLicense(), loadBadge(), loadBehaviour(), loadRecent()]),
+    [loadApplications, loadLicense, loadBadge, loadBehaviour, loadRecent],
   );
 
   useEffect(() => {
@@ -150,6 +164,7 @@ function DriverHomeScreen() {
           nic={user?.nic}
           applications={applications}
           badge={badge}
+          behaviour={behaviour}
           outstanding={outstanding}
           recent={recent}
           // While a retry/refresh is in flight, show the spinner instead of the
@@ -169,6 +184,7 @@ function DriverHomeContent({
   nic,
   applications,
   badge,
+  behaviour,
   outstanding,
   recent,
   error,
@@ -178,6 +194,7 @@ function DriverHomeContent({
   nic?: string;
   applications: Application[] | null;
   badge: Badge | null;
+  behaviour: Behaviour | null;
   outstanding: number | null;
   recent: AppNotification[];
   error: string | null;
@@ -212,6 +229,7 @@ function DriverHomeContent({
             />
           ) : null}
         </View>
+        {behaviour ? <BehaviourCard behaviour={behaviour} /> : null}
         <RecentAlerts items={recent} />
       </>
     );

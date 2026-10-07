@@ -1,6 +1,6 @@
 'use client';
 
-import { BadgeCheck, FileText, LogOut, Scale, ShieldCheck } from 'lucide-react';
+import { Activity, BadgeCheck, FileText, LogOut, Scale, ShieldCheck } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -17,6 +17,7 @@ const NAV_LINKS: NavItem[] = [
   { href: '/applications', label: 'Applications', icon: FileText, countKey: 'applications' },
   { href: '/appeals', label: 'Appeals', icon: Scale, countKey: 'appeals' },
   { href: '/badges', label: 'Badges', icon: BadgeCheck },
+  { href: '/behaviour', label: 'Behaviour', icon: Activity },
 ];
 
 // Pending work for the sidebar badges, refreshed on every page change so the

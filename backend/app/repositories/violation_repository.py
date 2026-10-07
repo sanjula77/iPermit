@@ -4,7 +4,7 @@ from datetime import datetime
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, joinedload
 
-from app.models.fine import Fine
+from app.models.fine import Fine, FineStatus
 from app.models.violation import Violation, ViolationType
 
 
@@ -65,3 +65,30 @@ def list_recent_for_officer(
         .limit(limit)
     )
     return [(violation, amount) for violation, amount in db.execute(stmt)]
+
+
+def list_with_fine_status_for_driver(
+    db: Session, driver_id: uuid.UUID
+) -> list[tuple[Violation, FineStatus | None]]:
+    """One driver's violations, newest first, each with its fine's status
+    (None if no fine row exists)."""
+    stmt = (
+        select(Violation, Fine.status)
+        .outerjoin(Fine, Fine.violation_id == Violation.id)
+        .where(Violation.driver_id == driver_id)
+        .order_by(Violation.confirmed_at.desc())
+    )
+    return [(violation, status) for violation, status in db.execute(stmt)]
+
+
+def list_with_fine_status_all(
+    db: Session,
+) -> list[tuple[Violation, FineStatus | None]]:
+    """Every violation with its fine's status, for the admin overview, which
+    groups them per driver in one query instead of one query per driver."""
+    stmt = (
+        select(Violation, Fine.status)
+        .outerjoin(Fine, Fine.violation_id == Violation.id)
+        .order_by(Violation.confirmed_at.desc())
+    )
+    return [(violation, status) for violation, status in db.execute(stmt)]

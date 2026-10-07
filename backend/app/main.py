@@ -10,6 +10,7 @@ from app.api.routers import (
     applications,
     auth,
     badges,
+    behaviour,
     danger_zones,
     face,
     fines,
@@ -42,6 +43,7 @@ app.include_router(police.router)
 app.include_router(fines.router)
 app.include_router(appeals.router)
 app.include_router(badges.router)
+app.include_router(behaviour.router)
 app.include_router(notifications.router)
 app.include_router(road_incidents.router)
 app.include_router(danger_zones.router)

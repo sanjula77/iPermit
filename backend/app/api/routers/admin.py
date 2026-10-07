@@ -10,7 +10,13 @@ from app.models.user import User, UserRole
 from app.schemas.appeal import AppealRead, ResolveAppealRequest
 from app.schemas.application import ApplicationRead, RejectApplicationRequest
 from app.schemas.badge import BadgeDistributionResponse
-from app.services import appeal_service, application_service, badge_service
+from app.schemas.behaviour import AdminBehaviourOverview
+from app.services import (
+    appeal_service,
+    application_service,
+    badge_service,
+    behaviour_service,
+)
 from app.services.face_service import FaceEnrollmentError
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -118,3 +124,11 @@ def get_badge_distribution(
     _admin: User = Depends(_admin_only),
 ):
     return badge_service.get_badge_distribution(db)
+
+
+@router.get("/behaviour", response_model=AdminBehaviourOverview)
+def get_behaviour_overview(
+    db: Session = Depends(get_db),
+    _admin: User = Depends(_admin_only),
+):
+    return behaviour_service.get_admin_overview(db)

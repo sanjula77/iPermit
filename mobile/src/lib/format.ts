@@ -29,3 +29,11 @@ export function formatLkr(amount: number): string {
     .replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   return `LKR\u00A0${grouped}`;
 }
+
+// "12 / 2031" -- the month and year a card expires, as printed on a physical
+// card. "—" for a missing or unparseable timestamp.
+export function formatMonthYear(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '—';
+  return `${String(date.getMonth() + 1).padStart(2, '0')} / ${date.getFullYear()}`;
+}

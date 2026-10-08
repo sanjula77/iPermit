@@ -1,4 +1,4 @@
-import type { LicenseStatus } from '@/types/license';
+import type { LicenseCategory, LicenseStatus } from '@/types/license';
 
 export type ViolationType = 'WHITE_LINE' | 'SPEEDING' | 'RED_LIGHT' | 'DRUNK_DRIVING';
 export type FineStatus = 'UNPAID' | 'PAID' | 'REVERSED';
@@ -25,6 +25,7 @@ export interface DriverSummary {
   nic: string;
   license_no: string | null;
   license_status: LicenseStatus | null;
+  categories: LicenseCategory[];
   points: number | null;
   violations: ViolationRead[];
 }

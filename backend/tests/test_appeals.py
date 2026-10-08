@@ -249,7 +249,9 @@ def test_admin_upholds_appeal_leaves_fine_unpaid_and_points_unchanged(
     assert pay_response.status_code == 200
 
 
-def test_admin_overturns_appeal_reverses_fine_and_restores_points(client, db_session):
+def test_admin_overturns_appeal_reverses_fine_and_removes_its_points(
+    client, db_session
+):
     ctx = _setup_driver_with_fine(client, db_session)
     appeal = client.post(
         "/appeals",

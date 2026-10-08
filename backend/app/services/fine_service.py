@@ -6,9 +6,8 @@ from sqlalchemy.orm import Session
 from app.models.appeal import AppealStatus
 from app.models.fine import Fine, FineStatus, PaymentMethod
 from app.models.notification import NotificationType
-from app.repositories import appeal_repository, fine_repository
-from app.services import badge_service, notification_service
-from app.services.violation_service import restore_points_for_violation
+from app.repositories import appeal_repository, fine_repository, license_repository
+from app.services import badge_service, notification_service, points_service
 
 
 class NotFoundError(Exception):
@@ -33,9 +32,9 @@ def pay_fine(
     payment_method: PaymentMethod,
 ):
     """REQ-9 AC3/AC4: a mock payment -- no real processor is involved, only
-    the UX selection of card/bank/wallet. Marks the fine PAID and restores
-    the associated violation's points in the same transaction (design.md:
-    "no partial updates")."""
+    the UX selection of card/bank/wallet. Marks the fine PAID. Paying does NOT
+    give the violation's points back: they count for the full validity period
+    (see app.core.points), otherwise a driver could offend, pay, and start again."""
     fine = fine_repository.get_by_id(db, fine_id)
     if fine is None or fine.violation.driver_id != driver_id:
         raise NotFoundError("No such fine")
@@ -51,7 +50,10 @@ def pay_fine(
     fine.paid_at = datetime.utcnow()
     fine.payment_method = payment_method
 
-    license_ = restore_points_for_violation(db, fine.violation)
+    # No change to points; this only brings the licence up to date (old points
+    # may have expired since it was last read) and fetches it for the response.
+    license_ = license_repository.get_latest_for_driver(db, driver_id)
+    points_service.recompute(db, license_)
 
     db.commit()
     db.refresh(fine)

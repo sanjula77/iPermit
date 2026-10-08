@@ -1,14 +1,13 @@
 'use client';
 
-import { Check, CheckCircle2, Clock, FileText, Images, X, XCircle } from 'lucide-react';
+import { CheckCircle2, Clock, Eye, FileText, Images, XCircle } from 'lucide-react';
+import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 
 import {
   Alert,
   Avatar,
-  Button,
   Card,
-  Dialog,
   EmptyState,
   FilterTabs,
   PageHeader,
@@ -36,12 +35,6 @@ export default function ApplicationsPage() {
   // counts stay right whichever tab is open.
   const [applications, setApplications] = useState<Application[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [rejecting, setRejecting] = useState<Application | null>(null);
-  const [rejectReason, setRejectReason] = useState('');
-  const [actionError, setActionError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [pendingActionId, setPendingActionId] = useState<string | null>(null);
-
   const load = useCallback(async () => {
     setLoadError(null);
     try {
@@ -59,43 +52,6 @@ export default function ApplicationsPage() {
 
   const count = (status: ApplicationStatus) => (applications ?? []).filter((a) => a.status === status).length;
   const visible = (applications ?? []).filter((a) => filter === 'ALL' || a.status === filter);
-
-  async function handleApprove(application: Application) {
-    setActionError(null);
-    setNotice(null);
-    setPendingActionId(application.id);
-    try {
-      await applicationsApi.approveApplication(application.id);
-      setNotice(`Approved ${application.driver.email}. Their digital licence has been issued.`);
-      await load();
-    } catch (err) {
-      setActionError(extractErrorMessage(err));
-    } finally {
-      setPendingActionId(null);
-    }
-  }
-
-  async function handleReject() {
-    if (!rejecting) return;
-    if (!rejectReason.trim()) {
-      setActionError('A rejection reason is required.');
-      return;
-    }
-    setActionError(null);
-    setNotice(null);
-    setPendingActionId(rejecting.id);
-    try {
-      await applicationsApi.rejectApplication(rejecting.id, rejectReason.trim());
-      setNotice(`Rejected ${rejecting.driver.email}'s application.`);
-      setRejecting(null);
-      setRejectReason('');
-      await load();
-    } catch (err) {
-      setActionError(extractErrorMessage(err));
-    } finally {
-      setPendingActionId(null);
-    }
-  }
 
   return (
     <>
@@ -117,9 +73,6 @@ export default function ApplicationsPage() {
           { label: 'All', value: 'ALL', count: applications?.length },
         ]}
       />
-
-      {notice ? <Alert tone="green">{notice}</Alert> : null}
-      {actionError && !rejecting ? <Alert tone="red" testId="action-error">{actionError}</Alert> : null}
 
       <Card className="overflow-hidden">
         {loadError ? (
@@ -153,7 +106,6 @@ export default function ApplicationsPage() {
                 {visible.map((application) => {
                   const photos = application.documents.filter((d) => d.doc_type === 'FACE_PHOTO').length;
                   const docs = application.documents.length - photos;
-                  const busy = pendingActionId === application.id;
                   return (
                     <tr key={application.id} className="align-top hover:bg-gray-50/60" data-testid={`application-row-${application.id}`}>
                       <td className="px-5 py-4">
@@ -183,32 +135,26 @@ export default function ApplicationsPage() {
                       </td>
                       <td className="px-5 py-4">
                         {application.status === 'PENDING' ? (
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              variant="success"
-                              icon={Check}
-                              onClick={() => handleApprove(application)}
-                              disabled={busy}
-                              data-testid={`approve-${application.id}`}
+                          <div className="flex justify-end">
+                            <Link
+                              href={`/applications/${application.id}`}
+                              data-testid={`review-${application.id}`}
+                              className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-brand px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-deep"
                             >
-                              {busy ? 'Approving…' : 'Approve'}
-                            </Button>
-                            <Button
-                              variant="secondary"
-                              icon={X}
-                              onClick={() => {
-                                setActionError(null);
-                                setRejecting(application);
-                              }}
-                              disabled={busy}
-                              data-testid={`reject-${application.id}`}
-                              className="text-red-700"
-                            >
-                              Reject
-                            </Button>
+                              <Eye className="h-4 w-4" aria-hidden />
+                              Review
+                            </Link>
                           </div>
                         ) : (
-                          <p className="text-right text-xs text-gray-400">No action needed</p>
+                          <div className="flex justify-end">
+                            <Link
+                              href={`/applications/${application.id}`}
+                              data-testid={`view-${application.id}`}
+                              className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
+                            >
+                              View details
+                            </Link>
+                          </div>
                         )}
                       </td>
                     </tr>
@@ -220,53 +166,6 @@ export default function ApplicationsPage() {
         )}
       </Card>
 
-      <Dialog
-        open={rejecting !== null}
-        title="Reject application"
-        onClose={() => {
-          setRejecting(null);
-          setRejectReason('');
-          setActionError(null);
-        }}
-      >
-        <p className="text-sm text-gray-600">
-          {rejecting?.driver.email} will see this reason and can apply again.
-        </p>
-        <textarea
-          value={rejectReason}
-          onChange={(e) => setRejectReason(e.target.value)}
-          placeholder="e.g. Face photos are blurry, please retake them in good light"
-          data-testid={rejecting ? `reject-reason-${rejecting.id}` : undefined}
-          rows={3}
-          autoFocus
-          className="mt-3 w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-blue-100"
-        />
-        {actionError ? (
-          <p className="mt-2 text-sm text-red-600" data-testid="action-error">
-            {actionError}
-          </p>
-        ) : null}
-        <div className="mt-4 flex justify-end gap-2">
-          <Button
-            variant="ghost"
-            onClick={() => {
-              setRejecting(null);
-              setRejectReason('');
-              setActionError(null);
-            }}
-          >
-            Cancel
-          </Button>
-          <Button
-            variant="danger"
-            onClick={handleReject}
-            disabled={!rejecting || pendingActionId === rejecting.id}
-            data-testid={rejecting ? `confirm-reject-${rejecting.id}` : undefined}
-          >
-            {rejecting && pendingActionId === rejecting.id ? 'Rejecting…' : 'Reject application'}
-          </Button>
-        </div>
-      </Dialog>
     </>
   );
 }

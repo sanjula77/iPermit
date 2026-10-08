@@ -108,11 +108,12 @@ database only through the FastAPI backend — no direct DB access from mobile or
 
 ```
 1. Mobile App → API Backend: submit mock payment for fine
-2. API Backend → PostgreSQL (transaction): mark fine PAID, restore points/license
-   status if applicable
+2. API Backend → PostgreSQL (transaction): mark fine PAID (points are NOT restored:
+   each violation's points count for 12 months from the offence, then expire)
 3. [Alternative] Mobile App → API Backend: submit appeal
 4. Admin Dashboard → API Backend: resolve appeal (UPHELD/OVERTURNED)
-5. IF OVERTURNED → API Backend → PostgreSQL (transaction): reverse fine + points
+5. IF OVERTURNED → API Backend → PostgreSQL (transaction): reverse fine, stop counting
+   its points, and recompute the licence (reactivates it if now under the threshold)
 6. API Backend → Notification Service: notify driver of outcome
 ```
 
@@ -214,8 +215,9 @@ prior research) and expose the pipeline as a callable service from the FastAPI b
 ```
 User        { id, email, nic, password_hash, role[DRIVER|POLICE|ADMIN], created_at }
 Driver      { id, user_id FK, name, dob, points(int, default 0), status[ACTIVE|SUSPENDED] }
-Application { id, driver_id FK, status[PENDING|APPROVED|REJECTED], photos[], documents[], reason }
+Application { id, driver_id FK, status[PENDING|APPROVED|REJECTED], photos[], documents[], reason, requested_categories[] }
 License     { id, driver_id FK, license_no, qr_token, issued_at, expiry_at }
+LicenseCategory { id, license_id FK (CASCADE), category[A1|A|B1|B|C1|C|CE|D1|D|DE|G1|G|J], issued_at, expiry_at }
 FaceTemplate{ id, driver_id FK, embedding(vector), created_at }  -- lives in SQLite/FAISS
 Violation   { id, driver_id FK, officer_id FK, type, points_deducted, confirmed_at, evidence_ref }
 Fine        { id, violation_id FK, amount, status[UNPAID|PAID|REVERSED], paid_at }

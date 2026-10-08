@@ -9,6 +9,7 @@ import { recordViolation } from '@/api/police';
 import { Banner } from '@/components/banner';
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
+import { CategoryChips } from '@/components/category-chips';
 import { EmptyState } from '@/components/empty-state';
 import { HeroScreen } from '@/components/hero-screen';
 import { IconTile } from '@/components/icon-tile';
@@ -258,7 +259,16 @@ function DriverDetails({
       ) : null}
 
       {hasLicense ? (
-        <Card variant="raised" style={[styles.recordCard, notice ? null : styles.overlap]}>
+        <Card variant="raised" style={[styles.recordCard, notice ? null : styles.overlap]} testID="driver-categories-card">
+          <ThemedText type="smallBold" accessibilityRole="header">
+            Licensed to drive
+          </ThemedText>
+          <CategoryChips categories={driver.categories} />
+        </Card>
+      ) : null}
+
+      {hasLicense ? (
+        <Card variant="raised" style={styles.recordCard}>
           <View style={styles.recordHeader}>
             <ThemedText type="smallBold" accessibilityRole="header">
               Record violations

@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, joinedload
 
 from app.models.appeal import Appeal, AppealStatus
@@ -50,3 +50,8 @@ def list_all(db: Session, *, status_filter: AppealStatus | None = None) -> list[
     if status_filter is not None:
         stmt = stmt.where(Appeal.status == status_filter)
     return list(db.scalars(stmt))
+
+
+def count_for_driver(db: Session, driver_id: uuid.UUID) -> int:
+    stmt = select(func.count(Appeal.id)).where(Appeal.driver_id == driver_id)
+    return db.scalar(stmt) or 0

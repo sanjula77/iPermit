@@ -1,3 +1,5 @@
+import type { VehicleCategory } from '@/types/license';
+
 export type ApplicationStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 export type DocumentType = 'FACE_PHOTO' | 'NIC' | 'MEDICAL_CERT' | 'BIRTH_CERT';
 
@@ -21,4 +23,5 @@ export interface Application {
   created_at: string;
   updated_at: string;
   documents: ApplicationDocumentRead[];
+  requested_categories: VehicleCategory[];
 }

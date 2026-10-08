@@ -13,7 +13,7 @@ from app.repositories import (
     license_repository,
     violation_repository,
 )
-from app.services import notification_service
+from app.services import notification_service, points_service
 
 # REQ-11 AC1: a deliberately simple, explainable rule-based formula, not a
 # fitted/ML model -- tune by adjusting these constants, not by adding
@@ -95,6 +95,7 @@ def recompute_badge(db: Session, driver_id: uuid.UUID) -> Badge:
     if license_ is None:
         raise NotFoundError("This driver has no issued license")
 
+    points_service.recompute(db, license_)  # today's points, expired ones dropped
     violations = violation_repository.list_for_driver(db, driver_id)
     violation_severity_sum = sum(v.points_deducted for v in violations)
 

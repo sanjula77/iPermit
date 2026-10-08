@@ -9,6 +9,7 @@ from app.core.config import settings
 from app.core.face_engine import FaceEngineError, detect_faces
 from app.models.user import User
 from app.repositories import license_repository, user_repository, violation_repository
+from app.schemas.license import sort_categories
 from app.schemas.police import (
     DriverSummary,
     FaceMatchCandidate,
@@ -16,6 +17,7 @@ from app.schemas.police import (
     RecentViolation,
     VerifyFaceResponse,
 )
+from app.services import points_service
 
 # REQ-6 AC1: how many alternate candidates to surface alongside the best
 # match, so an officer has something to manually pick between under AC4
@@ -47,6 +49,9 @@ class LookupError(Exception):
 
 def _driver_summary(db: Session, driver: User) -> DriverSummary:
     license_ = license_repository.get_latest_for_driver(db, driver.id)
+    if license_ is not None:
+        # Points expire with time: an officer must see today's status.
+        points_service.refresh(db, license_)
     violations = violation_repository.list_for_driver(db, driver.id)
     return DriverSummary(
         driver_id=driver.id,
@@ -54,6 +59,7 @@ def _driver_summary(db: Session, driver: User) -> DriverSummary:
         nic=driver.nic,
         license_no=license_.license_no if license_ else None,
         license_status=license_.status if license_ else None,
+        categories=sort_categories(license_.categories) if license_ else [],
         points=license_.points if license_ else None,
         violations=violations,
     )

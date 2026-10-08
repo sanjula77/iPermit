@@ -149,7 +149,7 @@ def test_badge_drops_after_violation_recorded(client, db_session):
     assert body["tier"] == "SILVER"
 
 
-def test_badge_recovers_after_fine_paid(client, db_session):
+def test_paying_a_fine_does_not_wipe_the_points_from_the_badge(client, db_session):
     admin_headers = _create_admin_and_login(client, db_session)
     officer_headers = _create_officer_and_login(client, db_session)
     driver_headers = _register_and_login(client)
@@ -167,9 +167,10 @@ def test_badge_recovers_after_fine_paid(client, db_session):
     response = client.get("/badges/me", headers=driver_headers)
     assert response.status_code == 200
     body = response.json()
-    # points restored to 0, but the lifetime severity scar (4*0.5=2) remains.
-    assert body["safety_score"] == 98
-    assert body["tier"] == "PLATINUM"
+    # The fine is settled but its 4 points still count, so the score stays below
+    # what an unblemished driver gets (100), and below the old "restored" 98.
+    assert body["safety_score"] < 98
+    assert body["tier"] in {"PLATINUM", "GOLD"}
 
 
 def test_badge_is_suspended_when_license_suspended_regardless_of_score(

@@ -37,3 +37,8 @@ def get_by_id(db: Session, zone_id: uuid.UUID) -> DangerZone | None:
 def list_active(db: Session) -> list[DangerZone]:
     stmt = select(DangerZone).where(DangerZone.status == DangerZoneStatus.ACTIVE)
     return list(db.scalars(stmt))
+
+
+def delete_by_creator(db: Session, user_id: uuid.UUID) -> None:
+    for zone in db.scalars(select(DangerZone).where(DangerZone.creator_id == user_id)):
+        db.delete(zone)

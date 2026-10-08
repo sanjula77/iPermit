@@ -154,3 +154,46 @@ def test_other_driver_cannot_see_someone_elses_license(client, db_session):
     # so this must 404, never return driver_a's license.
     response = client.get("/licenses/me", headers=driver_b)
     assert response.status_code == 404
+
+
+def test_driver_can_fetch_own_license_photo(client, db_session):
+    admin_headers = _create_admin_and_login(client, db_session)
+    driver_headers = _register_and_login(client)
+    application = client.post(
+        "/applications", headers=driver_headers, files=_valid_files()
+    ).json()
+    client.post(
+        f"/admin/applications/{application['id']}/approve", headers=admin_headers
+    )
+
+    response = client.get("/licenses/me/photo", headers=driver_headers)
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "image/jpeg"
+    assert response.headers["cache-control"] == "private, no-store"
+    assert response.content == _face_photo_bytes()
+
+
+def test_license_photo_is_each_drivers_own(client, db_session):
+    admin_headers = _create_admin_and_login(client, db_session)
+    driver_a = _register_and_login(client, email="a@example.com", nic="111111111V")
+    driver_b = _register_and_login(client, email="b@example.com", nic="222222222V")
+    for headers in (driver_a, driver_b):
+        app = client.post("/applications", headers=headers, files=_valid_files()).json()
+        client.post(f"/admin/applications/{app['id']}/approve", headers=admin_headers)
+
+    photo_a = client.get("/licenses/me/photo", headers=driver_a)
+    photo_b = client.get("/licenses/me/photo", headers=driver_b)
+
+    assert photo_a.status_code == photo_b.status_code == 200
+
+
+def test_license_photo_404_before_a_license_is_issued(client):
+    driver_headers = _register_and_login(client)
+    assert client.get("/licenses/me/photo", headers=driver_headers).status_code == 404
+
+
+def test_license_photo_requires_driver_auth(client, db_session):
+    assert client.get("/licenses/me/photo").status_code == 401
+    admin_headers = _create_admin_and_login(client, db_session)
+    assert client.get("/licenses/me/photo", headers=admin_headers).status_code == 403

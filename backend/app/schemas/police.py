@@ -6,6 +6,7 @@ from app.models.license import LicenseStatus
 from app.models.violation import ViolationType
 from app.schemas.common import UtcDateTime
 from app.schemas.fine import FineRead
+from app.schemas.license import LicenseCategoryRead
 from app.schemas.violation import ViolationRead
 
 
@@ -19,6 +20,8 @@ class DriverSummary(BaseModel):
     nic: str
     license_no: str | None
     license_status: LicenseStatus | None
+    # What the driver may drive; empty when there is no licence yet.
+    categories: list[LicenseCategoryRead] = []
     points: int | None
     violations: list[ViolationRead]
 

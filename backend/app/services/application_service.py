@@ -14,6 +14,7 @@ from app.core.file_storage import (
     save_upload,
 )
 from app.models.application import Application, ApplicationStatus, DocumentType
+from app.models.license import VehicleCategory
 from app.models.notification import NotificationType
 from app.repositories import application_repository, license_repository
 from app.services import (
@@ -81,6 +82,7 @@ async def submit_application(
     nic_document: UploadFile,
     medical_cert: UploadFile,
     birth_cert: UploadFile,
+    categories: list[VehicleCategory] | None = None,
 ) -> Application:
     """REQ-2: accepts 4 face photos + NIC + medical cert + birth cert, validates
     each, persists them, and creates a PENDING application in one DB transaction.
@@ -147,10 +149,20 @@ async def submit_application(
         ) from exc
 
     try:
-        return application_repository.create(db, driver_id=driver_id, documents=saved)
+        return application_repository.create(
+            db,
+            driver_id=driver_id,
+            documents=saved,
+            requested_categories=[c.value for c in _unique(categories or [])],
+        )
     except Exception:
         _delete_saved_files(saved)
         raise
+
+
+def _unique(categories: list[VehicleCategory]) -> list[VehicleCategory]:
+    """Drops repeats, keeping the order given."""
+    return list(dict.fromkeys(categories))
 
 
 def _delete_saved_files(saved: list[tuple[DocumentType, str]]) -> None:
@@ -176,6 +188,13 @@ def list_applications_for_driver(
     return application_repository.list_by_driver(db, driver_id)
 
 
+def get_application_for_admin(db: Session, *, application_id: uuid.UUID) -> Application:
+    application = application_repository.get_by_id(db, application_id)
+    if application is None:
+        raise NotFoundError("Application not found")
+    return application
+
+
 def list_applications_for_admin(
     db: Session, *, status: ApplicationStatus | None = None
 ) -> list[Application]:
@@ -194,7 +213,12 @@ def _get_pending_or_raise(db: Session, application_id: uuid.UUID) -> Application
     return application
 
 
-def approve_application(db: Session, *, application_id: uuid.UUID) -> Application:
+def approve_application(
+    db: Session,
+    *,
+    application_id: uuid.UUID,
+    categories: list[VehicleCategory] | None = None,
+) -> Application:
     """REQ-3 AC2 + REQ-4 + REQ-5: approve a pending application, issue its
     digital license, and enroll its face template.
 
@@ -217,6 +241,8 @@ def approve_application(db: Session, *, application_id: uuid.UUID) -> Applicatio
     4. Compute the driver's initial Badge (REQ-11 AC2) now that a License
        exists -- every driver gets a badge from day one instead of needing
        lazy compute-on-read in the badge endpoints.
+
+    `categories` is what the admin grants; None grants what the driver asked for.
     """
     application = _get_pending_or_raise(db, application_id)
     _ensure_license_not_issued(db, application.driver_id)
@@ -231,7 +257,12 @@ def approve_application(db: Session, *, application_id: uuid.UUID) -> Applicatio
     application_repository.set_status(
         application, status=ApplicationStatus.APPROVED, reason=None
     )
-    license_service.issue_license(db, application)
+    granted = (
+        _unique(categories)
+        if categories is not None
+        else [VehicleCategory(code) for code in application.requested_categories]
+    )
+    license_service.issue_license(db, application, categories=granted)
     db.commit()
     db.refresh(application)
 
@@ -264,3 +295,41 @@ def reject_application(
         message=f"Your license application was rejected: {reason.strip()}",
     )
     return application
+
+
+_MEDIA_TYPES = {
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+    ".pdf": "application/pdf",
+}
+
+
+def get_document_file(
+    db: Session, *, application_id: uuid.UUID, document_id: uuid.UUID
+) -> tuple[Path, str]:
+    """The stored file for one application document, for an administrator to
+    review. The path is resolved and must stay inside the upload directory."""
+    document = application_repository.get_document(db, application_id, document_id)
+    if document is None:
+        raise NotFoundError("Document not found")
+    base = Path(settings.upload_dir).resolve()
+    path = (base / document.file_path).resolve()
+    if base not in path.parents or not path.is_file():
+        raise NotFoundError("Document file not found")
+    return path, _MEDIA_TYPES.get(path.suffix.lower(), "application/octet-stream")
+
+
+def get_license_photo_file(db: Session, *, driver_id: uuid.UUID) -> tuple[Path, str]:
+    """The driver's own registration photo for their licence card: the first
+    face photo of the application their licence was issued from. Scoped to the
+    caller's own licence, so one driver can never read another's photo."""
+    license_ = license_repository.get_latest_for_driver(db, driver_id)
+    if license_ is None:
+        raise NotFoundError("No license issued yet")
+    photo = application_repository.get_first_face_photo(db, license_.application_id)
+    if photo is None:
+        raise NotFoundError("No photo on file")
+    return get_document_file(
+        db, application_id=license_.application_id, document_id=photo.id
+    )

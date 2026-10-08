@@ -1,20 +1,27 @@
-import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { ReactNode } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Card } from '@/components/card';
+import { Logo } from '@/components/logo';
 import { ThemedText } from '@/components/themed-text';
-import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 // The login and register layout (they have no navigation header): the brand
-// gradient carries the logo and title, and the form sits on a raised card that
-// overlaps it -- the same language as the signed-in hero screens.
-export function AuthScreen({ subtitle, children }: { subtitle: string; children: ReactNode }) {
+// gradient carries the logo, and the form sits on a raised card that overlaps
+// it -- the same language as the signed-in hero screens. The gradient grows to
+// fill spare height, so the card rests at the bottom of tall screens; on short
+// ones (or with the keyboard open) the page scrolls. The logo scales with width
+// and the card is capped, so tablets get a centred form rather than a stretched one.
+const AUTH_MAX_WIDTH = 480;
+
+export function AuthScreen({ title, children }: { title: string; children: ReactNode }) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const logoSize = Math.min(72, Math.max(44, width * 0.145));
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
@@ -31,18 +38,13 @@ export function AuthScreen({ subtitle, children }: { subtitle: string; children:
           end={{ x: 1, y: 1 }}
           style={[styles.hero, { paddingTop: insets.top + Spacing.five }]}
         >
-          <View style={styles.logo}>
-            <Ionicons name="shield-checkmark" size={36} color={theme.onBrand} />
-          </View>
-          <ThemedText type="title" themeColor="onBrand" style={styles.centered} accessibilityRole="header">
-            iPermit
-          </ThemedText>
-          <ThemedText themeColor="onBrand" style={[styles.centered, styles.dim]}>
-            {subtitle}
-          </ThemedText>
+          <Logo size={logoSize} reversed descriptor={false} />
         </LinearGradient>
-        <View style={styles.sheet}>
+        <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, Spacing.three) + Spacing.three }]}>
           <Card variant="raised" style={styles.card}>
+            <ThemedText type="subtitle" themeColor="primary" style={styles.title} accessibilityRole="header">
+              {title}
+            </ThemedText>
             {children}
           </Card>
         </View>
@@ -60,33 +62,22 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { flexGrow: 1 },
   hero: {
+    flexGrow: 1,
     alignItems: 'center',
-    gap: Spacing.two,
+    justifyContent: 'center',
     paddingHorizontal: Spacing.four,
     // Room for the card to overlap.
     paddingBottom: Spacing.six + Spacing.four,
   },
-  logo: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: Spacing.one,
-    // Translucent white: only used on the brand gradient.
-    backgroundColor: 'rgba(255, 255, 255, 0.18)',
-  },
-  centered: { textAlign: 'center' },
-  dim: { opacity: 0.85 },
+  title: { textAlign: 'center', fontSize: 24, lineHeight: 30, fontWeight: 800, marginBottom: Spacing.one },
   sheet: {
     alignItems: 'center',
     paddingHorizontal: Spacing.four,
-    paddingBottom: Spacing.five,
     marginTop: -Spacing.six,
   },
   card: {
     width: '100%',
-    maxWidth: MaxContentWidth,
+    maxWidth: AUTH_MAX_WIDTH,
     gap: Spacing.three,
     padding: Spacing.four,
     borderRadius: Radius.large,

@@ -42,3 +42,9 @@ def list_by_tiers(db: Session, tiers: list[BadgeTier]) -> list[Badge]:
         .order_by(Badge.safety_score.asc())
     )
     return list(db.scalars(stmt))
+
+
+def delete_for_driver(db: Session, driver_id: uuid.UUID) -> None:
+    badge = db.get(Badge, driver_id)
+    if badge is not None:
+        db.delete(badge)

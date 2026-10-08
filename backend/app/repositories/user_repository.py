@@ -1,7 +1,7 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.user import User
+from app.models.user import User, UserRole
 
 
 def get_by_email(db: Session, email: str) -> User | None:
@@ -22,3 +22,14 @@ def create(db: Session, *, email: str, nic: str, password_hash: str, role) -> Us
     db.commit()
     db.refresh(user)
     return user
+
+
+def list_by_roles(db: Session, roles: list[UserRole]) -> list[User]:
+    stmt = select(User).where(User.role.in_(roles)).order_by(User.created_at.desc())
+    return list(db.scalars(stmt))
+
+
+def delete(db: Session, user: User) -> None:
+    """Removes the user without committing -- the caller controls the
+    transaction (see admin_user_service.delete_user)."""
+    db.delete(user)

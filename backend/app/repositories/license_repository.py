@@ -2,9 +2,9 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
-from app.models.license import License, LicenseStatus
+from app.models.license import License, LicenseCategory, LicenseStatus, VehicleCategory
 
 
 def add(
@@ -16,6 +16,7 @@ def add(
     qr_token: str,
     issued_at: datetime,
     expiry_at: datetime,
+    categories: list[VehicleCategory] | None = None,
 ) -> License:
     """Adds a License to the session without committing -- the caller
     controls the transaction boundary (see application_service.approve_application,
@@ -28,9 +29,18 @@ def add(
         status=LicenseStatus.ACTIVE,
         issued_at=issued_at,
         expiry_at=expiry_at,
+        # Every category starts when the licence does and ends with it.
+        categories=[
+            LicenseCategory(category=category, issued_at=issued_at, expiry_at=expiry_at)
+            for category in categories or []
+        ],
     )
     db.add(license_)
     return license_
+
+
+def get_by_id(db: Session, license_id: uuid.UUID) -> License | None:
+    return db.get(License, license_id)
 
 
 def get_latest_for_driver(db: Session, driver_id: uuid.UUID) -> License | None:
@@ -49,3 +59,14 @@ def get_by_qr_token(db: Session, qr_token: str) -> License | None:
 
 def get_by_license_no(db: Session, license_no: str) -> License | None:
     return db.scalar(select(License).where(License.license_no == license_no))
+
+
+def list_all(db: Session) -> list[License]:
+    """Every issued licence with its driver loaded (one licence per driver)."""
+    stmt = select(License).options(joinedload(License.driver))
+    return list(db.scalars(stmt))
+
+
+def delete_for_driver(db: Session, driver_id: uuid.UUID) -> None:
+    for license_ in db.scalars(select(License).where(License.driver_id == driver_id)):
+        db.delete(license_)

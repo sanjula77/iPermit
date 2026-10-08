@@ -81,3 +81,10 @@ def search(embedding: np.ndarray, k: int = 1) -> list[tuple[float, int]]:
         for sim, rowid in zip(similarities[0], ids[0], strict=True)
         if rowid != -1
     ]
+
+
+def remove_from_index(rowids: list[int]) -> None:
+    if not rowids:
+        return
+    with _lock:
+        _get_index().remove_ids(np.array(rowids, dtype=np.int64))

@@ -43,3 +43,10 @@ def get_by_id(db: Session, incident_id: uuid.UUID) -> RoadIncident | None:
 def list_active(db: Session) -> list[RoadIncident]:
     stmt = select(RoadIncident).where(RoadIncident.status == RoadIncidentStatus.ACTIVE)
     return list(db.scalars(stmt))
+
+
+def delete_by_reporter(db: Session, user_id: uuid.UUID) -> None:
+    for incident in db.scalars(
+        select(RoadIncident).where(RoadIncident.reporter_id == user_id)
+    ):
+        db.delete(incident)

@@ -2,7 +2,7 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Enum, ForeignKey, String, Text
+from sqlalchemy import JSON, Enum, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -33,6 +33,11 @@ class Application(Base):
         Enum(ApplicationStatus), default=ApplicationStatus.PENDING
     )
     reason: Mapped[str | None] = mapped_column(Text, default=None)
+    # Vehicle categories (VehicleCategory codes) the driver applied for. The admin
+    # may grant a different set when approving.
+    requested_categories: Mapped[list[str]] = mapped_column(
+        JSON, default=list, server_default="[]"
+    )
     created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         default=datetime.utcnow, onupdate=datetime.utcnow

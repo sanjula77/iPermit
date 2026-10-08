@@ -4,10 +4,12 @@ import { useCallback, useEffect, useState } from 'react';
 import { Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 
 import { getMyBadge } from '@/api/badges';
+import { getMyBehaviour } from '@/api/behaviour';
 import { listApplications } from '@/api/applications';
 import { ApiError, extractErrorMessage } from '@/api/client';
 import { getMyLicense } from '@/api/licenses';
 import { getMyNotifications } from '@/api/notifications';
+import { BehaviourCard } from '@/components/behaviour-card';
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
 import { EmptyState } from '@/components/empty-state';
@@ -15,7 +17,14 @@ import { FadeInItem } from '@/components/fade-in-item';
 import { HeroScreen } from '@/components/hero-screen';
 import { IconTile } from '@/components/icon-tile';
 import { PoliceHome } from '@/components/police-home';
-import { LicenseCard, TIER_LABEL, TIER_TONE } from '@/components/license-card';
+import {
+  DemeritPointsCard,
+  LicenseCard,
+  LicenseQrButton,
+  TIER_ICON,
+  TIER_LABEL,
+  TIER_TONE,
+} from '@/components/license-card';
 import { ListRow } from '@/components/list-row';
 import { ScreenState } from '@/components/screen-state';
 import { Skeleton } from '@/components/skeleton';
@@ -33,6 +42,7 @@ import { greeting } from '@/lib/greeting';
 import { relativeTime } from '@/lib/relative-time';
 import type { Application } from '@/types/application';
 import type { Badge } from '@/types/badge';
+import type { Behaviour } from '@/types/behaviour';
 import type { License } from '@/types/license';
 import type { AppNotification } from '@/types/notification';
 
@@ -67,6 +77,7 @@ function DriverHomeScreen() {
   const [license, setLicense] = useState<License | null | undefined>(undefined);
   const [licenseError, setLicenseError] = useState<string | null>(null);
   const [badge, setBadge] = useState<Badge | null>(null);
+  const [behaviour, setBehaviour] = useState<Behaviour | null>(null);
   const [recent, setRecent] = useState<AppNotification[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   // Fines reload on focus, so the outstanding tile reflects a payment just made.
@@ -107,6 +118,16 @@ function DriverHomeScreen() {
     }
   }, []);
 
+  const loadBehaviour = useCallback(async () => {
+    // Same tolerance as the badge: a courtesy summary, so a failure just
+    // leaves the card out (or the last good one in place).
+    try {
+      setBehaviour(await getMyBehaviour());
+    } catch {
+      // keep whatever was already there
+    }
+  }, []);
+
   const loadRecent = useCallback(async () => {
     // A courtesy preview of the Alerts tab: a failure just leaves it empty.
     try {
@@ -117,8 +138,8 @@ function DriverHomeScreen() {
   }, []);
 
   const loadAll = useCallback(
-    () => Promise.all([loadApplications(), loadLicense(), loadBadge(), loadRecent()]),
-    [loadApplications, loadLicense, loadBadge, loadRecent],
+    () => Promise.all([loadApplications(), loadLicense(), loadBadge(), loadBehaviour(), loadRecent()]),
+    [loadApplications, loadLicense, loadBadge, loadBehaviour, loadRecent],
   );
 
   useEffect(() => {
@@ -150,6 +171,7 @@ function DriverHomeScreen() {
           nic={user?.nic}
           applications={applications}
           badge={badge}
+          behaviour={behaviour}
           outstanding={outstanding}
           recent={recent}
           // While a retry/refresh is in flight, show the spinner instead of the
@@ -169,6 +191,7 @@ function DriverHomeContent({
   nic,
   applications,
   badge,
+  behaviour,
   outstanding,
   recent,
   error,
@@ -178,6 +201,7 @@ function DriverHomeContent({
   nic?: string;
   applications: Application[] | null;
   badge: Badge | null;
+  behaviour: Behaviour | null;
   outstanding: number | null;
   recent: AppNotification[];
   error: string | null;
@@ -190,28 +214,34 @@ function DriverHomeContent({
   if (license) {
     return (
       <>
-        {/* Lifted over the hero's lower edge, as in the approved mockup. */}
-        <View style={styles.overlap}>
-          <LicenseCard license={license} nic={nic} />
-        </View>
+        {/* Not lifted over the hero like the status cards: the licence card is the
+            same blue, so it sits on the light sheet where it stands out. */}
+        <LicenseCard license={license} nic={nic} />
+        <LicenseQrButton license={license} />
+        <DemeritPointsCard license={license} />
         <View style={styles.stats}>
           {badge ? (
             <StatTile
-              label="Safety badge"
-              value={`${TIER_LABEL[badge.tier]} · ${badge.safety_score}`}
+              label="Badge"
+              value={TIER_LABEL[badge.tier]}
+              sub={`Score ${badge.safety_score} of 100`}
+              icon={TIER_ICON[badge.tier]}
               valueColor={TIER_TONE_COLOR[badge.tier]}
               testID="home-badge"
             />
           ) : null}
           {outstanding !== null ? (
             <StatTile
-              label="Outstanding fines"
+              label="Fines"
               value={formatLkr(outstanding)}
+              sub={outstanding > 0 ? 'Pay in Fines tab' : 'Nothing due'}
+              icon="receipt-outline"
               valueColor={outstanding > 0 ? 'danger' : 'success'}
               testID="home-outstanding"
             />
           ) : null}
         </View>
+        {behaviour ? <BehaviourCard behaviour={behaviour} /> : null}
         <RecentAlerts items={recent} />
       </>
     );
@@ -224,7 +254,7 @@ function DriverHomeContent({
   if (license === undefined || applications === null) {
     return (
       <View style={styles.skeleton} testID="home-loading">
-        <Skeleton height={240} radius={Radius.large} style={styles.overlap} />
+        <Skeleton height={200} radius={Radius.medium} style={styles.overlap} />
         <View style={styles.stats}>
           <Skeleton height={64} radius={Radius.medium} style={styles.flex} />
           <Skeleton height={64} radius={Radius.medium} style={styles.flex} />

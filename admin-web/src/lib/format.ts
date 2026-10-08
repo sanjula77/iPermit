@@ -34,4 +34,10 @@ export const VIOLATION_LABEL: Record<ViolationType, string> = {
   SPEEDING: 'Speeding',
   RED_LIGHT: 'Red light',
   DRUNK_DRIVING: 'Drunk driving',
+  OTHER: 'Other',
 };
+
+// What to call a violation: the officer's own words for an OTHER one.
+export function violationTitle(type: ViolationType, description?: string | null): string {
+  return type === 'OTHER' && description ? description : VIOLATION_LABEL[type];
+}

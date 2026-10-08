@@ -235,7 +235,7 @@ def test_admin_upholds_appeal_leaves_fine_unpaid_and_points_unchanged(
     assert response.json()["status"] == "UPHELD"
 
     license_response = client.get("/licenses/me", headers=ctx["driver_headers"])
-    assert license_response.json()["points"] == 4  # SPEEDING points, untouched
+    assert license_response.json()["points"] == 3  # SPEEDING points, untouched
 
     fines_response = client.get("/fines/me", headers=ctx["driver_headers"])
     assert fines_response.json()[0]["status"] == "UNPAID"

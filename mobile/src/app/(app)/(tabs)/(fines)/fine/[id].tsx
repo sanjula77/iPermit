@@ -18,7 +18,7 @@ import { TextField } from '@/components/text-field';
 import { ThemedText } from '@/components/themed-text';
 import { ScreenScroll } from '@/components/screen-scroll';
 import { Spacing } from '@/constants/theme';
-import { VIOLATION_COLOR, VIOLATION_ICON, VIOLATION_LABEL } from '@/constants/violations';
+import { VIOLATION_COLOR, VIOLATION_ICON, violationTitle } from '@/constants/violations';
 import { useMyFines } from '@/hooks/use-my-fines';
 import { useTheme } from '@/hooks/use-theme';
 import {
@@ -85,7 +85,7 @@ function FineDetail({
   const badge = fineBadge(fine, appeal);
   const canPay = canPayFine(fine, appeal);
   const canAppeal = canAppealFine(fine, appeal);
-  const label = VIOLATION_LABEL[fine.violation.type];
+  const label = violationTitle(fine.violation.type, fine.violation.description);
 
   async function run(task: () => Promise<string>) {
     if (submittingRef.current) return;

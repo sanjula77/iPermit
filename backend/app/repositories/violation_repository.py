@@ -16,6 +16,7 @@ def add(
     violation_type: ViolationType,
     points_deducted: int,
     evidence_ref: str | None,
+    description: str | None = None,
 ) -> Violation:
     """Adds a Violation to the session without committing -- the caller
     controls the transaction boundary (see violation_service.record_violation,
@@ -26,6 +27,7 @@ def add(
         type=violation_type,
         points_deducted=points_deducted,
         evidence_ref=evidence_ref,
+        description=description,
     )
     db.add(violation)
     return violation

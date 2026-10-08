@@ -172,6 +172,7 @@ def officer_summary(
             RecentViolation(
                 id=violation.id,
                 type=violation.type,
+                description=violation.description,
                 points_deducted=violation.points_deducted,
                 confirmed_at=violation.confirmed_at,
                 driver_email=violation.driver.email,

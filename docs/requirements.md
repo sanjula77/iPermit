@@ -155,7 +155,11 @@ suspend a license at a threshold, so that repeat offenders are progressively pen
 
 #### Acceptance Criteria
 1. WHEN a violation is confirmed, THE system SHALL deduct points per a defined
-   per-offense schedule (e.g., white-line=3, speeding=4, red-light=6, drunk-driving=10).
+   per-offense schedule (e.g., white-line=1, speeding=3, red-light=4, drunk-driving=6).
+   For an offence not on the list, an officer SHALL be able to record an "other"
+   violation by writing a description (5-100 characters) and choosing 1-5 points;
+   its fine is LKR 1,000 per point, and the 5-point cap keeps a single entry below
+   the suspension threshold.
 2. THE system SHALL start each driver at 0 points and suspend the license WHEN
    the points that currently count reach 10.
 3. THE system SHALL count each violation's points for a fixed period of 12 months from

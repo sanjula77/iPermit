@@ -137,6 +137,7 @@ def get_user_detail(db: Session, user_id: uuid.UUID) -> dict:
         violations = [
             {
                 "type": v.type,
+                "description": v.description,
                 "points_deducted": v.points_deducted,
                 "confirmed_at": v.confirmed_at,
                 "fine_status": status,
@@ -151,6 +152,7 @@ def get_user_detail(db: Session, user_id: uuid.UUID) -> dict:
         violations = [
             {
                 "type": v.type,
+                "description": v.description,
                 "points_deducted": v.points_deducted,
                 "confirmed_at": v.confirmed_at,
                 "driver_email": v.driver.email,

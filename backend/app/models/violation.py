@@ -16,18 +16,28 @@ class ViolationType(str, enum.Enum):
     SPEEDING = "SPEEDING"
     RED_LIGHT = "RED_LIGHT"
     DRUNK_DRIVING = "DRUNK_DRIVING"
+    OTHER = "OTHER"  # an offence not on the list; the officer describes it
 
 
 # REQ-8 AC1's example schedule. Placeholder point/fine values, not sourced
 # from an official Sri Lankan traffic-fine schedule -- flagged here the same
 # way requirements.md flags unverified accuracy figures. Revisit before
 # citing in the final report (see VIOLATION_FINE_AMOUNT in models/fine.py).
+# OTHER is not listed: its points are set by the officer within the range below.
 VIOLATION_POINTS: dict[ViolationType, int] = {
-    ViolationType.WHITE_LINE: 3,
-    ViolationType.SPEEDING: 4,
-    ViolationType.RED_LIGHT: 6,
-    ViolationType.DRUNK_DRIVING: 10,
+    ViolationType.WHITE_LINE: 1,
+    ViolationType.SPEEDING: 3,
+    ViolationType.RED_LIGHT: 4,
+    ViolationType.DRUNK_DRIVING: 6,
 }
+
+# An "other" violation: the officer writes what happened and picks the points. The
+# cap stays below the suspension limit so one free-text entry can never suspend a
+# licence by itself.
+OTHER_MIN_POINTS = 1
+OTHER_MAX_POINTS = 5
+OTHER_DESCRIPTION_MIN_LENGTH = 5
+OTHER_DESCRIPTION_MAX_LENGTH = 100
 
 
 class Violation(Base):
@@ -46,6 +56,8 @@ class Violation(Base):
     # once 5.4/5.5's AI-assisted flow exists -- optional because an officer
     # can also record a violation manually without an evidence image.
     evidence_ref: Mapped[str | None] = mapped_column(Text, default=None)
+    # What the officer wrote, for an OTHER violation; None for the listed types.
+    description: Mapped[str | None] = mapped_column(Text, default=None)
     confirmed_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     driver: Mapped["User"] = relationship(foreign_keys=[driver_id])

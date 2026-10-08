@@ -65,9 +65,9 @@ def _driver(client, db_session):
 def test_paying_each_fine_does_not_let_a_driver_start_again(client, db_session):
     officer, driver, driver_id = _driver(client, db_session)
 
-    # SPEEDING = 4 points. Pay after each one, as the old rule rewarded.
+    # RED_LIGHT = 4 points. Pay after each one, as the old rule rewarded.
     for _ in range(2):
-        violation = _record_violation(client, officer, driver_id, "SPEEDING")
+        violation = _record_violation(client, officer, driver_id, "RED_LIGHT")
         client.post(
             f"/fines/{violation['fine']['id']}/pay",
             headers=driver,
@@ -75,7 +75,7 @@ def test_paying_each_fine_does_not_let_a_driver_start_again(client, db_session):
         )
     assert client.get("/licenses/me", headers=driver).json()["points"] == 8
 
-    third = _record_violation(client, officer, driver_id, "SPEEDING")
+    third = _record_violation(client, officer, driver_id, "RED_LIGHT")
 
     assert third["driver_points"] == 10  # 12 counted, shown as 10 / 10
     assert third["license_status"] == "SUSPENDED"
@@ -85,8 +85,9 @@ def test_shown_points_stop_at_the_limit_but_the_suspension_uses_the_full_total(
     client, db_session
 ):
     officer, driver, driver_id = _driver(client, db_session)
-    _record_violation(client, officer, driver_id, "DRUNK_DRIVING")  # 10
-    _record_violation(client, officer, driver_id, "SPEEDING")  # +4 = 14 counting
+    _record_violation(client, officer, driver_id, "DRUNK_DRIVING")  # 6
+    _record_violation(client, officer, driver_id, "RED_LIGHT")  # +4 = 10, suspended
+    _record_violation(client, officer, driver_id, "SPEEDING")  # +3 = 13 counting
 
     license_ = client.get("/licenses/me", headers=driver).json()
 
@@ -99,12 +100,13 @@ def test_shown_points_stop_at_the_limit_but_the_suspension_uses_the_full_total(
 
 def test_points_expire_after_the_period_and_a_suspension_lifts(client, db_session):
     officer, driver, driver_id = _driver(client, db_session)
-    violation = _record_violation(client, officer, driver_id, "DRUNK_DRIVING")
-    assert violation["license_status"] == "SUSPENDED"
+    _record_violation(client, officer, driver_id, "DRUNK_DRIVING")
+    violation = _record_violation(client, officer, driver_id, "RED_LIGHT")
+    assert violation["license_status"] == "SUSPENDED"  # 6 + 4 points
 
-    # Move the violation back past the validity period.
-    row = db_session.scalar(select(Violation))
-    row.confirmed_at = datetime.utcnow() - timedelta(days=366)
+    # Move the violations back past the validity period.
+    for row in db_session.scalars(select(Violation)):
+        row.confirmed_at = datetime.utcnow() - timedelta(days=366)
     db_session.commit()
 
     license_ = client.get("/licenses/me", headers=driver).json()

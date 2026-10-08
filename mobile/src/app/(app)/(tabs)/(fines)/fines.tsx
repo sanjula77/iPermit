@@ -14,7 +14,7 @@ import { Skeleton } from '@/components/skeleton';
 import { StatusBadge } from '@/components/status-badge';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Spacing } from '@/constants/theme';
-import { VIOLATION_COLOR, VIOLATION_ICON, VIOLATION_LABEL } from '@/constants/violations';
+import { VIOLATION_COLOR, VIOLATION_ICON, violationTitle } from '@/constants/violations';
 import { useMyFines } from '@/hooks/use-my-fines';
 import { useTheme } from '@/hooks/use-theme';
 import { appealForFine, fineBadge } from '@/lib/fine-status';
@@ -236,7 +236,7 @@ function FineSection({
 function FineRow({ fine, appeal }: { fine: FineWithViolation; appeal: Appeal | null }) {
   const theme = useTheme();
   const badge = fineBadge(fine, appeal);
-  const label = VIOLATION_LABEL[fine.violation.type];
+  const label = violationTitle(fine.violation.type, fine.violation.description);
   const points = fine.violation.points_deducted;
   // In the Unpaid section a plain "Unpaid" badge only repeats the header;
   // keep the badge when it says something new (e.g. an appeal is pending).

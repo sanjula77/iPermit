@@ -32,11 +32,16 @@ export async function recordViolation(payload: {
   driverId: string;
   type: ViolationType;
   evidenceRef?: string;
+  // Only for type OTHER.
+  description?: string;
+  points?: number;
 }): Promise<RecordViolationResponse> {
   return apiClient.post<RecordViolationResponse>('/police/violations', {
     driver_id: payload.driverId,
     type: payload.type,
     evidence_ref: payload.evidenceRef || undefined,
+    description: payload.description,
+    points: payload.points,
   });
 }
 

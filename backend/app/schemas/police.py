@@ -1,9 +1,15 @@
 import uuid
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app.models.license import LicenseStatus
-from app.models.violation import ViolationType
+from app.models.violation import (
+    OTHER_DESCRIPTION_MAX_LENGTH,
+    OTHER_DESCRIPTION_MIN_LENGTH,
+    OTHER_MAX_POINTS,
+    OTHER_MIN_POINTS,
+    ViolationType,
+)
 from app.schemas.common import UtcDateTime
 from app.schemas.fine import FineRead
 from app.schemas.license import LicenseCategoryRead
@@ -45,6 +51,25 @@ class RecordViolationRequest(BaseModel):
     driver_id: uuid.UUID
     type: ViolationType
     evidence_ref: str | None = Field(default=None, max_length=512)
+    # Only for type OTHER: what the officer saw, and the points (1-5).
+    description: str | None = Field(
+        default=None, max_length=OTHER_DESCRIPTION_MAX_LENGTH
+    )
+    points: int | None = Field(default=None, ge=OTHER_MIN_POINTS, le=OTHER_MAX_POINTS)
+
+    @model_validator(mode="after")
+    def _other_needs_details(self):
+        if self.type == ViolationType.OTHER:
+            if len((self.description or "").strip()) < OTHER_DESCRIPTION_MIN_LENGTH:
+                raise ValueError(
+                    "Describe the violation (at least "
+                    f"{OTHER_DESCRIPTION_MIN_LENGTH} characters)."
+                )
+            if self.points is None:
+                raise ValueError("Points are required for an other violation.")
+        elif self.description is not None or self.points is not None:
+            raise ValueError("Description and points are only for an other violation.")
+        return self
 
 
 class RecordViolationResponse(BaseModel):
@@ -57,6 +82,7 @@ class RecordViolationResponse(BaseModel):
 class RecentViolation(BaseModel):
     id: uuid.UUID
     type: ViolationType
+    description: str | None = None
     points_deducted: int
     confirmed_at: UtcDateTime
     driver_email: str

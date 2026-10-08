@@ -37,6 +37,17 @@ VIOLATION_FINE_AMOUNT: dict[ViolationType, int] = {
 }
 
 
+# Fine for an OTHER violation: worked out from its points, so an officer cannot
+# invent an amount.
+OTHER_FINE_PER_POINT = 1000
+
+
+def fine_amount_for(violation_type: ViolationType, points: int) -> int:
+    if violation_type == ViolationType.OTHER:
+        return points * OTHER_FINE_PER_POINT
+    return VIOLATION_FINE_AMOUNT[violation_type]
+
+
 class Fine(Base):
     __tablename__ = "fines"
 

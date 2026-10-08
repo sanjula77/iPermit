@@ -103,8 +103,14 @@ def record_violation(
             driver_id=payload.driver_id,
             violation_type=payload.type,
             evidence_ref=payload.evidence_ref,
+            description=payload.description,
+            points=payload.points,
         )
     except violation_service.NotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
+    except violation_service.InvalidViolationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
         ) from exc

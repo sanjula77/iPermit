@@ -89,6 +89,7 @@ def get_behaviour_for_driver(
     timeline = [
         {
             "type": v.type,
+            "description": v.description,
             "points": v.points_deducted,
             "confirmed_at": v.confirmed_at,
             "points_expire_at": expires_at(

@@ -201,7 +201,7 @@ def test_users_list_shows_drivers_and_officers_but_not_admins(client, db_session
     assert roles == ["DRIVER", "POLICE"]
     assert len(drivers) == 1 and len(officers) == 1
     assert drivers[0]["license_status"] == "ACTIVE"
-    assert drivers[0]["points"] == 4
+    assert drivers[0]["points"] == 3
     assert drivers[0]["latest_application_status"] == "APPROVED"
     assert drivers[0]["violation_count"] == 1
     assert officers[0]["violation_count"] == 1
@@ -217,7 +217,7 @@ def test_driver_detail_has_licence_applications_and_violations(client, db_sessio
 
     assert body["role"] == "DRIVER"
     assert body["license"]["status"] == "ACTIVE"
-    assert body["license"]["points"] == 4
+    assert body["license"]["points"] == 3
     assert "qr_token" not in body["license"]
     assert body["badge"]["tier"] in {"PLATINUM", "GOLD", "SILVER", "BRONZE"}
     assert body["behaviour_risk"] == "MEDIUM"

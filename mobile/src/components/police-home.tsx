@@ -16,7 +16,7 @@ import { PressableScale } from '@/components/pressable-scale';
 import { Skeleton } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
 import { Radius, Shadows, Spacing, tint } from '@/constants/theme';
-import { VIOLATION_COLOR, VIOLATION_ICON, VIOLATION_LABEL } from '@/constants/violations';
+import { VIOLATION_COLOR, VIOLATION_ICON, violationTitle } from '@/constants/violations';
 import { useCurrentLocation } from '@/hooks/use-current-location';
 import { useTheme } from '@/hooks/use-theme';
 import { formatLkr } from '@/lib/format';
@@ -175,7 +175,7 @@ export function PoliceHome() {
                       <IconTile icon={VIOLATION_ICON[violation.type]} color={theme[VIOLATION_COLOR[violation.type]]} />
                     )
                   }
-                  title={VIOLATION_LABEL[violation.type]}
+                  title={violationTitle(violation.type, violation.description)}
                   value={violation.fine_amount !== null ? formatLkr(violation.fine_amount) : undefined}
                   meta={`NIC ${violation.driver_nic} · ${relativeTime(violation.confirmed_at)}`}
                   chevron

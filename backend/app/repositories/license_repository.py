@@ -4,7 +4,7 @@ from datetime import datetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
-from app.models.license import License, LicenseStatus
+from app.models.license import License, LicenseCategory, LicenseStatus, VehicleCategory
 
 
 def add(
@@ -16,6 +16,7 @@ def add(
     qr_token: str,
     issued_at: datetime,
     expiry_at: datetime,
+    categories: list[VehicleCategory] | None = None,
 ) -> License:
     """Adds a License to the session without committing -- the caller
     controls the transaction boundary (see application_service.approve_application,
@@ -28,6 +29,11 @@ def add(
         status=LicenseStatus.ACTIVE,
         issued_at=issued_at,
         expiry_at=expiry_at,
+        # Every category starts when the licence does and ends with it.
+        categories=[
+            LicenseCategory(category=category, issued_at=issued_at, expiry_at=expiry_at)
+            for category in categories or []
+        ],
     )
     db.add(license_)
     return license_

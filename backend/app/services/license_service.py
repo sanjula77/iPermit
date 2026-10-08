@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.models.application import Application
-from app.models.license import License
+from app.models.license import License, VehicleCategory
 from app.repositories import license_repository
 
 
@@ -14,7 +14,11 @@ class NotFoundError(Exception):
     pass
 
 
-def issue_license(db: Session, application: Application) -> License:
+def issue_license(
+    db: Session,
+    application: Application,
+    categories: list[VehicleCategory] | None = None,
+) -> License:
     """REQ-4: generate a license number, QR token, and expiry for a
     just-approved application. Does NOT commit -- see
     application_service.approve_application, which commits this together
@@ -32,6 +36,7 @@ def issue_license(db: Session, application: Application) -> License:
         qr_token=qr_token,
         issued_at=issued_at,
         expiry_at=expiry_at,
+        categories=categories,
     )
 
 

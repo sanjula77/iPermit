@@ -14,9 +14,15 @@ _EAGER_LOAD = (selectinload(Application.documents), selectinload(Application.dri
 
 
 def create(
-    db: Session, *, driver_id: uuid.UUID, documents: list[tuple[DocumentType, str]]
+    db: Session,
+    *,
+    driver_id: uuid.UUID,
+    documents: list[tuple[DocumentType, str]],
+    requested_categories: list[str] | None = None,
 ) -> Application:
-    application = Application(driver_id=driver_id)
+    application = Application(
+        driver_id=driver_id, requested_categories=requested_categories or []
+    )
     application.documents = [
         ApplicationDocument(doc_type=doc_type, file_path=file_path)
         for doc_type, file_path in documents
@@ -88,6 +94,23 @@ def get_document(
     stmt = select(ApplicationDocument).where(
         ApplicationDocument.id == document_id,
         ApplicationDocument.application_id == application_id,
+    )
+    return db.scalar(stmt)
+
+
+def get_first_face_photo(
+    db: Session, application_id: uuid.UUID
+) -> ApplicationDocument | None:
+    """The first-uploaded face photo of an application (uploads are saved in
+    order, so this is the first of the four)."""
+    stmt = (
+        select(ApplicationDocument)
+        .where(
+            ApplicationDocument.application_id == application_id,
+            ApplicationDocument.doc_type == DocumentType.FACE_PHOTO,
+        )
+        .order_by(ApplicationDocument.created_at, ApplicationDocument.id)
+        .limit(1)
     )
     return db.scalar(stmt)
 

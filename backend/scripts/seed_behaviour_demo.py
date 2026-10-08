@@ -18,7 +18,7 @@ from app.core.database import SessionLocal
 from app.core.security import hash_password
 from app.models.application import Application, ApplicationStatus
 from app.models.fine import VIOLATION_FINE_AMOUNT, Fine, FineStatus
-from app.models.license import License, LicenseStatus
+from app.models.license import License, LicenseCategory, LicenseStatus, VehicleCategory
 from app.models.user import User, UserRole
 from app.models.violation import VIOLATION_POINTS, Violation, ViolationType
 from app.services.violation_service import SUSPENSION_POINTS_THRESHOLD
@@ -34,6 +34,15 @@ S, W, R, D = (
     ViolationType.DRUNK_DRIVING,
 )
 UNPAID, PAID = FineStatus.UNPAID, FineStatus.PAID
+# What each demo driver may drive, so the licence card's back has something to show.
+V = VehicleCategory
+DEMO_CATEGORIES = {
+    "clean": [V.A1, V.A, V.B, V.G1],
+    "improving": [V.B],
+    "worsening": [V.A, V.B],
+    "high": [V.B, V.C1],
+    "suspended": [V.B, V.D1],
+}
 DEMO_DRIVERS = [
     ("clean", "DEMO0001", 800, []),
     ("improving", "DEMO0002", 700, [(400, S, PAID), (150, W, PAID), (120, S, PAID)]),
@@ -66,6 +75,23 @@ def _remove(db) -> None:
     print(f"Removed {len(users)} demo driver(s).")
 
 
+def _backfill_categories(db, user, categories) -> None:
+    """Gives an already-seeded demo licence its categories (added after the
+    first version of this script), so re-running it brings old demo data up to date."""
+    license_ = db.scalar(select(License).where(License.driver_id == user.id))
+    if license_ is None or license_.categories:
+        return
+    license_.categories = [
+        LicenseCategory(
+            category=category,
+            issued_at=license_.issued_at,
+            expiry_at=license_.expiry_at,
+        )
+        for category in categories
+    ]
+    db.commit()
+
+
 def _seed(db) -> None:
     officer = db.scalar(select(User).where(User.role == UserRole.POLICE))
     if officer is None:
@@ -74,7 +100,9 @@ def _seed(db) -> None:
 
     for name, nic, licence_age, history in DEMO_DRIVERS:
         email = f"demo.{name}{DEMO_DOMAIN}"
-        if db.scalar(select(User).where(User.email == email)):
+        existing = db.scalar(select(User).where(User.email == email))
+        if existing:
+            _backfill_categories(db, existing, DEMO_CATEGORIES[name])
             print(f"{email}: already exists, skipped")
             continue
         user = User(
@@ -133,6 +161,14 @@ def _seed(db) -> None:
                 points=points,
                 issued_at=issued,
                 expiry_at=issued + timedelta(days=365 * 5),
+                categories=[
+                    LicenseCategory(
+                        category=category,
+                        issued_at=issued,
+                        expiry_at=issued + timedelta(days=365 * 5),
+                    )
+                    for category in DEMO_CATEGORIES[name]
+                ],
             )
         )
         print(f"{email}: created ({len(history)} violations, {points} points)")

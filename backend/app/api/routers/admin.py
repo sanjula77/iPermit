@@ -10,7 +10,11 @@ from app.models.application import ApplicationStatus
 from app.models.user import User, UserRole
 from app.schemas.admin_user import AdminUserDetail, AdminUserListItem
 from app.schemas.appeal import AppealRead, ResolveAppealRequest
-from app.schemas.application import ApplicationRead, RejectApplicationRequest
+from app.schemas.application import (
+    ApplicationRead,
+    ApproveApplicationRequest,
+    RejectApplicationRequest,
+)
 from app.schemas.badge import BadgeDistributionResponse
 from app.schemas.behaviour import AdminBehaviourOverview
 from app.services import (
@@ -57,12 +61,15 @@ def get_application(
 @router.post("/applications/{application_id}/approve", response_model=ApplicationRead)
 def approve_application(
     application_id: uuid.UUID,
+    body: ApproveApplicationRequest | None = None,
     db: Session = Depends(get_db),
     _admin: User = Depends(_admin_only),
 ):
     try:
         return application_service.approve_application(
-            db, application_id=application_id
+            db,
+            application_id=application_id,
+            categories=body.categories if body else None,
         )
     except application_service.NotFoundError as exc:
         raise HTTPException(

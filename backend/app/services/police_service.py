@@ -9,6 +9,7 @@ from app.core.config import settings
 from app.core.face_engine import FaceEngineError, detect_faces
 from app.models.user import User
 from app.repositories import license_repository, user_repository, violation_repository
+from app.schemas.license import sort_categories
 from app.schemas.police import (
     DriverSummary,
     FaceMatchCandidate,
@@ -54,6 +55,7 @@ def _driver_summary(db: Session, driver: User) -> DriverSummary:
         nic=driver.nic,
         license_no=license_.license_no if license_ else None,
         license_status=license_.status if license_ else None,
+        categories=sort_categories(license_.categories) if license_ else [],
         points=license_.points if license_ else None,
         violations=violations,
     )

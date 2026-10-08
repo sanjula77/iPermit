@@ -8,6 +8,7 @@ import { submitApplication } from '@/api/applications';
 import { ApiError, extractErrorMessage } from '@/api/client';
 import { Banner } from '@/components/banner';
 import { Button } from '@/components/button';
+import { CategoryPicker } from '@/components/category-picker';
 import { Card } from '@/components/card';
 import { DocumentRow } from '@/components/document-row';
 import { PhotoTile } from '@/components/photo-tile';
@@ -17,6 +18,7 @@ import { ScreenScroll } from '@/components/screen-scroll';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { pickDocument, pickImageFromLibrary, takePhoto, type PickedFile } from '@/lib/file-upload';
+import type { VehicleCategory } from '@/types/license';
 
 const PHOTO_COUNT = 4;
 const REQUIRED_FILE_COUNT = PHOTO_COUNT + 3;
@@ -66,6 +68,7 @@ export default function ApplyScreen() {
     medical_cert: null,
     birth_cert: null,
   });
+  const [categories, setCategories] = useState<VehicleCategory[]>([]);
   const [submitError, setSubmitError] = useState<SubmitError | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   // State updates land after a re-render, so a same-frame double tap would
@@ -126,9 +129,10 @@ export default function ApplyScreen() {
   const filesReadyCount =
     facePhotos.filter((p) => p !== null).length + Object.values(documents).filter(Boolean).length;
   const allFilesSelected = filesReadyCount === REQUIRED_FILE_COUNT;
+  const canSubmit = allFilesSelected && categories.length > 0;
 
   // Backing out would silently drop the photos and documents already added.
-  usePreventRemove(filesReadyCount > 0, ({ data }) => {
+  usePreventRemove(filesReadyCount > 0 || categories.length > 0, ({ data }) => {
     // Mid-upload the request can't be cancelled, so leaving would hide its
     // result (and a late success would still redirect); stay until it ends.
     if (submittingRef.current) return;
@@ -151,7 +155,7 @@ export default function ApplyScreen() {
 
   async function handleSubmit() {
     const { nic_document, medical_cert, birth_cert } = documents;
-    if (submittingRef.current || !allFilesSelected || !nic_document || !medical_cert || !birth_cert) {
+    if (submittingRef.current || !canSubmit || !nic_document || !medical_cert || !birth_cert) {
       return;
     }
     submittingRef.current = true;
@@ -163,6 +167,7 @@ export default function ApplyScreen() {
         nicDocument: nic_document,
         medicalCert: medical_cert,
         birthCert: birth_cert,
+        categories,
       });
       submittedRef.current = true;
       router.replace('/(app)/(tabs)/(home)');
@@ -195,6 +200,17 @@ export default function ApplyScreen() {
           </ThemedText>
         </View>
       </Card>
+
+      <View style={styles.section}>
+        <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionLabel}>
+          Vehicle categories
+        </ThemedText>
+        <ThemedText type="small" themeColor="textSecondary">
+          Choose every type of vehicle you want to be licensed for. An administrator confirms them when
+          reviewing your application.
+        </ThemedText>
+        <CategoryPicker value={categories} onChange={setCategories} disabled={isSubmitting} />
+      </View>
 
       <View style={styles.section}>
         <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionLabel}>
@@ -268,7 +284,7 @@ export default function ApplyScreen() {
 
       <Button
         variant="primary"
-        disabled={!allFilesSelected || isSubmitting}
+        disabled={!canSubmit || isSubmitting}
         onPress={handleSubmit}
         testID="apply-submit"
       >

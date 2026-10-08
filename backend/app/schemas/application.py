@@ -3,6 +3,7 @@ import uuid
 from pydantic import BaseModel, Field
 
 from app.models.application import ApplicationStatus, DocumentType
+from app.models.license import VehicleCategory
 from app.schemas.common import UtcDateTime
 
 
@@ -30,9 +31,17 @@ class ApplicationRead(BaseModel):
     created_at: UtcDateTime
     updated_at: UtcDateTime
     documents: list[ApplicationDocumentRead]
+    requested_categories: list[VehicleCategory] = []
 
     model_config = {"from_attributes": True}
 
 
 class RejectApplicationRequest(BaseModel):
     reason: str = Field(min_length=1, max_length=1000)
+
+
+class ApproveApplicationRequest(BaseModel):
+    """Optional body for approving: the categories to grant. Omitted, the
+    categories the driver requested are granted as they are."""
+
+    categories: list[VehicleCategory] | None = None

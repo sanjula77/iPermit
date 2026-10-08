@@ -17,7 +17,7 @@ import { FadeInItem } from '@/components/fade-in-item';
 import { HeroScreen } from '@/components/hero-screen';
 import { IconTile } from '@/components/icon-tile';
 import { PoliceHome } from '@/components/police-home';
-import { LicenseCard, TIER_LABEL, TIER_TONE } from '@/components/license-card';
+import { DemeritPointsCard, LicenseCard, LicenseQrButton, TIER_LABEL, TIER_TONE } from '@/components/license-card';
 import { ListRow } from '@/components/list-row';
 import { ScreenState } from '@/components/screen-state';
 import { Skeleton } from '@/components/skeleton';
@@ -207,10 +207,11 @@ function DriverHomeContent({
   if (license) {
     return (
       <>
-        {/* Lifted over the hero's lower edge, as in the approved mockup. */}
-        <View style={styles.overlap}>
-          <LicenseCard license={license} nic={nic} />
-        </View>
+        {/* Not lifted over the hero like the status cards: the licence card is the
+            same blue, so it sits on the light sheet where it stands out. */}
+        <LicenseCard license={license} nic={nic} />
+        <LicenseQrButton license={license} />
+        <DemeritPointsCard license={license} />
         <View style={styles.stats}>
           {badge ? (
             <StatTile
@@ -242,7 +243,7 @@ function DriverHomeContent({
   if (license === undefined || applications === null) {
     return (
       <View style={styles.skeleton} testID="home-loading">
-        <Skeleton height={240} radius={Radius.large} style={styles.overlap} />
+        <Skeleton height={200} radius={Radius.medium} style={styles.overlap} />
         <View style={styles.stats}>
           <Skeleton height={64} radius={Radius.medium} style={styles.flex} />
           <Skeleton height={64} radius={Radius.medium} style={styles.flex} />

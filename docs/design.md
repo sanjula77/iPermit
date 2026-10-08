@@ -214,8 +214,9 @@ prior research) and expose the pipeline as a callable service from the FastAPI b
 ```
 User        { id, email, nic, password_hash, role[DRIVER|POLICE|ADMIN], created_at }
 Driver      { id, user_id FK, name, dob, points(int, default 0), status[ACTIVE|SUSPENDED] }
-Application { id, driver_id FK, status[PENDING|APPROVED|REJECTED], photos[], documents[], reason }
+Application { id, driver_id FK, status[PENDING|APPROVED|REJECTED], photos[], documents[], reason, requested_categories[] }
 License     { id, driver_id FK, license_no, qr_token, issued_at, expiry_at }
+LicenseCategory { id, license_id FK (CASCADE), category[A1|A|B1|B|C1|C|CE|D1|D|DE|G1|G|J], issued_at, expiry_at }
 FaceTemplate{ id, driver_id FK, embedding(vector), created_at }  -- lives in SQLite/FAISS
 Violation   { id, driver_id FK, officer_id FK, type, points_deducted, confirmed_at, evidence_ref }
 Fine        { id, violation_id FK, amount, status[UNPAID|PAID|REVERSED], paid_at }

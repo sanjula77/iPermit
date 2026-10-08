@@ -90,6 +90,10 @@ prove my identity and license status without a physical card.
 2. THE system SHALL encode a scannable QR token uniquely identifying the license.
 3. THE system SHALL reflect current point balance and license status (active/suspended)
    on the card in real time.
+4. THE system SHALL show the vehicle categories the driver is licensed for (DMT
+   categories A1 to J, each with its validity) on the back of the card, which the driver
+   turns over with a flip button. The driver requests categories when applying and the
+   administrator confirms or changes them on approval; officers see them after a lookup.
 
 ### Requirement REQ-5: Facial Recognition Enrollment
 

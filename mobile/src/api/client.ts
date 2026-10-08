@@ -4,7 +4,7 @@ import { getToken } from '@/lib/token-storage';
 
 // Set EXPO_PUBLIC_API_URL in .env for a physical device / Android emulator
 // (localhost won't reach a host-machine backend from those). See mobile/README.md.
-const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8000';
+export const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8000';
 
 export class ApiError extends Error {
   status: number;

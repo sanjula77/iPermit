@@ -1,10 +1,20 @@
 import uuid
 
-from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Request,
+    UploadFile,
+    status,
+)
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db, require_role
 from app.core.rate_limit import limiter
+from app.models.license import VehicleCategory
 from app.models.user import User, UserRole
 from app.schemas.application import ApplicationRead
 from app.services import application_service
@@ -20,6 +30,9 @@ async def submit_application(
     nic_document: UploadFile = File(...),
     medical_cert: UploadFile = File(...),
     birth_cert: UploadFile = File(...),
+    categories: list[VehicleCategory] = Form(
+        default=[], description="Vehicle categories applied for"
+    ),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.DRIVER)),
 ):
@@ -31,6 +44,7 @@ async def submit_application(
             nic_document=nic_document,
             medical_cert=medical_cert,
             birth_cert=birth_cert,
+            categories=categories,
         )
     except application_service.ApplicationError as exc:
         # Structured detail so clients can highlight the failing input.

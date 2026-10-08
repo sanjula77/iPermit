@@ -11,6 +11,7 @@ import { extractErrorMessage } from '@/lib/api-client';
 import * as applicationsApi from '@/lib/applications-api';
 import { formatDate, formatTime } from '@/lib/format';
 import type { Application, ApplicationStatus, DocumentType } from '@/types/application';
+import { VEHICLE_CATEGORIES, type VehicleCategory } from '@/types/vehicle-category';
 
 const STATUS: Record<ApplicationStatus, { label: string; tone: Tone }> = {
   PENDING: { label: 'Pending', tone: 'amber' },
@@ -35,11 +36,15 @@ export default function ApplicationReviewPage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // The categories to grant: starts as what the driver asked for.
+  const [granted, setGranted] = useState<VehicleCategory[]>([]);
 
   const load = useCallback(async () => {
     setLoadError(null);
     try {
-      setApplication(await applicationsApi.getApplication(id));
+      const loaded = await applicationsApi.getApplication(id);
+      setApplication(loaded);
+      setGranted(loaded.requested_categories);
     } catch (err) {
       setLoadError(extractErrorMessage(err));
     }
@@ -53,11 +58,15 @@ export default function ApplicationReviewPage() {
 
   async function handleApprove() {
     if (!application) return;
+    if (granted.length === 0) {
+      setActionError('Choose at least one vehicle category to grant.');
+      return;
+    }
     setActionError(null);
     setNotice(null);
     setBusy(true);
     try {
-      await applicationsApi.approveApplication(application.id);
+      await applicationsApi.approveApplication(application.id, granted);
       setNotice(`Approved ${application.driver.email}. Their digital licence has been issued.`);
       await load();
     } catch (err) {
@@ -200,6 +209,48 @@ export default function ApplicationReviewPage() {
             );
           })}
         </div>
+      </Card>
+
+      <Card className="p-5">
+        <h2 className="font-semibold text-gray-900">
+          {application.status === 'PENDING' ? 'Vehicle categories to grant' : 'Vehicle categories requested'}
+        </h2>
+        <p className="text-sm text-gray-600">
+          {application.status === 'PENDING'
+            ? 'Pre-selected from the driver’s request. Untick any you do not approve, or add others.'
+            : 'What the driver asked for when applying.'}
+        </p>
+        <div className="mt-4 grid grid-cols-2 gap-2 xl:grid-cols-3" data-testid="categories">
+          {VEHICLE_CATEGORIES.map(({ code, label }) => {
+            const requested = application.requested_categories.includes(code);
+            const pending = application.status === 'PENDING';
+            const checked = pending ? granted.includes(code) : requested;
+            return (
+              <label
+                key={code}
+                className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm ${
+                  checked ? 'border-brand bg-blue-50' : 'border-gray-200'
+                } ${pending ? 'cursor-pointer' : 'opacity-80'}`}
+              >
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  disabled={!pending || busy}
+                  data-testid={`category-${code}`}
+                  onChange={() =>
+                    setGranted((prev) => (prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]))
+                  }
+                />
+                <span className="font-semibold text-gray-900">{code}</span>
+                <span className="truncate text-gray-600">{label}</span>
+                {pending && requested ? <span className="ml-auto text-xs text-blue-700">requested</span> : null}
+              </label>
+            );
+          })}
+        </div>
+        {application.requested_categories.length === 0 ? (
+          <p className="mt-3 text-sm text-amber-700">The driver did not request any category.</p>
+        ) : null}
       </Card>
 
       {application.status === 'PENDING' ? (

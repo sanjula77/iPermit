@@ -16,6 +16,8 @@ from app.core.behaviour import (
     ViolationFact,
     analyse,
 )
+from app.core.config import settings
+from app.core.points import SUSPENSION_POINTS_THRESHOLD, expires_at
 from app.models.fine import FineStatus
 from app.models.license import License, LicenseStatus
 from app.models.notification import NotificationType
@@ -25,7 +27,7 @@ from app.repositories import (
     notification_repository,
     violation_repository,
 )
-from app.services.violation_service import SUSPENSION_POINTS_THRESHOLD
+from app.services import points_service
 
 _TIMELINE_LIMIT = 10
 _MONTHS_SHOWN = 12
@@ -75,6 +77,7 @@ def get_behaviour_for_driver(
     license_ = license_repository.get_latest_for_driver(db, driver_id)
     if license_ is None:
         raise NotFoundError("This driver has no issued license")
+    points_service.refresh(db, license_, now=now)
 
     rows = violation_repository.list_with_fine_status_for_driver(db, driver_id)
     prior_suspensions = notification_repository.count_for_user_by_type(
@@ -88,6 +91,9 @@ def get_behaviour_for_driver(
             "type": v.type,
             "points": v.points_deducted,
             "confirmed_at": v.confirmed_at,
+            "points_expire_at": expires_at(
+                v.confirmed_at, settings.points_validity_days
+            ),
             "fine_status": status,
         }
         for v, status in _countable(rows)[:_TIMELINE_LIMIT]
@@ -110,6 +116,7 @@ def get_admin_overview(db: Session, *, now: datetime | None = None) -> dict:
     """REQ-11/REQ-14: every licensed driver's behaviour outlook, riskiest
     first, plus fleet-wide monthly and per-type counts for the dashboard."""
     now = now or datetime.utcnow()
+    points_service.refresh_all(db, now=now)
     licenses = license_repository.list_all(db)
     all_rows = violation_repository.list_with_fine_status_all(db)
     suspensions = notification_repository.count_per_user_by_type(

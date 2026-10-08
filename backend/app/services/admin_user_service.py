@@ -20,7 +20,7 @@ from app.repositories import (
     user_repository,
     violation_repository,
 )
-from app.services import behaviour_service, face_service
+from app.services import behaviour_service, face_service, points_service
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +51,7 @@ def list_users(db: Session, *, role: UserRole | None = None) -> list[dict]:
     shows. Admin accounts are not listed: they are not managed here."""
     roles = [role] if role in _MANAGED_ROLES else _MANAGED_ROLES
     users = user_repository.list_by_roles(db, roles)
+    points_service.refresh_all(db)  # points expire with time
 
     licenses = {lic.driver_id: lic for lic in license_repository.list_all(db)}
     applications_by_driver: dict[uuid.UUID, list[Application]] = defaultdict(list)
@@ -119,6 +120,8 @@ def get_user_detail(db: Session, user_id: uuid.UUID) -> dict:
     violations: list[dict] = []
     if user.role == UserRole.DRIVER:
         license_ = license_repository.get_latest_for_driver(db, user.id)
+        if license_ is not None:
+            points_service.refresh(db, license_)
         badge = badge_repository.get_by_driver_id(db, user.id)
         if license_ is not None:
             risk = behaviour_service.get_behaviour_for_driver(db, user.id)["risk_level"]

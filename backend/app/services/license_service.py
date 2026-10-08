@@ -6,8 +6,9 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.models.application import Application
-from app.models.license import License, VehicleCategory
+from app.models.license import License, LicenseCategory, VehicleCategory
 from app.repositories import license_repository
+from app.services import points_service
 
 
 class NotFoundError(Exception):
@@ -45,4 +46,29 @@ def get_current_license_for_driver(db: Session, *, driver_id: uuid.UUID) -> Lice
     license_ = license_repository.get_latest_for_driver(db, driver_id)
     if license_ is None:
         raise NotFoundError("No license issued yet")
+    # Points expire with time, so bring the licence up to date before showing it.
+    return points_service.refresh(db, license_)
+
+
+def set_categories(
+    db: Session, *, license_id: uuid.UUID, categories: list[VehicleCategory]
+) -> License:
+    """Replaces the vehicle categories on an issued licence with `categories`.
+    Categories that stay keep their original start date; new ones start now and
+    run to the licence's expiry; the rest are removed."""
+    license_ = license_repository.get_by_id(db, license_id)
+    if license_ is None:
+        raise NotFoundError("License not found")
+
+    wanted = list(dict.fromkeys(categories))
+    now = datetime.utcnow()
+    kept = [item for item in license_.categories if item.category in wanted]
+    held = {item.category for item in kept}
+    license_.categories = kept + [
+        LicenseCategory(category=category, issued_at=now, expiry_at=license_.expiry_at)
+        for category in wanted
+        if category not in held
+    ]
+    db.commit()
+    db.refresh(license_)
     return license_

@@ -131,7 +131,7 @@ def test_driver_sees_fine_after_violation_recorded(client, db_session):
     assert fines[0]["violation"]["type"] == "SPEEDING"
 
 
-def test_pay_fine_marks_paid_and_restores_points(client, db_session):
+def test_pay_fine_marks_paid_but_does_not_give_points_back(client, db_session):
     admin_headers = _create_admin_and_login(client, db_session)
     officer_headers = _create_officer_and_login(client, db_session)
     driver_headers = _register_and_login(client)
@@ -150,14 +150,15 @@ def test_pay_fine_marks_paid_and_restores_points(client, db_session):
     body = response.json()
     assert body["fine"]["status"] == "PAID"
     assert body["fine"]["payment_method"] == "CARD"
-    assert body["driver_points"] == 0
+    # Paying settles the fine; the violation's points still count (SPEEDING = 4).
+    assert body["driver_points"] == 4
     assert body["license_status"] == "ACTIVE"
 
     license_response = client.get("/licenses/me", headers=driver_headers)
-    assert license_response.json()["points"] == 0
+    assert license_response.json()["points"] == 4
 
 
-def test_pay_fine_reactivates_suspended_license(client, db_session):
+def test_pay_fine_does_not_lift_a_suspension(client, db_session):
     admin_headers = _create_admin_and_login(client, db_session)
     officer_headers = _create_officer_and_login(client, db_session)
     driver_headers = _register_and_login(client)
@@ -178,8 +179,12 @@ def test_pay_fine_reactivates_suspended_license(client, db_session):
 
     assert response.status_code == 200
     body = response.json()
-    assert body["driver_points"] == 0
-    assert body["license_status"] == "ACTIVE"
+    assert body["driver_points"] == 10
+    assert body["license_status"] == "SUSPENDED"
+    assert (
+        client.get("/licenses/me", headers=driver_headers).json()["status"]
+        == "SUSPENDED"
+    )
 
 
 def test_cannot_pay_fine_twice(client, db_session):

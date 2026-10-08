@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_db, require_role
 from app.models.user import User, UserRole
 from app.schemas.license import LicenseRead
-from app.services import application_service, license_service
+from app.services import application_service, license_service, points_service
 
 router = APIRouter(prefix="/licenses", tags=["licenses"])
 
@@ -16,9 +16,12 @@ def get_my_license(
     current_user: User = Depends(require_role(UserRole.DRIVER)),
 ):
     try:
-        return license_service.get_current_license_for_driver(
+        license_ = license_service.get_current_license_for_driver(
             db, driver_id=current_user.id
         )
+        result = LicenseRead.model_validate(license_)
+        result.points_expire_at = points_service.points_expire_at(db, license_)
+        return result
     except license_service.NotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)

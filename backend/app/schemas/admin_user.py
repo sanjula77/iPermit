@@ -1,6 +1,6 @@
 import uuid
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 from app.core.behaviour import RiskLevel
 from app.models.application import ApplicationStatus
@@ -10,6 +10,7 @@ from app.models.license import LicenseStatus
 from app.models.user import UserRole
 from app.models.violation import ViolationType
 from app.schemas.common import UtcDateTime
+from app.schemas.license import LicenseCategoryRead, sort_categories
 
 
 class AdminUserListItem(BaseModel):
@@ -26,11 +27,20 @@ class AdminUserListItem(BaseModel):
 
 
 class AdminLicenseSummary(BaseModel):
+    id: uuid.UUID
     license_no: str
     status: LicenseStatus
     points: int
     issued_at: UtcDateTime
     expiry_at: UtcDateTime
+    categories: list[LicenseCategoryRead] = []
+
+    model_config = {"from_attributes": True}
+
+    @field_validator("categories", mode="before")
+    @classmethod
+    def _in_card_order(cls, value):
+        return sort_categories(list(value))
 
 
 class AdminBadgeSummary(BaseModel):

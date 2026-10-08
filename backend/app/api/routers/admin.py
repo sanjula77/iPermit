@@ -8,7 +8,11 @@ from app.api.deps import get_db, require_role
 from app.models.appeal import AppealStatus
 from app.models.application import ApplicationStatus
 from app.models.user import User, UserRole
-from app.schemas.admin_user import AdminUserDetail, AdminUserListItem
+from app.schemas.admin_user import (
+    AdminLicenseSummary,
+    AdminUserDetail,
+    AdminUserListItem,
+)
 from app.schemas.appeal import AppealRead, ResolveAppealRequest
 from app.schemas.application import (
     ApplicationRead,
@@ -17,12 +21,14 @@ from app.schemas.application import (
 )
 from app.schemas.badge import BadgeDistributionResponse
 from app.schemas.behaviour import AdminBehaviourOverview
+from app.schemas.license import UpdateLicenseCategoriesRequest
 from app.services import (
     admin_user_service,
     appeal_service,
     application_service,
     badge_service,
     behaviour_service,
+    license_service,
 )
 from app.services.face_service import FaceEnrollmentError
 
@@ -184,6 +190,25 @@ def get_application_document(
         media_type=media_type,
         headers={"Cache-Control": "private, no-store"},
     )
+
+
+@router.put("/licenses/{license_id}/categories", response_model=AdminLicenseSummary)
+def update_license_categories(
+    license_id: uuid.UUID,
+    body: UpdateLicenseCategoriesRequest,
+    db: Session = Depends(get_db),
+    _admin: User = Depends(_admin_only),
+):
+    """Sets the vehicle categories an issued licence holds (for example to correct
+    or complete the categories after approval)."""
+    try:
+        return license_service.set_categories(
+            db, license_id=license_id, categories=body.categories
+        )
+    except license_service.NotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
 
 
 @router.get("/users", response_model=list[AdminUserListItem])

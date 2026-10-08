@@ -2,6 +2,7 @@ import type { ApplicationStatus } from '@/types/application';
 import type { BadgeTier } from '@/types/badge';
 import type { RiskLevel } from '@/types/behaviour';
 import type { FineStatus, ViolationType } from '@/types/fine';
+import type { VehicleCategory } from '@/types/vehicle-category';
 
 export type UserRole = 'DRIVER' | 'POLICE' | 'ADMIN';
 export type LicenseStatus = 'ACTIVE' | 'SUSPENDED';
@@ -25,11 +26,13 @@ export interface AdminUserDetail {
   role: UserRole;
   created_at: string;
   license: {
+    id: string;
     license_no: string;
     status: LicenseStatus;
     points: number;
     issued_at: string;
     expiry_at: string;
+    categories: { category: VehicleCategory; issued_at: string; expiry_at: string }[];
   } | null;
   badge: { tier: BadgeTier; safety_score: number } | null;
   behaviour_risk: RiskLevel | null;

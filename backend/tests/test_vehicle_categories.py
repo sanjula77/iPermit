@@ -134,3 +134,108 @@ def test_deleting_a_driver_removes_their_categories(client, db_session):
     )
 
     assert db_session.scalar(select(func.count()).select_from(LicenseCategory)) == 0
+
+
+def _approved_driver(client, db_session, categories):
+    admin = _create_admin_and_login(client, db_session)
+    headers = _register_and_login(client)
+    application = _apply(client, headers, categories).json()
+    client.post(f"/admin/applications/{application['id']}/approve", headers=admin)
+    license_ = client.get("/licenses/me", headers=headers).json()
+    return admin, headers, license_
+
+
+def test_admin_can_replace_a_licences_categories(client, db_session):
+    admin, headers, license_ = _approved_driver(client, db_session, ["B", "A"])
+
+    response = client.put(
+        f"/admin/licenses/{license_['id']}/categories",
+        headers=admin,
+        json={"categories": ["B", "C1", "D1"]},
+    )
+
+    assert response.status_code == 200
+    assert [c["category"] for c in response.json()["categories"]] == ["B", "C1", "D1"]
+    assert "qr_token" not in response.json()
+    mine = client.get("/licenses/me", headers=headers).json()
+    assert [c["category"] for c in mine["categories"]] == ["B", "C1", "D1"]
+
+
+def test_categories_that_stay_keep_their_start_date(client, db_session):
+    admin, headers, license_ = _approved_driver(client, db_session, ["B"])
+    original = license_["categories"][0]["issued_at"]
+
+    client.put(
+        f"/admin/licenses/{license_['id']}/categories",
+        headers=admin,
+        json={"categories": ["B", "A"]},
+    )
+
+    categories = {
+        c["category"]: c
+        for c in client.get("/licenses/me", headers=headers).json()["categories"]
+    }
+    assert categories["B"]["issued_at"] == original
+    # New ones run to the licence's expiry, like the ones granted at approval.
+    assert categories["A"]["expiry_at"] == license_["expiry_at"]
+
+
+def test_a_licence_must_keep_at_least_one_category(client, db_session):
+    admin, _headers, license_ = _approved_driver(client, db_session, ["B"])
+
+    response = client.put(
+        f"/admin/licenses/{license_['id']}/categories",
+        headers=admin,
+        json={"categories": []},
+    )
+
+    assert response.status_code == 422
+
+
+def test_unknown_category_or_licence_is_rejected(client, db_session):
+    admin, _headers, license_ = _approved_driver(client, db_session, ["B"])
+
+    bad_category = client.put(
+        f"/admin/licenses/{license_['id']}/categories",
+        headers=admin,
+        json={"categories": ["ZZ"]},
+    )
+    missing = client.put(
+        "/admin/licenses/00000000-0000-0000-0000-000000000000/categories",
+        headers=admin,
+        json={"categories": ["B"]},
+    )
+
+    assert bad_category.status_code == 422
+    assert missing.status_code == 404
+
+
+def test_only_an_admin_can_edit_categories(client, db_session):
+    _admin, headers, license_ = _approved_driver(client, db_session, ["B"])
+    officer = _create_officer_and_login(client, db_session)
+
+    for who in (headers, officer):
+        response = client.put(
+            f"/admin/licenses/{license_['id']}/categories",
+            headers=who,
+            json={"categories": ["A"]},
+        )
+        assert response.status_code == 403
+    assert (
+        client.put(
+            f"/admin/licenses/{license_['id']}/categories", json={"categories": ["A"]}
+        ).status_code
+        == 401
+    )
+
+
+def test_admin_user_detail_lists_the_licence_and_its_categories(client, db_session):
+    admin, headers, license_ = _approved_driver(client, db_session, ["G1", "B"])
+    users = client.get("/admin/users", headers=admin).json()
+    driver_id = next(u["id"] for u in users if u["email"] == "driver@example.com")
+
+    detail = client.get(f"/admin/users/{driver_id}", headers=admin).json()
+
+    assert detail["license"]["id"] == license_["id"]
+    assert [c["category"] for c in detail["license"]["categories"]] == ["B", "G1"]
+    assert "qr_token" not in detail["license"]

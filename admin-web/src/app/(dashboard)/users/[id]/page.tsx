@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 
+import { LicenseCategoriesEditor } from '@/components/license-categories-editor';
 import { Alert, Avatar, Button, Card, Dialog, PageHeader, StatusPill, type Tone } from '@/components/ui';
 import { extractErrorMessage } from '@/lib/api-client';
 import { VIOLATION_LABEL, formatDate } from '@/lib/format';
@@ -131,6 +132,11 @@ export default function UserDetailPage() {
                 <Field label="Standing">{user.badge ? `${user.badge.tier.replace('_', ' ')} · ${user.badge.safety_score}` : '–'}</Field>
                 <Field label="Issued">{formatDate(user.license.issued_at)}</Field>
                 <Field label="Expires">{formatDate(user.license.expiry_at)}</Field>
+                <LicenseCategoriesEditor
+                  licenseId={user.license.id}
+                  categories={user.license.categories}
+                  onSaved={load}
+                />
               </dl>
             ) : (
               <p className="mt-3 text-sm text-gray-600">No licence has been issued yet.</p>

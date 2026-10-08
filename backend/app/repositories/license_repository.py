@@ -39,6 +39,10 @@ def add(
     return license_
 
 
+def get_by_id(db: Session, license_id: uuid.UUID) -> License | None:
+    return db.get(License, license_id)
+
+
 def get_latest_for_driver(db: Session, driver_id: uuid.UUID) -> License | None:
     stmt = (
         select(License)

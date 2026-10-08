@@ -203,7 +203,7 @@ def analyse(
     if dominant is not None:
         tips.append(_TYPE_TIP[dominant])
     if unpaid_fines > 0:
-        tips.append("Pay any unpaid fines: paying a fine restores its points.")
+        tips.append("Pay any unpaid fines on time.")
     if risk == RiskLevel.HIGH:
         tips.append("Another violation could lead to suspension. Drive carefully.")
     if not tips:

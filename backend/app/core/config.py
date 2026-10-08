@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     max_image_pixels: int = 50_000_000
 
     license_validity_years: int = 5
+    # How long a violation's demerit points count towards suspension, counted from
+    # the day it was confirmed (a rolling window; paying the fine does not change it).
+    points_validity_days: int = 365
 
     face_template_db_path: str = "face_templates.db"
     # Local time zone for day-based figures (e.g. an officer's "today").

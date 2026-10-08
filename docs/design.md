@@ -108,11 +108,12 @@ database only through the FastAPI backend — no direct DB access from mobile or
 
 ```
 1. Mobile App → API Backend: submit mock payment for fine
-2. API Backend → PostgreSQL (transaction): mark fine PAID, restore points/license
-   status if applicable
+2. API Backend → PostgreSQL (transaction): mark fine PAID (points are NOT restored:
+   each violation's points count for 12 months from the offence, then expire)
 3. [Alternative] Mobile App → API Backend: submit appeal
 4. Admin Dashboard → API Backend: resolve appeal (UPHELD/OVERTURNED)
-5. IF OVERTURNED → API Backend → PostgreSQL (transaction): reverse fine + points
+5. IF OVERTURNED → API Backend → PostgreSQL (transaction): reverse fine, stop counting
+   its points, and recompute the licence (reactivates it if now under the threshold)
 6. API Backend → Notification Service: notify driver of outcome
 ```
 

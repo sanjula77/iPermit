@@ -1,6 +1,6 @@
 import uuid
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 from app.models.license import LicenseStatus, VehicleCategory
 from app.schemas.common import UtcDateTime
@@ -30,6 +30,8 @@ class LicenseRead(BaseModel):
     issued_at: UtcDateTime
     expiry_at: UtcDateTime
     categories: list[LicenseCategoryRead] = []
+    # When the earliest points still counting drop off; None if none count.
+    points_expire_at: UtcDateTime | None = None
 
     model_config = {"from_attributes": True}
 
@@ -37,3 +39,9 @@ class LicenseRead(BaseModel):
     @classmethod
     def _in_card_order(cls, value):
         return sort_categories(list(value))
+
+
+class UpdateLicenseCategoriesRequest(BaseModel):
+    """The full set of categories the licence should hold afterwards."""
+
+    categories: list[VehicleCategory] = Field(min_length=1)

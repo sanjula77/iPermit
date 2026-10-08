@@ -2,41 +2,20 @@ import uuid
 
 from sqlalchemy.orm import Session
 
+from app.core.points import SUSPENSION_POINTS_THRESHOLD
 from app.models.fine import VIOLATION_FINE_AMOUNT
-from app.models.license import License, LicenseStatus
+from app.models.license import LicenseStatus
 from app.models.notification import NotificationType
-from app.models.violation import VIOLATION_POINTS, Violation, ViolationType
+from app.models.violation import VIOLATION_POINTS, ViolationType
 from app.repositories import fine_repository, license_repository, violation_repository
-from app.services import badge_service, notification_service
+from app.services import badge_service, notification_service, points_service
 
-# REQ-8 AC2: license suspends once cumulative points reach this threshold.
-SUSPENSION_POINTS_THRESHOLD = 10
+# Re-exported: other modules read the suspension limit from here.
+__all__ = ["SUSPENSION_POINTS_THRESHOLD", "NotFoundError", "record_violation"]
 
 
 class NotFoundError(Exception):
     pass
-
-
-def restore_points_for_violation(db: Session, violation: Violation) -> License:
-    """REQ-8 AC3's "defined restoration rule": paying a fine, or having it
-    overturned on appeal, undoes just that violation's point deduction
-    (floored at 0) and reactivates a SUSPENDED license if the balance drops
-    back below the threshold. Shared by fine_service.pay_fine and
-    appeal_service.resolve_appeal -- both are the only two ways a fine
-    leaves UNPAID, and each violation can only be resolved once (fine
-    status is terminal after PAID/REVERSED), so there's no double-restore
-    risk between them."""
-    license_ = license_repository.get_latest_for_driver(db, violation.driver_id)
-    if license_ is None:
-        raise NotFoundError("This driver has no issued license")
-
-    license_.points = max(0, license_.points - violation.points_deducted)
-    if (
-        license_.status == LicenseStatus.SUSPENDED
-        and license_.points < SUSPENSION_POINTS_THRESHOLD
-    ):
-        license_.status = LicenseStatus.ACTIVE
-    return license_
 
 
 def record_violation(
@@ -47,7 +26,7 @@ def record_violation(
     violation_type: ViolationType,
     evidence_ref: str | None,
 ):
-    """REQ-8/REQ-9: records a confirmed violation, deducts points, generates
+    """REQ-8/REQ-9: records a confirmed violation, counts its points, generates
     a fine, and suspends the license at the threshold -- all in one
     transaction (design.md's Error Handling: "no partial point deduction
     without a fine record"). A driver needs an issued license for this to
@@ -73,9 +52,9 @@ def record_violation(
         db, violation_id=violation.id, amount=VIOLATION_FINE_AMOUNT[violation_type]
     )
 
-    license_.points += points
-    if license_.points >= SUSPENSION_POINTS_THRESHOLD:
-        license_.status = LicenseStatus.SUSPENDED
+    # Points are worked out from the violations that count (this one included);
+    # the licence is suspended if they reach the limit.
+    points_service.recompute(db, license_)
 
     db.commit()
     db.refresh(violation)

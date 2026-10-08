@@ -93,7 +93,8 @@ prove my identity and license status without a physical card.
 4. THE system SHALL show the vehicle categories the driver is licensed for (DMT
    categories A1 to J, each with its validity) on the back of the card, which the driver
    turns over with a flip button. The driver requests categories when applying and the
-   administrator confirms or changes them on approval; officers see them after a lookup.
+   administrator confirms or changes them on approval, and can edit them later on an
+   issued licence from the driver's page; officers see them after a lookup.
 
 ### Requirement REQ-5: Facial Recognition Enrollment
 
@@ -156,9 +157,12 @@ suspend a license at a threshold, so that repeat offenders are progressively pen
 1. WHEN a violation is confirmed, THE system SHALL deduct points per a defined
    per-offense schedule (e.g., white-line=3, speeding=4, red-light=6, drunk-driving=10).
 2. THE system SHALL start each driver at 0 points and suspend the license WHEN
-   cumulative points reach 10.
-3. THE system SHALL restore points/reactivate a license after the associated fine(s)
-   are paid, per the defined restoration rule.
+   the points that currently count reach 10.
+3. THE system SHALL count each violation's points for a fixed period of 12 months from
+   the day it was confirmed (a rolling window), after which they stop counting. Paying
+   the fine SHALL NOT remove or reduce its points; only a successful appeal, which
+   reverses the violation, removes them early. A suspended license SHALL be reactivated
+   automatically once the points that count fall below the threshold.
 4. THE system SHALL maintain a full violation history per driver, immutable once recorded.
 
 ### Requirement REQ-9: Fine Issuance & Payment

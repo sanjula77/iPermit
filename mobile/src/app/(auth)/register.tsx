@@ -107,7 +107,7 @@ export default function RegisterScreen() {
   }
 
   return (
-    <AuthScreen subtitle="Create a driver account">
+    <AuthScreen title="Create a driver account">
       <TextField
         label="Email"
         icon="mail-outline"

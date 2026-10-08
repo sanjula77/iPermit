@@ -38,7 +38,7 @@ export default function LoginScreen() {
   const canSubmit = identifier.trim().length > 0 && password.length > 0 && !isSubmitting;
 
   return (
-    <AuthScreen subtitle="Log in to your account">
+    <AuthScreen title="Log in to your account">
       <TextField
         label="Email or NIC"
         icon="mail-outline"
@@ -89,10 +89,6 @@ export default function LoginScreen() {
           Don&apos;t have an account? <ThemedText type="linkPrimary">Register</ThemedText>
         </ThemedText>
       </Link>
-
-      <ThemedText type="small" themeColor="textSecondary" style={styles.centered}>
-        Police officers: sign in with the account issued by your station.
-      </ThemedText>
     </AuthScreen>
   );
 }

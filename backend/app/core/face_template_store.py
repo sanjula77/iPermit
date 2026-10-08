@@ -98,3 +98,14 @@ def delete_template(driver_id: str) -> list[int]:
         ]
         conn.execute("DELETE FROM face_templates WHERE driver_id = ?", (driver_id,))
     return rowids
+
+
+def delete_all_templates() -> list[int]:
+    """Removes every template (a full demo reset); returns the SQLite rowids
+    removed so the FAISS index can drop them."""
+    with _connect() as conn:
+        rowids = [
+            rowid for (rowid,) in conn.execute("SELECT rowid FROM face_templates")
+        ]
+        conn.execute("DELETE FROM face_templates")
+    return rowids

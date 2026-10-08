@@ -2,6 +2,7 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from fastapi.responses import FileResponse
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db, require_role
@@ -29,6 +30,7 @@ from app.services import (
     badge_service,
     behaviour_service,
     license_service,
+    reset_service,
 )
 from app.services.face_service import FaceEnrollmentError
 
@@ -255,3 +257,36 @@ def delete_user(
             status_code=status.HTTP_409_CONFLICT, detail=str(exc)
         ) from exc
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+class DemoResetRequest(BaseModel):
+    confirm: str
+
+
+@router.get("/demo-reset/status")
+def demo_reset_status(_admin: User = Depends(_admin_only)) -> dict:
+    """Whether this server allows the demo reset (see ALLOW_DEMO_RESET)."""
+    return {"enabled": reset_service.is_enabled()}
+
+
+@router.post("/demo-reset")
+def demo_reset(
+    body: DemoResetRequest,
+    db: Session = Depends(get_db),
+    admin: User = Depends(_admin_only),
+) -> dict:
+    """Wipes every driver and all enforcement and activity data, keeping
+    administrator and police accounts. For clean demonstrations only: disabled
+    unless the server sets ALLOW_DEMO_RESET, and it needs the word CLEAR."""
+    try:
+        return reset_service.clear_demo_data(
+            db, acting_admin_id=admin.id, confirm=body.confirm
+        )
+    except reset_service.ResetDisabledError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)
+        ) from exc
+    except reset_service.ConfirmationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
+        ) from exc

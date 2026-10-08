@@ -16,6 +16,7 @@ export const TYPE_INFO: Record<
   LICENSE_REJECTED: { title: 'Application not approved', icon: 'close-circle', kind: 'bad', target: '/(app)/(tabs)/(home)' },
   FINE_ISSUED: { title: 'Fine issued', icon: 'receipt-outline', kind: 'bad', target: '/(app)/(tabs)/(fines)/fines' },
   LICENSE_SUSPENDED: { title: 'License suspended', icon: 'ban', kind: 'bad', target: '/(app)/(tabs)/(home)' },
+  LICENSE_REINSTATED: { title: 'License reinstated', icon: 'checkmark-circle', kind: 'good', target: '/(app)/(tabs)/(home)' },
   PAYMENT_CONFIRMED: { title: 'Payment confirmed', icon: 'card', kind: 'good', target: '/(app)/(tabs)/(fines)/fines' },
   APPEAL_UPHELD: { title: 'Appeal rejected', icon: 'close-circle', kind: 'bad', target: '/(app)/(tabs)/(fines)/fines' },
   APPEAL_OVERTURNED: { title: 'Appeal accepted', icon: 'arrow-undo-circle', kind: 'good', target: '/(app)/(tabs)/(fines)/fines' },

@@ -23,7 +23,7 @@ import type { StatusTone } from '@/components/status-badge';
 import { ThemedText } from '@/components/themed-text';
 import { Fonts, Radius, Shadows, Spacing, tint } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { formatMonthYear } from '@/lib/format';
+import { formatDate, formatMonthYear } from '@/lib/format';
 import { SUSPENSION_POINTS, pointsColorKey } from '@/lib/points';
 import type { BadgeTier } from '@/types/badge';
 import type { License } from '@/types/license';
@@ -373,13 +373,21 @@ export function DemeritPointsCard({ license }: { license: License }) {
         <View style={styles.suspendedNote}>
           <Ionicons name="alert-circle" size={18} color={theme.danger} />
           <ThemedText type="small" style={[styles.flex, { color: theme.danger }]}>
-            Your licence is suspended. Pay your outstanding fines and contact the licensing office.
+            Your licence is suspended until your points fall below the limit
+            {license.points_expire_at ? `. The next points expire on ${formatDate(license.points_expire_at)}.` : '.'}
           </ThemedText>
         </View>
       ) : (
-        <ThemedText type="small" themeColor="textSecondary">
-          {remaining} more {remaining === 1 ? 'point' : 'points'} until your licence is suspended
-        </ThemedText>
+        <View style={styles.pointsNotes}>
+          <ThemedText type="small" themeColor="textSecondary">
+            {remaining} more {remaining === 1 ? 'point' : 'points'} until your licence is suspended
+          </ThemedText>
+          {license.points_expire_at ? (
+            <ThemedText type="small" themeColor="textSecondary" testID="points-expire">
+              Your oldest points expire on {formatDate(license.points_expire_at)}.
+            </ThemedText>
+          ) : null}
+        </View>
       )}
     </Card>
   );
@@ -489,5 +497,6 @@ const styles = StyleSheet.create({
   pointsOf: { fontSize: 15, fontWeight: 400 },
   segments: { flexDirection: 'row', gap: Spacing.one },
   segment: { flex: 1, height: 10, borderRadius: 3 },
+  pointsNotes: { gap: Spacing.half },
   suspendedNote: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.two },
 });

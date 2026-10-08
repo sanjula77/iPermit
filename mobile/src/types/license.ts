@@ -31,4 +31,6 @@ export interface License {
   issued_at: string;
   expiry_at: string;
   categories: LicenseCategory[];
+  // When the earliest points still counting drop off; null if none count.
+  points_expire_at: string | null;
 }

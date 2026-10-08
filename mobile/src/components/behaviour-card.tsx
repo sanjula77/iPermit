@@ -1,49 +1,54 @@
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Card } from '@/components/card';
 import { IconTile } from '@/components/icon-tile';
-import { ListRow } from '@/components/list-row';
-import { StatusBadge } from '@/components/status-badge';
-import { RISK_INFO, TREND_INFO } from '@/constants/behaviour';
-import { Spacing, type ThemeColor } from '@/constants/theme';
+import { ThemedText } from '@/components/themed-text';
+import { RISK_COLOR, RISK_INFO, TREND_INFO } from '@/constants/behaviour';
+import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type { Behaviour } from '@/types/behaviour';
 
-const RISK_COLOR: Record<Behaviour['risk_level'], ThemeColor> = {
-  HIGH: 'danger',
-  MEDIUM: 'warning',
-  LOW: 'success',
-};
-
-// Home summary of the driver's behaviour outlook; opens the detail screen.
+// Home summary of the driver's behaviour outlook: one two-line row, the risk
+// level in its colour and, when there is enough history, which way it is going.
+// Opens the detail screen.
 export function BehaviourCard({ behaviour }: { behaviour: Behaviour }) {
   const theme = useTheme();
   const risk = RISK_INFO[behaviour.risk_level];
-  const trend = TREND_INFO[behaviour.trend];
+  const color = theme[RISK_COLOR[behaviour.risk_level]];
+  const trend = behaviour.trend === 'NOT_ENOUGH_DATA' ? null : TREND_INFO[behaviour.trend];
 
   return (
     <Card style={styles.card} testID="home-behaviour">
-      <ListRow
+      <Pressable
         onPress={() => router.push('/(app)/behaviour')}
-        accessibilityLabel={`My behaviour: ${risk.label}. ${behaviour.reasons[0] ?? ''}`}
+        accessibilityRole="button"
+        accessibilityLabel={`My behaviour: ${risk.label}${trend ? `, ${trend.label}` : ''}`}
         accessibilityHint="Opens your behaviour details"
-        leading={<IconTile icon="analytics-outline" color={theme[RISK_COLOR[behaviour.risk_level]]} />}
-        title="My behaviour"
-        meta={behaviour.reasons[0]}
-        badge={<StatusBadge label={risk.label} icon={risk.icon} tone={risk.tone} testID="home-behaviour-risk" />}
-        chevron
-      />
-      {behaviour.trend !== 'NOT_ENOUGH_DATA' ? (
-        <View style={styles.trend}>
-          <StatusBadge label={trend.label} icon={trend.icon} tone={trend.tone} />
+        style={({ pressed }) => [styles.row, { opacity: pressed ? 0.6 : 1 }]}
+      >
+        <IconTile icon="analytics-outline" color={color} />
+        <View style={styles.text}>
+          <ThemedText type="smallBold" style={styles.title}>
+            My behaviour
+          </ThemedText>
+          <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+            <ThemedText type="smallBold" style={{ color }} testID="home-behaviour-risk">
+              {risk.label}
+            </ThemedText>
+            {trend ? ` · ${trend.label}` : ''}
+          </ThemedText>
         </View>
-      ) : null}
+        <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
+      </Pressable>
     </Card>
   );
 }
 
 const styles = StyleSheet.create({
   card: { paddingVertical: 0 },
-  trend: { flexDirection: 'row', alignItems: 'center', paddingBottom: Spacing.three },
+  row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingVertical: Spacing.three },
+  text: { flex: 1, minWidth: 0 },
+  title: { fontSize: 16, lineHeight: 22 },
 });

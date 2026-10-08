@@ -8,6 +8,8 @@ export interface BehaviourTimelineItem {
   type: ViolationType;
   points: number;
   confirmed_at: string;
+  // When this violation's points stop counting.
+  points_expire_at: string;
   fine_status: FineStatus | null;
 }
 
@@ -28,6 +30,8 @@ export interface Behaviour {
   oldest_leaves_window_at: string | null;
   dominant_type: ViolationType | null;
   prior_suspensions: number;
+  // How long each violation's points count towards suspension.
+  points_validity_days: number;
   unpaid_fines: number;
   tips: string[];
   timeline: BehaviourTimelineItem[];

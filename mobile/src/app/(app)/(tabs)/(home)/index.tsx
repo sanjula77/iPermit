@@ -17,7 +17,14 @@ import { FadeInItem } from '@/components/fade-in-item';
 import { HeroScreen } from '@/components/hero-screen';
 import { IconTile } from '@/components/icon-tile';
 import { PoliceHome } from '@/components/police-home';
-import { DemeritPointsCard, LicenseCard, LicenseQrButton, TIER_LABEL, TIER_TONE } from '@/components/license-card';
+import {
+  DemeritPointsCard,
+  LicenseCard,
+  LicenseQrButton,
+  TIER_ICON,
+  TIER_LABEL,
+  TIER_TONE,
+} from '@/components/license-card';
 import { ListRow } from '@/components/list-row';
 import { ScreenState } from '@/components/screen-state';
 import { Skeleton } from '@/components/skeleton';
@@ -216,15 +223,19 @@ function DriverHomeContent({
           {badge ? (
             <StatTile
               label="Safety badge"
-              value={`${TIER_LABEL[badge.tier]} · ${badge.safety_score}`}
+              value={TIER_LABEL[badge.tier]}
+              sub={`Score ${badge.safety_score} of 100`}
+              icon={TIER_ICON[badge.tier]}
               valueColor={TIER_TONE_COLOR[badge.tier]}
               testID="home-badge"
             />
           ) : null}
           {outstanding !== null ? (
             <StatTile
-              label="Outstanding fines"
+              label="Fines to pay"
               value={formatLkr(outstanding)}
+              sub={outstanding > 0 ? 'Pay in Fines tab' : 'Nothing due'}
+              icon="receipt-outline"
               valueColor={outstanding > 0 ? 'danger' : 'success'}
               testID="home-outstanding"
             />

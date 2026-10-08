@@ -9,6 +9,7 @@ from app.core.points import (
     Entry,
     active_points,
     next_expiry,
+    suspension_ends_at,
 )
 from app.models.fine import FineStatus
 from app.models.license import License, LicenseStatus
@@ -47,7 +48,9 @@ def recompute(
     points = active_points(
         _entries(rows), now=now, validity_days=settings.points_validity_days
     )
-    license_.points = points
+    # Shown points stop at the suspension limit (10 / 10); the full total still
+    # decides the status and when a suspension lifts.
+    license_.points = min(points, SUSPENSION_POINTS_THRESHOLD)
     license_.status = (
         LicenseStatus.SUSPENDED
         if points >= SUSPENSION_POINTS_THRESHOLD
@@ -130,4 +133,17 @@ def points_expire_at(
         _entries(rows),
         now=now or datetime.utcnow(),
         validity_days=settings.points_validity_days,
+    )
+
+
+def suspension_lifts_at(
+    db: Session, license_: License, *, now: datetime | None = None
+) -> datetime | None:
+    """When a suspended licence's points fall below the limit, for the card."""
+    rows = violation_repository.list_with_fine_status_for_driver(db, license_.driver_id)
+    return suspension_ends_at(
+        _entries(rows),
+        now=now or datetime.utcnow(),
+        validity_days=settings.points_validity_days,
+        threshold=SUSPENSION_POINTS_THRESHOLD,
     )

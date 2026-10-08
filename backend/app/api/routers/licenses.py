@@ -3,6 +3,7 @@ from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db, require_role
+from app.models.license import LicenseStatus
 from app.models.user import User, UserRole
 from app.schemas.license import LicenseRead
 from app.services import application_service, license_service, points_service
@@ -21,6 +22,8 @@ def get_my_license(
         )
         result = LicenseRead.model_validate(license_)
         result.points_expire_at = points_service.points_expire_at(db, license_)
+        if license_.status == LicenseStatus.SUSPENDED:
+            result.suspension_ends_at = points_service.suspension_lifts_at(db, license_)
         return result
     except license_service.NotFoundError as exc:
         raise HTTPException(

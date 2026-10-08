@@ -162,7 +162,9 @@ suspend a license at a threshold, so that repeat offenders are progressively pen
    the day it was confirmed (a rolling window), after which they stop counting. Paying
    the fine SHALL NOT remove or reduce its points; only a successful appeal, which
    reverses the violation, removes them early. A suspended license SHALL be reactivated
-   automatically once the points that count fall below the threshold.
+   automatically once the points that count fall below the threshold. The points shown
+   to users stop at the threshold (for example 10 / 10) however many further violations
+   are recorded.
 4. THE system SHALL maintain a full violation history per driver, immutable once recorded.
 
 ### Requirement REQ-9: Fine Issuance & Payment

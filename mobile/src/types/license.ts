@@ -33,4 +33,6 @@ export interface License {
   categories: LicenseCategory[];
   // When the earliest points still counting drop off; null if none count.
   points_expire_at: string | null;
+  // For a suspended licence: when enough points will have expired to lift it.
+  suspension_ends_at: string | null;
 }

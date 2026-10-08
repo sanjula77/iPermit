@@ -32,6 +32,8 @@ class LicenseRead(BaseModel):
     categories: list[LicenseCategoryRead] = []
     # When the earliest points still counting drop off; None if none count.
     points_expire_at: UtcDateTime | None = None
+    # For a suspended licence: when enough points will have expired to lift it.
+    suspension_ends_at: UtcDateTime | None = None
 
     model_config = {"from_attributes": True}
 

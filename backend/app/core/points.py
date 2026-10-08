@@ -42,3 +42,23 @@ def next_expiry(
     if not counting:
         return None
     return expires_at(min(e[1] for e in counting), validity_days)
+
+
+def suspension_ends_at(
+    entries: Iterable[Entry], *, now: datetime, validity_days: int, threshold: int
+) -> datetime | None:
+    """When the points that count will first be below the threshold, i.e. when a
+    suspension for reaching it lifts, assuming no new violations. Points expire
+    oldest first. None if the points are already below the threshold."""
+    counting = sorted(
+        (e for e in _active(entries, now, validity_days) if e[0] > 0),
+        key=lambda e: e[1],
+    )
+    total = sum(points for points, _, _ in counting)
+    if total < threshold:
+        return None
+    for points, confirmed_at, _ in counting:
+        total -= points
+        if total < threshold:
+            return expires_at(confirmed_at, validity_days)
+    return None

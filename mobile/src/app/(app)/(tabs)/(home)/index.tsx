@@ -222,7 +222,7 @@ function DriverHomeContent({
         <View style={styles.stats}>
           {badge ? (
             <StatTile
-              label="Safety badge"
+              label="Badge"
               value={TIER_LABEL[badge.tier]}
               sub={`Score ${badge.safety_score} of 100`}
               icon={TIER_ICON[badge.tier]}
@@ -232,7 +232,7 @@ function DriverHomeContent({
           ) : null}
           {outstanding !== null ? (
             <StatTile
-              label="Fines to pay"
+              label="Fines"
               value={formatLkr(outstanding)}
               sub={outstanding > 0 ? 'Pay in Fines tab' : 'Nothing due'}
               icon="receipt-outline"

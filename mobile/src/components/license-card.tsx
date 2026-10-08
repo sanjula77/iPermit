@@ -356,8 +356,7 @@ export function DemeritPointsCard({ license }: { license: License }) {
         <ThemedText testID="license-points" style={[styles.pointsCount, suspended && { color: theme.danger }]}>
           {license.points}
           <ThemedText themeColor="textSecondary" style={styles.pointsOf}>
-            {' '}
-            / {SUSPENSION_POINTS}
+            {` / ${SUSPENSION_POINTS}`}
           </ThemedText>
         </ThemedText>
       </View>
@@ -373,8 +372,9 @@ export function DemeritPointsCard({ license }: { license: License }) {
         <View style={styles.suspendedNote}>
           <Ionicons name="alert-circle" size={18} color={theme.danger} />
           <ThemedText type="small" style={[styles.flex, { color: theme.danger }]}>
-            Your licence is suspended until your points fall below the limit
-            {license.points_expire_at ? `. The next points expire on ${formatDate(license.points_expire_at)}.` : '.'}
+            {license.suspension_ends_at
+              ? `Suspended: the limit is ${SUSPENSION_POINTS} points. Your licence is reinstated on ${formatDate(license.suspension_ends_at)}, once enough points have expired.`
+              : `Suspended: the limit is ${SUSPENSION_POINTS} points. It is reinstated once enough points have expired.`}
           </ThemedText>
         </View>
       ) : (

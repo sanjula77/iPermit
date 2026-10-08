@@ -39,7 +39,14 @@ export function StatTile({
     <Card variant={variant} style={[styles.tile, compact && styles.tileCompact]} testID={testID}>
       <View style={styles.head}>
         {icon ? <IconTile icon={icon} color={theme[accent ?? valueColor]} size={24} /> : null}
-        <ThemedText type="small" themeColor="textSecondary" numberOfLines={1} style={styles.label}>
+        <ThemedText
+          type="small"
+          themeColor="textSecondary"
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.75}
+          style={styles.label}
+        >
           {label}
         </ThemedText>
       </View>
@@ -68,6 +75,6 @@ const styles = StyleSheet.create({
   tileCompact: { padding: Spacing.three - 2, gap: 2 },
   head: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one + 2, minHeight: 28 },
   label: { flex: 1, minWidth: 0 },
-  value: { fontSize: 22, lineHeight: 28, fontWeight: 700, fontVariant: ['tabular-nums'] },
-  valueCompact: { fontSize: 20, lineHeight: 26 },
+  value: { fontSize: 20, lineHeight: 26, fontWeight: 700, fontVariant: ['tabular-nums'] },
+  valueCompact: { fontSize: 18, lineHeight: 24 },
 });

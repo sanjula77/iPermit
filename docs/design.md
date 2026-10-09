@@ -125,6 +125,9 @@ database only through the FastAPI backend — no direct DB access from mobile or
 3. API Backend → Notification Service: notify nearby drivers (high severity)
 4. Mobile App (other drivers) → API Backend: fetch active incidents near location
 5. Mobile App → API Backend: confirm/clear incident → update status
+6. Reporter's app → API Backend: optional scene photo (separate upload after step 1);
+   stored without EXIF under uploads/incidents/, served only to signed-in users while
+   the incident is active, deleted when it is cleared or expires
 ```
 
 ## Integration Points
@@ -223,7 +226,7 @@ Violation   { id, driver_id FK, officer_id FK, type, points_deducted, confirmed_
 Fine        { id, violation_id FK, amount, status[UNPAID|PAID|REVERSED], paid_at }
 Appeal      { id, fine_id FK, driver_id FK, reason, status[PENDING|UPHELD|OVERTURNED], resolved_by }
 Badge       { driver_id FK, tier[PLATINUM|GOLD|SILVER|BRONZE|AT_RISK|SUSPENDED], updated_at }
-RoadIncident{ id, reporter_id FK, type, severity, lat, lng, status[ACTIVE|CLEARED|EXPIRED], expires_at }
+RoadIncident{ id, reporter_id FK, type, severity, lat, lng, status[ACTIVE|CLEARED|EXPIRED], expires_at, photo_path? }
 Notification{ id, user_id FK, type, payload, read_at }
 ```
 

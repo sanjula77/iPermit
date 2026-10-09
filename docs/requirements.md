@@ -236,6 +236,9 @@ I can avoid hazards and warn other drivers.
 3. THE system SHALL let other drivers confirm or clear a reported incident.
 4. THE system SHALL auto-expire incidents after a defined time window.
 5. THE system SHALL notify nearby drivers of new high-severity incidents.
+6. THE system SHALL let the reporter attach one optional photo to an active incident,
+   visible to other signed-in drivers while the incident is active. The photo SHALL be
+   stored without its EXIF metadata and deleted when the incident is cleared or expires.
 
 ### Requirement REQ-14: Admin Analytics Dashboard
 

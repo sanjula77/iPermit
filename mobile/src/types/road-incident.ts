@@ -21,4 +21,5 @@ export interface RoadIncident {
   confirmation_count: number;
   created_at: string;
   expires_at: string;
+  has_photo: boolean;
 }

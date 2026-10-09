@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Modal, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import Animated, {
@@ -15,6 +15,7 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { getLicensePhotoSource, type PhotoSource } from '@/api/licenses';
+import { usePhotoSource } from '@/hooks/use-photo-source';
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
 import { FlipButton, LicenseCardBack } from '@/components/license-card-back';
@@ -260,25 +261,7 @@ function LicenseFront({
 // The driver's registration photo for the card, or null while it loads or when
 // there isn't one (the card then shows a silhouette). Reloaded per licence.
 function useLicensePhoto(licenseId: string): PhotoSource | null {
-  const [photo, setPhoto] = useState<PhotoSource | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    let blobUrl: string | null = null;
-    getLicensePhotoSource()
-      .then((source) => {
-        if (source?.uri.startsWith('blob:')) blobUrl = source.uri;
-        if (!cancelled) setPhoto(source);
-        else if (blobUrl) URL.revokeObjectURL(blobUrl);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-      if (blobUrl) URL.revokeObjectURL(blobUrl);
-    };
-  }, [licenseId]);
-
-  return photo;
+  return usePhotoSource(getLicensePhotoSource, licenseId);
 }
 
 // The button under the card, and the sheet it opens: the QR an officer scans,

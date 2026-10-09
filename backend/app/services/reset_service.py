@@ -71,6 +71,9 @@ def clear_demo_data(db: Session, *, acting_admin_id: uuid.UUID, confirm: str) ->
         raise ConfirmationError(f'Type "{CONFIRMATION_WORD}" to confirm.')
 
     document_paths = list(db.scalars(select(ApplicationDocument.file_path)))
+    document_paths += [
+        path for path in db.scalars(select(RoadIncident.photo_path)) if path is not None
+    ]
     counts: dict[str, int] = {}
     # Children before parents: enforcement records reference users RESTRICT.
     for label, model in (

@@ -96,7 +96,9 @@ def clear_demo_data(db: Session, *, acting_admin_id: uuid.UUID, confirm: str) ->
     db.commit()
 
     try:
-        counts["face_templates"] = face_service.delete_all_templates()
+        counts["face_templates"] = face_service.delete_all_templates(
+            actor_id=str(acting_admin_id)
+        )
     except sqlite3.Error:
         counts["face_templates"] = 0
         logger.exception("Demo reset: could not clear the face template store")

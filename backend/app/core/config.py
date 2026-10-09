@@ -34,6 +34,18 @@ class Settings(BaseSettings):
     points_validity_days: int = 365
 
     face_template_db_path: str = "face_templates.db"
+    # AES-256 key for the stored face templates: 32 random bytes, base64-encoded.
+    # Keep it out of the database and the repository, and back it up: without it
+    # the stored templates cannot be read and every driver would need to be
+    # re-enrolled.
+    face_template_key: str = ""
+    # The master key before a rotation. Set it (alongside the new face_template_key)
+    # only while running `python -m app.scripts.rotate_template_key`.
+    face_template_key_previous: str = ""
+    # Ed25519 private key (32 random bytes, base64) that signs the biometric audit
+    # log. Only this server can add valid entries; anyone with the matching public
+    # key can check the log has not been altered. Back it up like the template key.
+    audit_signing_key: str = ""
     # Local time zone for day-based figures (e.g. an officer's "today").
     # Timestamps are stored as naive UTC.
     app_timezone: str = "Asia/Colombo"

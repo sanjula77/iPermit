@@ -38,11 +38,13 @@ def verify_face(
     request: Request,  # noqa: ARG001 -- required by slowapi's limiter decorator
     photo: UploadFile = File(...),
     db: Session = Depends(get_db),
-    _officer: User = Depends(_police_only),
+    officer: User = Depends(_police_only),
 ):
     try:
         image_bytes = read_image_upload(photo)
-        return police_service.verify_face(db, image_bytes=image_bytes)
+        return police_service.verify_face(
+            db, image_bytes=image_bytes, officer_id=officer.id
+        )
     except (UploadValidationError, police_service.FaceVerificationError) as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)

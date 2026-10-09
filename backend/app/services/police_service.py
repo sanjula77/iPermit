@@ -4,7 +4,7 @@ from zoneinfo import ZoneInfo
 
 from sqlalchemy.orm import Session
 
-from app.core import face_index, face_template_store
+from app.core import face_audit, face_index, face_template_store
 from app.core.config import settings
 from app.core.face_engine import FaceEngineError, detect_faces
 from app.models.user import User
@@ -65,12 +65,20 @@ def _driver_summary(db: Session, driver: User) -> DriverSummary:
     )
 
 
-def verify_face(db: Session, *, image_bytes: bytes) -> VerifyFaceResponse:
+def verify_face(
+    db: Session, *, image_bytes: bytes, officer_id: uuid.UUID | None = None
+) -> VerifyFaceResponse:
     """REQ-6 AC1/AC4: match a live officer-submitted photo against the FAISS
     index. Never auto-confirms -- requires_manual_confirmation is set
     whenever the best match's similarity is below the configured threshold,
     or there is no enrolled match at all, and the officer must fall back to
     QR/NIC lookup or manual judgment (verify_qr/lookup_driver)."""
+    try:
+        face_audit.ensure_ready()  # no face search that could not be logged
+    except face_audit.AuditError as exc:
+        raise ServiceUnavailableError(
+            "Face matching is temporarily unavailable. Use QR or NIC lookup."
+        ) from exc
     try:
         detections = detect_faces(image_bytes)
     except FaceEngineError as exc:
@@ -104,6 +112,18 @@ def verify_face(db: Session, *, image_bytes: bytes) -> VerifyFaceResponse:
     best_match = candidates[0] if candidates else None
     requires_manual_confirmation = (
         best_match is None or best_match.similarity < settings.face_match_threshold
+    )
+    face_audit.record(
+        face_audit.MATCH,
+        actor_id=str(officer_id) if officer_id else None,
+        subject_id=None if requires_manual_confirmation else str(best_match.driver.id),
+        detail=(
+            f"candidates={len(candidates)}; "
+            f"best_similarity={best_match.similarity:.3f}; "
+            if best_match
+            else "candidates=0; "
+        )
+        + f"manual_confirmation={requires_manual_confirmation}",
     )
     return VerifyFaceResponse(
         requires_manual_confirmation=requires_manual_confirmation,

@@ -228,7 +228,7 @@ def delete_user(db: Session, *, user_id: uuid.UUID, acting_admin_id: uuid.UUID) 
 
     if user.role == UserRole.DRIVER:
         try:
-            face_service.delete_template(str(user_id))
+            face_service.delete_template(str(user_id), actor_id=str(acting_admin_id))
         except sqlite3.Error:
             logger.exception("Could not delete the face template for a deleted driver")
     _remove_files(file_paths)

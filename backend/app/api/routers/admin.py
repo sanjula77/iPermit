@@ -71,13 +71,14 @@ def approve_application(
     application_id: uuid.UUID,
     body: ApproveApplicationRequest | None = None,
     db: Session = Depends(get_db),
-    _admin: User = Depends(_admin_only),
+    admin: User = Depends(_admin_only),
 ):
     try:
         return application_service.approve_application(
             db,
             application_id=application_id,
             categories=body.categories if body else None,
+            reviewer_id=admin.id,
         )
     except application_service.NotFoundError as exc:
         raise HTTPException(

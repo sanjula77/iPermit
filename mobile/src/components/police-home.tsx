@@ -12,6 +12,7 @@ import { FadeInItem } from '@/components/fade-in-item';
 import { HeroScreen } from '@/components/hero-screen';
 import { IconTile } from '@/components/icon-tile';
 import { ListRow } from '@/components/list-row';
+import { PendingViolationsCard } from '@/components/pending-violations-card';
 import { PressableScale } from '@/components/pressable-scale';
 import { Skeleton } from '@/components/skeleton';
 import { ThemedText } from '@/components/themed-text';
@@ -108,6 +109,8 @@ export function PoliceHome() {
         }
       >
         <ActionPanel />
+
+        <PendingViolationsCard />
 
         <View style={styles.section}>
           <SectionLabel text="Your activity" />

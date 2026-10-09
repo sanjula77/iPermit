@@ -5,7 +5,6 @@ import { Fragment, useRef, useState } from 'react';
 import { Alert, Platform, Pressable, type ScrollView, StyleSheet, View } from 'react-native';
 
 import { extractErrorMessage } from '@/api/client';
-import { recordViolation } from '@/api/police';
 import { Banner } from '@/components/banner';
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
@@ -18,6 +17,8 @@ import { TextField } from '@/components/text-field';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Radius, Spacing, tint } from '@/constants/theme';
+import { useAuth } from '@/context/auth-context';
+import { submitOrQueue } from '@/lib/violation-sync';
 import {
   OTHER_DESCRIPTION_MAX,
   OTHER_DESCRIPTION_MIN,
@@ -84,6 +85,7 @@ function DriverDetails({
   identification: Identification | null;
 }) {
   const theme = useTheme();
+  const { user } = useAuth();
   const [driver, setDriver] = useState<DriverSummary>(initialDriver);
   const [selected, setSelected] = useState<ViolationType[]>([]);
   // An "other" violation: what the officer saw, and the points they give it.
@@ -92,7 +94,7 @@ function DriverDetails({
   const [isSubmitting, setIsSubmitting] = useState(false);
   // Blocks a same-frame double submit before isSubmitting has re-rendered.
   const submittingRef = useRef(false);
-  const [notice, setNotice] = useState<{ kind: 'success' | 'error'; text: string } | null>(null);
+  const [notice, setNotice] = useState<{ kind: 'success' | 'queued' | 'error'; text: string } | null>(null);
   const scrollRef = useRef<ScrollView>(null);
 
   const hasLicense = !!driver.license_no;
@@ -120,16 +122,26 @@ function DriverDetails({
     setNotice(null);
     setIsSubmitting(true);
     const recorded: string[] = [];
+    // Saved on the phone because the server could not be reached; sent later.
+    const queued: string[] = [];
     let totalPoints = 0;
     let totalFines = 0;
     let suspended = false;
     try {
       for (const type of types) {
-        const result = await recordViolation({
+        const outcome = await submitOrQueue({
+          officerId: user?.id ?? '',
           driverId: driver.driver_id,
+          driverLabel: driver.email,
           type,
-          ...(type === 'OTHER' ? { description: otherText.trim(), points: otherPoints } : {}),
+          description: type === 'OTHER' ? otherText.trim() : null,
+          points: type === 'OTHER' ? otherPoints : null,
         });
+        if (outcome.kind === 'queued') {
+          queued.push(labelFor(type).toLowerCase());
+          continue;
+        }
+        const { result } = outcome;
         recorded.push(labelFor(type).toLowerCase());
         totalPoints += result.violation.points_deducted;
         totalFines += result.fine.amount;
@@ -145,22 +157,32 @@ function DriverDetails({
       setOtherText('');
       setOtherPoints(OTHER_MIN_POINTS);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      const queuedText = queued.length
+        ? `Saved on this phone: ${queued.join(', ')}. It will be sent automatically when you are back online. ` +
+          'Points and fines are added then.'
+        : '';
       setNotice({
-        kind: 'success',
+        kind: queued.length ? 'queued' : 'success',
         text:
-          `Recorded ${recorded.join(', ')}: ${totalPoints} points and ${formatLkr(totalFines)} in fines.` +
-          (suspended ? ' The license is now suspended.' : ''),
+          (recorded.length
+            ? `Recorded ${recorded.join(', ')}: ${totalPoints} points and ${formatLkr(totalFines)} in fines.` +
+              (suspended ? ' The license is now suspended.' : '') +
+              (queued.length ? ' ' : '')
+            : '') + queuedText,
       });
     } catch (err) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
-      // Keep only the ones that weren't recorded selected, so a retry doesn't
-      // record the others twice.
-      setSelected(types.slice(recorded.length));
+      // Keep only the ones that weren't recorded or saved selected, so a retry
+      // doesn't record the others twice.
+      const done = recorded.length + queued.length;
+      setSelected(types.slice(done));
       setNotice({
         kind: 'error',
         text:
-          (recorded.length ? `Recorded ${recorded.join(', ')}, then stopped. ` : '') +
-          `Couldn't record ${labelFor(types[recorded.length]).toLowerCase()}: ${extractErrorMessage(err)}`,
+          (recorded.length ? `Recorded ${recorded.join(', ')}. ` : '') +
+          (queued.length ? `Saved on this phone: ${queued.join(', ')}. ` : '') +
+          (done ? 'Then stopped. ' : '') +
+          `Couldn't record ${labelFor(types[done]).toLowerCase()}: ${extractErrorMessage(err)}`,
       });
     } finally {
       scrollRef.current?.scrollTo({ y: 0, animated: true });
@@ -273,9 +295,9 @@ function DriverDetails({
 
       {notice ? (
         <Banner
-          tone={notice.kind === 'success' ? 'success' : 'danger'}
+          tone={notice.kind === 'success' ? 'success' : notice.kind === 'queued' ? 'info' : 'danger'}
           text={notice.text}
-          testID={notice.kind === 'success' ? 'record-violation-success' : 'record-violation-error'}
+          testID={notice.kind === 'error' ? 'record-violation-error' : 'record-violation-success'}
         />
       ) : null}
 

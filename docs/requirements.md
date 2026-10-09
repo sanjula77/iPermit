@@ -171,6 +171,23 @@ suspend a license at a threshold, so that repeat offenders are progressively pen
    are recorded.
 4. THE system SHALL maintain a full violation history per driver, immutable once recorded.
 
+#### Offline recording (roadside, no signal)
+An officer in a connectivity dead zone SHALL still be able to record a violation on a
+driver they have already identified:
+1. THE officer app SHALL save every confirmed violation on the phone (SQLite) before
+   sending it, so it survives a dropped connection or a closed app, and SHALL send it
+   automatically when a connection returns (and on app start and every 30 seconds).
+2. EACH violation SHALL carry an id made on the phone; the server SHALL record a given
+   id at most once, so a resend never creates a second violation or fine, and SHALL
+   refuse an id already used by a different officer.
+3. THE violation SHALL keep the time the officer recorded it; points count from then, not
+   from when it reached the server. The server SHALL refuse a time in the future (beyond
+   5 minutes of clock drift) or older than 7 days, and the officer SHALL see the refusal.
+4. THE officer SHALL be able to see what is waiting, sent or refused. Points, the fine and
+   any suspension are applied by the server when the violation arrives.
+Out of scope: identifying a driver offline (face, QR and NIC lookups need the server) and
+uploading evidence photos offline.
+
 ### Requirement REQ-9: Fine Issuance & Payment
 
 **User Story:** As a driver, I want to view and pay fines associated with my

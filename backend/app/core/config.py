@@ -29,6 +29,11 @@ class Settings(BaseSettings):
     # data (police and admin accounts are kept). Off unless a server opts in, so a
     # production deployment cannot be cleared by mistake.
     allow_demo_reset: bool = False
+    # Offline-recorded violations: how far back an officer's phone may say the
+    # offence happened when it finally syncs, and how far ahead of the server's
+    # clock it may be (phone clock drift).
+    offline_violation_max_age_days: int = 7
+    offline_clock_skew_minutes: int = 5
     # How long a violation's demerit points count towards suspension, counted from
     # the day it was confirmed (a rolling window; paying the fine does not change it).
     points_validity_days: int = 365

@@ -15,6 +15,10 @@ def add(db: Session, *, violation_id: uuid.UUID, amount: int) -> Fine:
     return fine
 
 
+def get_by_violation_id(db: Session, violation_id: uuid.UUID) -> Fine | None:
+    return db.scalar(select(Fine).where(Fine.violation_id == violation_id))
+
+
 def get_by_id(db: Session, fine_id: uuid.UUID) -> Fine | None:
     return db.get(Fine, fine_id)
 

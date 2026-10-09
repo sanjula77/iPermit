@@ -58,7 +58,14 @@ class Violation(Base):
     evidence_ref: Mapped[str | None] = mapped_column(Text, default=None)
     # What the officer wrote, for an OTHER violation; None for the listed types.
     description: Mapped[str | None] = mapped_column(Text, default=None)
+    # When the offence happened (what the points window counts from). For a
+    # violation recorded offline this is the officer's own time, not the sync time.
     confirmed_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    # When the server received it; later than confirmed_at for offline records.
+    received_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    # Made on the officer's phone before sending; makes a retried upload harmless
+    # (the same id never creates a second violation). None for older records.
+    client_id: Mapped[uuid.UUID | None] = mapped_column(unique=True, default=None)
 
     driver: Mapped["User"] = relationship(foreign_keys=[driver_id])
     officer: Mapped["User"] = relationship(foreign_keys=[officer_id])

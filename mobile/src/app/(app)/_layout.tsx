@@ -5,6 +5,7 @@ import { useEffect } from 'react';
 import { ActivityIndicator } from 'react-native';
 
 import { ThemedView } from '@/components/themed-view';
+import { ViolationSyncer } from '@/components/violation-syncer';
 import { useAuth } from '@/context/auth-context';
 import { useBrandHeaderOptions } from '@/hooks/use-brand-header';
 import { useTheme } from '@/hooks/use-theme';
@@ -38,10 +39,12 @@ export default function AppLayout() {
     <>
       {/* Every signed-in screen has blue at the top (hero or app bar). */}
       <StatusBar style="light" />
+      <ViolationSyncer />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="apply" options={{ ...brandHeader, headerShown: true, title: 'Apply for License' }} />
         <Stack.Screen name="behaviour" options={{ ...brandHeader, headerShown: true, title: 'My behaviour' }} />
+        <Stack.Screen name="pending-violations" options={{ ...brandHeader, headerShown: true, title: 'Pending violations' }} />
         {/* Draws its own top bar (back arrow + title) inside the blue hero. */}
         <Stack.Screen name="police-driver" options={{ headerShown: false, title: 'Driver details' }} />
       </Stack>

@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -56,6 +57,10 @@ class RecordViolationRequest(BaseModel):
         default=None, max_length=OTHER_DESCRIPTION_MAX_LENGTH
     )
     points: int | None = Field(default=None, ge=OTHER_MIN_POINTS, le=OTHER_MAX_POINTS)
+    # Set by the officer's app so a retried upload cannot create a second violation
+    # and fine, and so a violation recorded offline keeps the time it happened.
+    client_id: uuid.UUID | None = None
+    occurred_at: datetime | None = None
 
     @model_validator(mode="after")
     def _other_needs_details(self):

@@ -35,14 +35,24 @@ export async function recordViolation(payload: {
   // Only for type OTHER.
   description?: string;
   points?: number;
+  // From the offline queue: makes a resend safe, and keeps the time it happened.
+  clientId?: string;
+  occurredAt?: string;
+  signal?: AbortSignal;
 }): Promise<RecordViolationResponse> {
-  return apiClient.post<RecordViolationResponse>('/police/violations', {
-    driver_id: payload.driverId,
-    type: payload.type,
-    evidence_ref: payload.evidenceRef || undefined,
-    description: payload.description,
-    points: payload.points,
-  });
+  return apiClient.post<RecordViolationResponse>(
+    '/police/violations',
+    {
+      driver_id: payload.driverId,
+      type: payload.type,
+      evidence_ref: payload.evidenceRef || undefined,
+      description: payload.description,
+      points: payload.points,
+      client_id: payload.clientId,
+      occurred_at: payload.occurredAt,
+    },
+    payload.signal,
+  );
 }
 
 export async function getMySummary(): Promise<OfficerSummary> {

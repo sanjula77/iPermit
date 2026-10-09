@@ -89,10 +89,11 @@ async function requestForm<T>(path: string, formData: FormData): Promise<T> {
 
 export const apiClient = {
   get: <T>(path: string): Promise<T> => request<T>(path, { method: 'GET' }),
-  post: <T>(path: string, body?: unknown): Promise<T> =>
+  post: <T>(path: string, body?: unknown, signal?: AbortSignal): Promise<T> =>
     request<T>(path, {
       method: 'POST',
       body: body !== undefined ? JSON.stringify(body) : undefined,
+      signal,
     }),
   postForm: <T>(path: string, formData: FormData): Promise<T> => requestForm<T>(path, formData),
 };

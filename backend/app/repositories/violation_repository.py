@@ -17,6 +17,8 @@ def add(
     points_deducted: int,
     evidence_ref: str | None,
     description: str | None = None,
+    confirmed_at: datetime | None = None,
+    client_id: uuid.UUID | None = None,
 ) -> Violation:
     """Adds a Violation to the session without committing -- the caller
     controls the transaction boundary (see violation_service.record_violation,
@@ -28,9 +30,17 @@ def add(
         points_deducted=points_deducted,
         evidence_ref=evidence_ref,
         description=description,
+        client_id=client_id,
     )
+    now = datetime.utcnow()
+    violation.confirmed_at = confirmed_at or now
+    violation.received_at = now
     db.add(violation)
     return violation
+
+
+def get_by_client_id(db: Session, client_id: uuid.UUID) -> Violation | None:
+    return db.scalar(select(Violation).where(Violation.client_id == client_id))
 
 
 def list_for_driver(db: Session, driver_id: uuid.UUID) -> list[Violation]:

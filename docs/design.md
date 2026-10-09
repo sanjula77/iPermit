@@ -104,6 +104,19 @@ database only through the FastAPI backend — no direct DB access from mobile or
 10. API Backend → Notification Service: notify driver of fine/points/possible suspension
 ```
 
+**Offline recording:** the officer app saves each confirmed violation in a local SQLite
+queue (`expo-sqlite`; a localStorage stand-in on web) with a client-made UUID and the
+time of recording, then sends it at once. With no signal it stays queued; the app resends
+on reconnection (NetInfo), when brought to the front, and every 30 seconds, oldest first.
+`POST /police/violations` accepts `client_id` and `occurred_at`: the same `client_id`
+returns the first result (unique column `violations.client_id`; concurrent duplicates are
+handled by the constraint), another officer's id is refused with 409, and `occurred_at`
+(future or older than 7 days refused with 422) becomes `confirmed_at` while
+`received_at` records server arrival. A refusal such as an unknown driver marks the queued
+item rejected for the officer to see. The app also keeps the signed-in user cached so a
+cold start offline does not log the officer out. The queue holds only ids and the driver's
+email, and sent items are deleted after a day.
+
 ### 3. Fine Payment / Appeal
 
 ```

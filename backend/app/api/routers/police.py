@@ -107,6 +107,8 @@ def record_violation(
             evidence_ref=payload.evidence_ref,
             description=payload.description,
             points=payload.points,
+            client_id=payload.client_id,
+            occurred_at=payload.occurred_at,
         )
     except violation_service.NotFoundError as exc:
         raise HTTPException(
@@ -115,4 +117,8 @@ def record_violation(
     except violation_service.InvalidViolationError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
+        ) from exc
+    except violation_service.DuplicateClientIdError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail=str(exc)
         ) from exc

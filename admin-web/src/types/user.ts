@@ -39,6 +39,7 @@ export interface AdminUserDetail {
   applications: { id: string; status: ApplicationStatus; created_at: string; document_count: number }[];
   violations: {
     type: ViolationType;
+    description: string | null;
     points_deducted: number;
     confirmed_at: string;
     fine_status: FineStatus | null;

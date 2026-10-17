@@ -13,6 +13,9 @@ from app.core.rate_limit import limiter
 from app.main import app
 
 TEST_DATABASE_URL = "sqlite:///:memory:"
+# 32 bytes, base64: a throwaway key for tests only.
+TEST_FACE_TEMPLATE_KEY = "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8="
+TEST_AUDIT_SIGNING_KEY = "HyAhIiMkJSYnKCkqKywtLi8wMTIzNDU2Nzg5Ojs8PT4="
 
 
 @pytest.fixture(autouse=True)
@@ -34,6 +37,8 @@ def isolated_face_store(tmp_path, monkeypatch):
     monkeypatch.setattr(
         settings, "face_template_db_path", str(tmp_path / "face_templates.db")
     )
+    monkeypatch.setattr(settings, "face_template_key", TEST_FACE_TEMPLATE_KEY)
+    monkeypatch.setattr(settings, "audit_signing_key", TEST_AUDIT_SIGNING_KEY)
     face_index._index = None
     yield
     face_index._index = None

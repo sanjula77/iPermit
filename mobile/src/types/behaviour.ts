@@ -6,6 +6,7 @@ export type Trend = 'IMPROVING' | 'STEADY' | 'WORSENING' | 'NOT_ENOUGH_DATA';
 
 export interface BehaviourTimelineItem {
   type: ViolationType;
+  description: string | null;
   points: number;
   confirmed_at: string;
   // When this violation's points stop counting.

@@ -57,6 +57,7 @@ class AdminApplicationSummary(BaseModel):
 
 class AdminViolationItem(BaseModel):
     type: ViolationType
+    description: str | None = None
     points_deducted: int
     confirmed_at: UtcDateTime
     fine_status: FineStatus | None = None

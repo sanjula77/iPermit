@@ -1,13 +1,17 @@
+import logging
+import sqlite3
 from itertools import combinations
 from pathlib import Path
 
 import cv2
 import numpy as np
 
-from app.core import face_index, face_preprocessing, face_template_store
+from app.core import face_audit, face_index, face_preprocessing, face_template_store
 from app.core.config import settings
 from app.core.face_engine import cosine_similarity, detect_faces
 from app.models.application import Application, DocumentType
+
+logger = logging.getLogger(__name__)
 
 REQUIRED_FACE_PHOTOS = 4
 
@@ -116,23 +120,51 @@ def build_enrollment_embedding(application: Application) -> np.ndarray:
     return averaged.astype(np.float32)
 
 
-def store_template(driver_id: str, embedding: np.ndarray) -> None:
+def _record_erasure(
+    action: str, actor_id: str | None, subject_id: str | None, detail: str
+) -> None:
+    """Erasing biometric data is a right, so it is never refused because the
+    audit log is unavailable: the data goes first, and a failure to log it is
+    reported loudly instead."""
+    try:
+        face_audit.record(
+            action, actor_id=actor_id, subject_id=subject_id, detail=detail
+        )
+    except (face_audit.AuditError, sqlite3.Error):
+        logger.exception("Biometric erasure done but could not be audit-logged")
+
+
+def store_template(
+    driver_id: str, embedding: np.ndarray, *, actor_id: str | None = None
+) -> None:
     """Persists to SQLite (source of truth) and the FAISS index (derived
-    cache). Called only after the application's approval has already
-    committed in Postgres -- see application_service.approve_application."""
+    cache), and writes a signed audit entry. Called only after the
+    application's approval has already committed in Postgres -- see
+    application_service.approve_application."""
+    face_audit.ensure_ready()  # never touch biometric data we could not log
     rowid, replaced_rowids = face_template_store.save_template(driver_id, embedding)
     face_index.add_to_index(rowid, embedding, replaced_rowids)
+    face_audit.record(
+        face_audit.ENROLL,
+        actor_id=actor_id,
+        subject_id=driver_id,
+        detail=f"replaced={len(replaced_rowids)}",
+    )
 
 
-def delete_all_templates() -> int:
+def delete_all_templates(*, actor_id: str | None = None) -> int:
     """Deletes every biometric template from SQLite and the FAISS index (demo
-    reset). Returns how many were removed."""
+    reset). Returns how many were removed. The audit log is kept."""
     rowids = face_template_store.delete_all_templates()
     face_index.remove_from_index(rowids)
+    _record_erasure(face_audit.DELETE_ALL, actor_id, None, f"removed={len(rowids)}")
     return len(rowids)
 
 
-def delete_template(driver_id: str) -> None:
-    """Deletes a driver's biometric template from SQLite and the FAISS index."""
+def delete_template(driver_id: str, *, actor_id: str | None = None) -> None:
+    """Deletes a driver's biometric template from SQLite and the FAISS index.
+    The template's wrapped data key goes with the row, so nothing of it can be
+    decrypted afterwards."""
     rowids = face_template_store.delete_template(driver_id)
     face_index.remove_from_index(rowids)
+    _record_erasure(face_audit.DELETE, actor_id, driver_id, f"removed={len(rowids)}")

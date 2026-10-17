@@ -61,6 +61,10 @@ _TYPE_TIP = {
     ViolationType.DRUNK_DRIVING: (
         "Never drive after drinking. Arrange another way home in advance."
     ),
+    ViolationType.OTHER: (
+        "Check the details of the violations on your record so you know what to "
+        "avoid next time."
+    ),
 }
 
 

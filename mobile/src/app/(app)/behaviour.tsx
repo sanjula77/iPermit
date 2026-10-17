@@ -16,7 +16,7 @@ import { StatusBadge } from '@/components/status-badge';
 import { ThemedText } from '@/components/themed-text';
 import { RISK_COLOR, RISK_INFO, TREND_INFO } from '@/constants/behaviour';
 import { Spacing } from '@/constants/theme';
-import { VIOLATION_COLOR, VIOLATION_ICON, VIOLATION_LABEL } from '@/constants/violations';
+import { VIOLATION_COLOR, VIOLATION_ICON, violationTitle } from '@/constants/violations';
 import { useTheme } from '@/hooks/use-theme';
 import { formatDate, formatDateShort } from '@/lib/format';
 import { pointsColorKey } from '@/lib/points';
@@ -197,7 +197,7 @@ export default function BehaviourScreen() {
                 {i > 0 ? <ListSeparator /> : null}
                 <ListRow
                   leading={<IconTile icon={VIOLATION_ICON[item.type]} color={theme[VIOLATION_COLOR[item.type]]} />}
-                  title={VIOLATION_LABEL[item.type]}
+                  title={violationTitle(item.type, item.description)}
                   value={`${item.points} pts`}
                   meta={`${formatDateShort(item.confirmed_at)} · ${
                     Date.parse(item.points_expire_at) <= now ? 'expired' : `expires ${formatDate(item.points_expire_at)}`

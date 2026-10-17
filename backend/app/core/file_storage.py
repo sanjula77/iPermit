@@ -3,7 +3,7 @@ import uuid
 from pathlib import Path
 
 from fastapi import UploadFile
-from PIL import Image, UnidentifiedImageError
+from PIL import Image, ImageOps, UnidentifiedImageError
 
 from app.core.config import settings
 
@@ -78,12 +78,26 @@ def read_image_upload(file: UploadFile) -> bytes:
     return raw
 
 
+def _strip_metadata(raw: bytes, content_type: str | None) -> bytes:
+    """Re-encodes an image without its EXIF block (phone photos carry GPS and
+    device details), keeping it upright."""
+    with Image.open(io.BytesIO(raw)) as image:
+        upright = ImageOps.exif_transpose(image)
+        out = io.BytesIO()
+        if content_type == "image/png":
+            upright.save(out, format="PNG")
+        else:
+            upright.convert("RGB").save(out, format="JPEG", quality=90)
+        return out.getvalue()
+
+
 async def save_upload(
     file: UploadFile,
     *,
     subdir: str,
     allowed_types: set[str],
     require_image: bool,
+    strip_metadata: bool = False,
 ) -> str:
     """Validates and persists an uploaded file under settings.upload_dir.
 
@@ -97,6 +111,9 @@ async def save_upload(
 
     if require_image:
         _validate_image_quality(raw, file.filename or "upload")
+
+    if strip_metadata:
+        raw = _strip_metadata(raw, file.content_type)
 
     extension = _EXTENSION_BY_CONTENT_TYPE.get(file.content_type or "", "")
     relative_path = f"{subdir}/{uuid.uuid4()}{extension}"

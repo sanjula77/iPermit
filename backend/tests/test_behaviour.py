@@ -172,8 +172,8 @@ def test_one_violation_makes_medium_risk_with_timeline(client, db_session):
     body = client.get("/behaviour/me", headers=ctx["driver_headers"]).json()
 
     assert body["risk_level"] == "MEDIUM"
-    assert body["window_points"] == 4
-    assert body["current_points"] == 4
+    assert body["window_points"] == 3
+    assert body["current_points"] == 3
     assert body["recent_violations"] == 1
     assert body["dominant_type"] == "SPEEDING"
     assert body["unpaid_fines"] == 1
@@ -193,7 +193,7 @@ def test_two_violations_make_high_risk(client, db_session):
 
     assert body["risk_level"] == "HIGH"
     assert body["window_violations"] == 2
-    assert body["window_points"] == 7
+    assert body["window_points"] == 4
 
 
 def test_overturned_appeal_is_excluded_from_behaviour(client, db_session):
@@ -220,6 +220,7 @@ def test_overturned_appeal_is_excluded_from_behaviour(client, db_session):
 def test_suspension_is_counted_as_prior_suspension(client, db_session):
     ctx = _setup_clean_driver(client, db_session)
     _record_violation(client, ctx["officer_headers"], ctx["driver_id"], "DRUNK_DRIVING")
+    _record_violation(client, ctx["officer_headers"], ctx["driver_id"], "RED_LIGHT")
 
     body = client.get("/behaviour/me", headers=ctx["driver_headers"]).json()
 
@@ -247,8 +248,8 @@ def test_admin_behaviour_overview(client, db_session):
     entry = body["drivers"][0]
     assert entry["driver"]["nic"] == "991234567V"
     assert entry["risk_level"] == "HIGH"
-    assert entry["window_points"] == 7
+    assert entry["window_points"] == 4
     assert len(body["monthly"]) == 12
     assert body["monthly"][-1]["count"] == 2
-    assert body["monthly"][-1]["points"] == 7
+    assert body["monthly"][-1]["points"] == 4
     assert body["by_type"] == {"SPEEDING": 1, "WHITE_LINE": 1}

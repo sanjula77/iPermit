@@ -137,6 +137,7 @@ def get_user_detail(db: Session, user_id: uuid.UUID) -> dict:
         violations = [
             {
                 "type": v.type,
+                "description": v.description,
                 "points_deducted": v.points_deducted,
                 "confirmed_at": v.confirmed_at,
                 "fine_status": status,
@@ -151,6 +152,7 @@ def get_user_detail(db: Session, user_id: uuid.UUID) -> dict:
         violations = [
             {
                 "type": v.type,
+                "description": v.description,
                 "points_deducted": v.points_deducted,
                 "confirmed_at": v.confirmed_at,
                 "driver_email": v.driver.email,
@@ -226,7 +228,7 @@ def delete_user(db: Session, *, user_id: uuid.UUID, acting_admin_id: uuid.UUID) 
 
     if user.role == UserRole.DRIVER:
         try:
-            face_service.delete_template(str(user_id))
+            face_service.delete_template(str(user_id), actor_id=str(acting_admin_id))
         except sqlite3.Error:
             logger.exception("Could not delete the face template for a deleted driver")
     _remove_files(file_paths)

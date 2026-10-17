@@ -153,7 +153,9 @@ def test_notification_on_violation_and_suspension(client, db_session):
         "/police/lookup", headers=officer_headers, params={"nic": "991234567V"}
     ).json()["driver_id"]
 
+    # 6 + 4 points reach the 10-point limit.
     _record_violation(client, officer_headers, driver_id, "DRUNK_DRIVING")
+    _record_violation(client, officer_headers, driver_id, "RED_LIGHT")
 
     types = _notification_types(client, driver_headers)
     assert "FINE_ISSUED" in types

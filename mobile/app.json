@@ -45,7 +45,8 @@
           "locationWhenInUsePermission": "iPermit uses your location to show and report nearby road incidents."
         }
       ],
-      "expo-notifications"
+      "expo-notifications",
+      "expo-sqlite"
     ],
     "experiments": {
       "typedRoutes": true,

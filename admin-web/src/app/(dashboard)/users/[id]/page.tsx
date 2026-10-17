@@ -8,7 +8,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { LicenseCategoriesEditor } from '@/components/license-categories-editor';
 import { Alert, Avatar, Button, Card, Dialog, PageHeader, StatusPill, type Tone } from '@/components/ui';
 import { extractErrorMessage } from '@/lib/api-client';
-import { VIOLATION_LABEL, formatDate } from '@/lib/format';
+import { formatDate, violationTitle } from '@/lib/format';
 import * as usersApi from '@/lib/users-api';
 import type { ApplicationStatus } from '@/types/application';
 import type { FineStatus } from '@/types/fine';
@@ -186,7 +186,7 @@ export default function UserDetailPage() {
               <tbody className="divide-y divide-gray-100">
                 {user.violations.map((v, i) => (
                   <tr key={`${v.confirmed_at}-${i}`}>
-                    <td className="py-2.5 pr-4 text-gray-900">{VIOLATION_LABEL[v.type]}</td>
+                    <td className="py-2.5 pr-4 text-gray-900">{violationTitle(v.type, v.description)}</td>
                     <td className="py-2.5 pr-4 tabular-nums text-gray-800">{v.points_deducted}</td>
                     <td className="whitespace-nowrap py-2.5 pr-4 text-gray-700">{formatDate(v.confirmed_at)}</td>
                     <td className="py-2.5">

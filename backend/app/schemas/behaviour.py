@@ -36,6 +36,7 @@ class BehaviourMetrics(BaseModel):
 
 class BehaviourTimelineItem(BaseModel):
     type: ViolationType
+    description: str | None = None
     points: int
     confirmed_at: UtcDateTime
     # When this violation's points stop counting.

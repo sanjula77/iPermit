@@ -218,6 +218,7 @@ def approve_application(
     *,
     application_id: uuid.UUID,
     categories: list[VehicleCategory] | None = None,
+    reviewer_id: uuid.UUID | None = None,
 ) -> Application:
     """REQ-3 AC2 + REQ-4 + REQ-5: approve a pending application, issue its
     digital license, and enroll its face template.
@@ -266,7 +267,11 @@ def approve_application(
     db.commit()
     db.refresh(application)
 
-    face_service.store_template(str(application.driver_id), face_embedding)
+    face_service.store_template(
+        str(application.driver_id),
+        face_embedding,
+        actor_id=str(reviewer_id) if reviewer_id else None,
+    )
     badge_service.recompute_badge(db, application.driver_id)
     notification_service.notify(
         db,

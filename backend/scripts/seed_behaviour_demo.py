@@ -23,6 +23,7 @@ from app.models.user import User, UserRole
 from app.models.violation import VIOLATION_POINTS, Violation, ViolationType
 from app.services.violation_service import SUSPENSION_POINTS_THRESHOLD
 
+POINTS_VALIDITY_DAYS = 365
 DEMO_PASSWORD = "demo-pass-123"
 DEMO_DOMAIN = "@ipermit.demo"
 
@@ -47,8 +48,8 @@ DEMO_DRIVERS = [
     ("clean", "DEMO0001", 800, []),
     ("improving", "DEMO0002", 700, [(400, S, PAID), (150, W, PAID), (120, S, PAID)]),
     ("worsening", "DEMO0003", 700, [(300, W, PAID), (100, W, PAID), (20, S, UNPAID)]),
-    ("high", "DEMO0004", 700, [(55, R, UNPAID), (30, W, UNPAID)]),
-    ("suspended", "DEMO0005", 700, [(200, D, UNPAID)]),
+    ("high", "DEMO0004", 700, [(55, R, UNPAID), (30, S, UNPAID), (10, W, UNPAID)]),
+    ("suspended", "DEMO0005", 700, [(200, D, UNPAID), (150, R, UNPAID)]),
 ]
 
 
@@ -144,8 +145,8 @@ def _seed(db) -> None:
                     paid_at=when if fine_status == PAID else None,
                 )
             )
-            # Paying a fine restores its points, as in the live system.
-            if fine_status == UNPAID:
+            # Points count for a rolling year; paying a fine does not change them.
+            if days_ago < POINTS_VALIDITY_DAYS:
                 points += pts
         db.add(
             License(
@@ -158,7 +159,7 @@ def _seed(db) -> None:
                     if points >= SUSPENSION_POINTS_THRESHOLD
                     else LicenseStatus.ACTIVE
                 ),
-                points=points,
+                points=min(points, SUSPENSION_POINTS_THRESHOLD),
                 issued_at=issued,
                 expiry_at=issued + timedelta(days=365 * 5),
                 categories=[

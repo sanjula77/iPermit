@@ -144,9 +144,9 @@ def test_badge_drops_after_violation_recorded(client, db_session):
     response = client.get("/badges/me", headers=driver_headers)
     assert response.status_code == 200
     body = response.json()
-    # 100 - points(4)*5 - severity(4)*0.5 - unpaid_fines(1)*5 = 73
-    assert body["safety_score"] == 73
-    assert body["tier"] == "SILVER"
+    # 100 - points(3)*5 - severity(3)*0.5 - unpaid_fines(1)*5 = 78.5 -> 78
+    assert body["safety_score"] == 78
+    assert body["tier"] == "GOLD"
 
 
 def test_paying_a_fine_does_not_wipe_the_points_from_the_badge(client, db_session):
@@ -184,8 +184,9 @@ def test_badge_is_suspended_when_license_suspended_regardless_of_score(
         "/police/lookup", headers=officer_headers, params={"nic": "991234567V"}
     ).json()["driver_id"]
 
-    violation = _record_violation(client, officer_headers, driver_id, "DRUNK_DRIVING")
-    assert violation["license_status"] == "SUSPENDED"
+    _record_violation(client, officer_headers, driver_id, "DRUNK_DRIVING")
+    violation = _record_violation(client, officer_headers, driver_id, "RED_LIGHT")
+    assert violation["license_status"] == "SUSPENDED"  # 6 + 4 points
 
     response = client.get("/badges/me", headers=driver_headers)
     assert response.status_code == 200
@@ -243,6 +244,7 @@ def test_admin_badge_distribution_and_attention_queue(client, db_session):
         "/police/lookup", headers=officer_headers, params={"nic": "222222222V"}
     ).json()["driver_id"]
     _record_violation(client, officer_headers, risky_driver_id, "DRUNK_DRIVING")
+    _record_violation(client, officer_headers, risky_driver_id, "RED_LIGHT")
 
     response = client.get("/admin/badges", headers=admin_headers)
 

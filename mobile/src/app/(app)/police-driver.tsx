@@ -5,7 +5,6 @@ import { Fragment, useRef, useState } from 'react';
 import { Alert, Platform, Pressable, type ScrollView, StyleSheet, View } from 'react-native';
 
 import { extractErrorMessage } from '@/api/client';
-import { recordViolation } from '@/api/police';
 import { Banner } from '@/components/banner';
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
@@ -14,16 +13,25 @@ import { EmptyState } from '@/components/empty-state';
 import { HeroScreen } from '@/components/hero-screen';
 import { IconTile } from '@/components/icon-tile';
 import { ListRow, ListSeparator } from '@/components/list-row';
+import { TextField } from '@/components/text-field';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Radius, Spacing, tint } from '@/constants/theme';
+import { useAuth } from '@/context/auth-context';
+import { submitOrQueue } from '@/lib/violation-sync';
 import {
+  OTHER_DESCRIPTION_MAX,
+  OTHER_DESCRIPTION_MIN,
+  OTHER_FINE_PER_POINT,
+  OTHER_MAX_POINTS,
+  OTHER_MIN_POINTS,
   VIOLATION_COLOR,
   VIOLATION_FINE,
   VIOLATION_ICON,
   VIOLATION_LABEL,
   VIOLATION_POINTS,
   VIOLATION_TYPES,
+  violationTitle,
 } from '@/constants/violations';
 import { useBrandHeaderOptions } from '@/hooks/use-brand-header';
 import { useTheme } from '@/hooks/use-theme';
@@ -77,18 +85,27 @@ function DriverDetails({
   identification: Identification | null;
 }) {
   const theme = useTheme();
+  const { user } = useAuth();
   const [driver, setDriver] = useState<DriverSummary>(initialDriver);
   const [selected, setSelected] = useState<ViolationType[]>([]);
+  // An "other" violation: what the officer saw, and the points they give it.
+  const [otherText, setOtherText] = useState('');
+  const [otherPoints, setOtherPoints] = useState(OTHER_MIN_POINTS);
   const [isSubmitting, setIsSubmitting] = useState(false);
   // Blocks a same-frame double submit before isSubmitting has re-rendered.
   const submittingRef = useRef(false);
-  const [notice, setNotice] = useState<{ kind: 'success' | 'error'; text: string } | null>(null);
+  const [notice, setNotice] = useState<{ kind: 'success' | 'queued' | 'error'; text: string } | null>(null);
   const scrollRef = useRef<ScrollView>(null);
 
   const hasLicense = !!driver.license_no;
   const points = driver.points ?? 0;
-  const selectedPoints = selected.reduce((sum, type) => sum + VIOLATION_POINTS[type], 0);
-  const selectedFines = selected.reduce((sum, type) => sum + VIOLATION_FINE[type], 0);
+  const pointsFor = (type: ViolationType) => (type === 'OTHER' ? otherPoints : VIOLATION_POINTS[type]);
+  const fineFor = (type: ViolationType) => (type === 'OTHER' ? otherPoints * OTHER_FINE_PER_POINT : VIOLATION_FINE[type]);
+  const selectedPoints = selected.reduce((sum, type) => sum + pointsFor(type), 0);
+  const selectedFines = selected.reduce((sum, type) => sum + fineFor(type), 0);
+  // An "other" violation needs a written description before it can be recorded.
+  const otherReady = !selected.includes('OTHER') || otherText.trim().length >= OTHER_DESCRIPTION_MIN;
+  const labelFor = (type: ViolationType) => violationTitle(type, type === 'OTHER' ? otherText.trim() : null);
 
   function toggle(type: ViolationType) {
     setSelected((current) =>
@@ -105,13 +122,27 @@ function DriverDetails({
     setNotice(null);
     setIsSubmitting(true);
     const recorded: string[] = [];
+    // Saved on the phone because the server could not be reached; sent later.
+    const queued: string[] = [];
     let totalPoints = 0;
     let totalFines = 0;
     let suspended = false;
     try {
       for (const type of types) {
-        const result = await recordViolation({ driverId: driver.driver_id, type });
-        recorded.push(VIOLATION_LABEL[type].toLowerCase());
+        const outcome = await submitOrQueue({
+          officerId: user?.id ?? '',
+          driverId: driver.driver_id,
+          driverLabel: driver.email,
+          type,
+          description: type === 'OTHER' ? otherText.trim() : null,
+          points: type === 'OTHER' ? otherPoints : null,
+        });
+        if (outcome.kind === 'queued') {
+          queued.push(labelFor(type).toLowerCase());
+          continue;
+        }
+        const { result } = outcome;
+        recorded.push(labelFor(type).toLowerCase());
         totalPoints += result.violation.points_deducted;
         totalFines += result.fine.amount;
         suspended = result.license_status === 'SUSPENDED';
@@ -123,23 +154,35 @@ function DriverDetails({
         }));
       }
       setSelected([]);
+      setOtherText('');
+      setOtherPoints(OTHER_MIN_POINTS);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      const queuedText = queued.length
+        ? `Saved on this phone: ${queued.join(', ')}. It will be sent automatically when you are back online. ` +
+          'Points and fines are added then.'
+        : '';
       setNotice({
-        kind: 'success',
+        kind: queued.length ? 'queued' : 'success',
         text:
-          `Recorded ${recorded.join(', ')}: ${totalPoints} points and ${formatLkr(totalFines)} in fines.` +
-          (suspended ? ' The license is now suspended.' : ''),
+          (recorded.length
+            ? `Recorded ${recorded.join(', ')}: ${totalPoints} points and ${formatLkr(totalFines)} in fines.` +
+              (suspended ? ' The license is now suspended.' : '') +
+              (queued.length ? ' ' : '')
+            : '') + queuedText,
       });
     } catch (err) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
-      // Keep only the ones that weren't recorded selected, so a retry doesn't
-      // record the others twice.
-      setSelected(types.slice(recorded.length));
+      // Keep only the ones that weren't recorded or saved selected, so a retry
+      // doesn't record the others twice.
+      const done = recorded.length + queued.length;
+      setSelected(types.slice(done));
       setNotice({
         kind: 'error',
         text:
-          (recorded.length ? `Recorded ${recorded.join(', ')}, then stopped. ` : '') +
-          `Couldn't record ${VIOLATION_LABEL[types[recorded.length]].toLowerCase()}: ${extractErrorMessage(err)}`,
+          (recorded.length ? `Recorded ${recorded.join(', ')}. ` : '') +
+          (queued.length ? `Saved on this phone: ${queued.join(', ')}. ` : '') +
+          (done ? 'Then stopped. ' : '') +
+          `Couldn't record ${labelFor(types[done]).toLowerCase()}: ${extractErrorMessage(err)}`,
       });
     } finally {
       scrollRef.current?.scrollTo({ y: 0, animated: true });
@@ -149,7 +192,7 @@ function DriverDetails({
   }
 
   function confirmViolations() {
-    if (selected.length === 0) return;
+    if (selected.length === 0 || !otherReady) return;
     // Recording adds points, issues fines and can suspend the license: show
     // the combined consequence and ask first.
     const types = VIOLATION_TYPES.filter((t) => selected.includes(t));
@@ -157,10 +200,10 @@ function DriverDetails({
     const willSuspend = driver.license_status === 'ACTIVE' && newTotal >= SUSPENSION_POINTS;
     const title =
       types.length === 1
-        ? `Record ${VIOLATION_LABEL[types[0]].toLowerCase()}?`
+        ? `Record ${labelFor(types[0]).toLowerCase()}?`
         : `Record ${types.length} violations?`;
     const message =
-      (types.length > 1 ? `${types.map((t) => VIOLATION_LABEL[t]).join(', ')}.\n\n` : '') +
+      (types.length > 1 ? `${types.map((t) => labelFor(t)).join(', ')}.\n\n` : '') +
       `${driver.email} will receive ${selectedPoints} points (${newTotal} in total) and ` +
       `${formatLkr(selectedFines)} in fines.` +
       (willSuspend
@@ -252,9 +295,9 @@ function DriverDetails({
 
       {notice ? (
         <Banner
-          tone={notice.kind === 'success' ? 'success' : 'danger'}
+          tone={notice.kind === 'success' ? 'success' : notice.kind === 'queued' ? 'info' : 'danger'}
           text={notice.text}
-          testID={notice.kind === 'success' ? 'record-violation-success' : 'record-violation-error'}
+          testID={notice.kind === 'error' ? 'record-violation-error' : 'record-violation-success'}
         />
       ) : null}
 
@@ -288,7 +331,7 @@ function DriverDetails({
                     onPress={() => toggle(type)}
                     accessibilityRole="checkbox"
                     accessibilityState={{ checked: isSelected }}
-                    accessibilityLabel={`${VIOLATION_LABEL[type]}, ${VIOLATION_POINTS[type]} points, ${formatLkr(VIOLATION_FINE[type])}`}
+                    accessibilityLabel={`${VIOLATION_LABEL[type]}, ${pointsFor(type)} points, ${formatLkr(fineFor(type))}`}
                     testID={`violation-type-${type}`}
                     style={({ pressed }) => [
                       styles.typeRow,
@@ -302,11 +345,11 @@ function DriverDetails({
                         {VIOLATION_LABEL[type]}
                       </ThemedText>
                       <ThemedText type="small" themeColor="textSecondary">
-                        +{VIOLATION_POINTS[type]} pts
+                        {type === 'OTHER' && !isSelected ? `${OTHER_MIN_POINTS}–${OTHER_MAX_POINTS} pts` : `+${pointsFor(type)} pts`}
                       </ThemedText>
                     </View>
                     <ThemedText type="smallBold" style={styles.tabular}>
-                      {formatLkr(VIOLATION_FINE[type])}
+                      {type === 'OTHER' && !isSelected ? 'You choose' : formatLkr(fineFor(type))}
                     </ThemedText>
                     <Ionicons
                       name={isSelected ? 'checkbox' : 'square-outline'}
@@ -314,6 +357,50 @@ function DriverDetails({
                       color={isSelected ? theme.primary : theme.textSecondary}
                     />
                   </Pressable>
+                  {type === 'OTHER' && isSelected ? (
+                    <View style={styles.otherForm} testID="other-violation-form">
+                      <TextField
+                        label="What happened?"
+                        value={otherText}
+                        onChangeText={setOtherText}
+                        maxLength={OTHER_DESCRIPTION_MAX}
+                        placeholder="e.g. Parked on a footpath"
+                        hint={`${OTHER_DESCRIPTION_MIN}-${OTHER_DESCRIPTION_MAX} characters. The driver sees this text.`}
+                        testID="other-violation-text"
+                      />
+                      <View style={styles.stepperRow}>
+                        <View style={styles.flex}>
+                          <ThemedText type="smallBold">Points</ThemedText>
+                          <ThemedText type="small" themeColor="textSecondary">
+                            {`${OTHER_MIN_POINTS}–${OTHER_MAX_POINTS}; fine ${formatLkr(OTHER_FINE_PER_POINT)} per point`}
+                          </ThemedText>
+                        </View>
+                        <Pressable
+                          onPress={() => setOtherPoints((p) => Math.max(OTHER_MIN_POINTS, p - 1))}
+                          accessibilityRole="button"
+                          accessibilityLabel="Fewer points"
+                          hitSlop={8}
+                          testID="other-points-minus"
+                          style={[styles.stepButton, { backgroundColor: theme.backgroundSelected }]}
+                        >
+                          <Ionicons name="remove" size={20} color={theme.text} />
+                        </Pressable>
+                        <ThemedText type="subtitle" style={styles.stepValue} testID="other-points-value">
+                          {otherPoints}
+                        </ThemedText>
+                        <Pressable
+                          onPress={() => setOtherPoints((p) => Math.min(OTHER_MAX_POINTS, p + 1))}
+                          accessibilityRole="button"
+                          accessibilityLabel="More points"
+                          hitSlop={8}
+                          testID="other-points-plus"
+                          style={[styles.stepButton, { backgroundColor: theme.backgroundSelected }]}
+                        >
+                          <Ionicons name="add" size={20} color={theme.text} />
+                        </Pressable>
+                      </View>
+                    </View>
+                  ) : null}
                 </Fragment>
               );
             })}
@@ -331,7 +418,7 @@ function DriverDetails({
           <Button
             variant="danger"
             onPress={confirmViolations}
-            disabled={selected.length === 0 || isSubmitting}
+            disabled={selected.length === 0 || !otherReady || isSubmitting}
             testID="record-violation-submit"
           >
             <Ionicons name="document-text-outline" size={18} color={theme.onPrimary} />
@@ -359,7 +446,7 @@ function DriverDetails({
                 {i > 0 ? <ListSeparator /> : null}
                 <ListRow
                   leading={<IconTile icon={VIOLATION_ICON[violation.type]} color={theme[VIOLATION_COLOR[violation.type]]} />}
-                  title={VIOLATION_LABEL[violation.type]}
+                  title={violationTitle(violation.type, violation.description)}
                   meta={`${formatDateShort(violation.confirmed_at)} · ${violation.points_deducted} pts`}
                   footer={
                     violation.evidence_ref ? (
@@ -476,6 +563,10 @@ const styles = StyleSheet.create({
     borderRadius: Radius.small,
   },
   recordCard: { padding: Spacing.three, gap: Spacing.three, borderRadius: Radius.large },
+  otherForm: { gap: Spacing.three, paddingVertical: Spacing.three, paddingHorizontal: Spacing.two },
+  stepperRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
+  stepButton: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  stepValue: { minWidth: 24, textAlign: 'center' },
   typeRow: {
     flexDirection: 'row',
     alignItems: 'center',

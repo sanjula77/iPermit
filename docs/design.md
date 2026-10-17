@@ -104,6 +104,19 @@ database only through the FastAPI backend — no direct DB access from mobile or
 10. API Backend → Notification Service: notify driver of fine/points/possible suspension
 ```
 
+**Offline recording:** the officer app saves each confirmed violation in a local SQLite
+queue (`expo-sqlite`; a localStorage stand-in on web) with a client-made UUID and the
+time of recording, then sends it at once. With no signal it stays queued; the app resends
+on reconnection (NetInfo), when brought to the front, and every 30 seconds, oldest first.
+`POST /police/violations` accepts `client_id` and `occurred_at`: the same `client_id`
+returns the first result (unique column `violations.client_id`; concurrent duplicates are
+handled by the constraint), another officer's id is refused with 409, and `occurred_at`
+(future or older than 7 days refused with 422) becomes `confirmed_at` while
+`received_at` records server arrival. A refusal such as an unknown driver marks the queued
+item rejected for the officer to see. The app also keeps the signed-in user cached so a
+cold start offline does not log the officer out. The queue holds only ids and the driver's
+email, and sent items are deleted after a day.
+
 ### 3. Fine Payment / Appeal
 
 ```
@@ -125,6 +138,9 @@ database only through the FastAPI backend — no direct DB access from mobile or
 3. API Backend → Notification Service: notify nearby drivers (high severity)
 4. Mobile App (other drivers) → API Backend: fetch active incidents near location
 5. Mobile App → API Backend: confirm/clear incident → update status
+6. Reporter's app → API Backend: optional scene photo (separate upload after step 1);
+   stored without EXIF under uploads/incidents/, served only to signed-in users while
+   the incident is active, deleted when it is cleared or expires
 ```
 
 ## Integration Points
@@ -195,6 +211,25 @@ The measured-performance figures above were taken with CLAHE on.
 high-resolution phone selfie (raw variance ~20) passes. Calibrated on LFW, synthetic
 blur and three real selfies; not yet on Sri Lankan driver photos.
 **Data:** face templates in SQLite; FAISS index rebuildable from SQLite at any time.
+**Envelope encryption (PDPA s.10, biometric data):** every embedding is encrypted with
+AES-256-GCM under its own random data key; that data key is wrapped with a master key
+(`FACE_TEMPLATE_KEY`, in the backend environment, never in a database or the repository)
+and only the wrapped copy is stored beside the data (`face_template_store.py`). The
+driver id is bound into both layers as authenticated data, so a value cannot be moved to
+another driver's row. Rotating the master key re-wraps the small data keys without
+re-encrypting any template (`python -m app.scripts.rotate_template_key`), and deleting a
+driver's row destroys their data key with it. Templates saved in older formats are
+upgraded with `python -m app.scripts.encrypt_templates`. The FAISS index holds decrypted
+vectors in memory only.
+**Signed audit log:** every enrolment, face search, deletion, upgrade and key rotation is
+recorded in a `face_audit_log` table (`face_audit.py`): time, action, acting user, driver,
+and a short detail, never the biometric data or the probe photo. Entries are hash-chained
+and signed with an Ed25519 key (`AUDIT_SIGNING_KEY`); anyone with the public key can run
+`python -m app.scripts.verify_face_audit` to detect an edited, removed, reordered or
+forged entry. Enrolment and face search are refused if the log cannot be written;
+erasure is never blocked by it. Known limit: removing the newest entries leaves a valid
+chain, so keep the printed head hash outside the database. Photos in `uploads/` and API
+traffic are not yet encrypted (HTTPS is future work).
 **Known limitation:** liveness/anti-spoofing is not implemented. `liveness_check_enabled`
 (default `False`) is only a flag that `/face/status` reports, so the gap is disclosed to
 clients; no liveness code exists behind it.
@@ -223,7 +258,7 @@ Violation   { id, driver_id FK, officer_id FK, type, points_deducted, confirmed_
 Fine        { id, violation_id FK, amount, status[UNPAID|PAID|REVERSED], paid_at }
 Appeal      { id, fine_id FK, driver_id FK, reason, status[PENDING|UPHELD|OVERTURNED], resolved_by }
 Badge       { driver_id FK, tier[PLATINUM|GOLD|SILVER|BRONZE|AT_RISK|SUSPENDED], updated_at }
-RoadIncident{ id, reporter_id FK, type, severity, lat, lng, status[ACTIVE|CLEARED|EXPIRED], expires_at }
+RoadIncident{ id, reporter_id FK, type, severity, lat, lng, status[ACTIVE|CLEARED|EXPIRED], expires_at, photo_path? }
 Notification{ id, user_id FK, type, payload, read_at }
 ```
 

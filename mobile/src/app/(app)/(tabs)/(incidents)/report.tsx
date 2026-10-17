@@ -1,11 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useRef, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { extractErrorMessage } from '@/api/client';
 import { markDangerZone } from '@/api/danger-zones';
-import { reportIncident } from '@/api/road-incidents';
+import { reportIncident, uploadIncidentPhoto } from '@/api/road-incidents';
 import { Banner } from '@/components/banner';
 import { Button } from '@/components/button';
 import { LocationPicker } from '@/components/location-picker';
@@ -25,6 +26,7 @@ import {
 import { Radius, Shadows, Spacing, tint } from '@/constants/theme';
 import { useCurrentLocation, type LatLng } from '@/hooks/use-current-location';
 import { useTheme } from '@/hooks/use-theme';
+import { pickImageFromLibrary, takePhoto, type PickedFile } from '@/lib/file-upload';
 import type { RoadIncidentSeverity, RoadIncidentType } from '@/types/road-incident';
 
 type Kind = 'incident' | 'zone';
@@ -44,6 +46,7 @@ export default function ReportScreen() {
   const [severity, setSeverity] = useState<RoadIncidentSeverity>('MEDIUM');
   const [radius, setRadius] = useState(250);
   const [reason, setReason] = useState('');
+  const [photo, setPhoto] = useState<PickedFile | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   // Blocks a same-frame double tap before isSubmitting has re-rendered.
@@ -52,15 +55,36 @@ export default function ReportScreen() {
   const canSubmit =
     !!point && !isSubmitting && (kind === 'zone' || incidentType !== null);
 
+  async function addPhoto(source: 'camera' | 'library') {
+    setError(null);
+    try {
+      const picked = await (source === 'camera'
+        ? takePhoto('incident.jpg')
+        : pickImageFromLibrary('incident.jpg'));
+      if (picked) setPhoto(picked);
+    } catch (err) {
+      setError(extractErrorMessage(err));
+    }
+  }
+
   async function handleSubmit() {
     if (!point || submittingRef.current) return;
     if (kind === 'incident' && !incidentType) return;
     submittingRef.current = true;
     setError(null);
     setIsSubmitting(true);
+    let photoFailed = false;
     try {
       if (kind === 'incident' && incidentType) {
-        await reportIncident(incidentType, severity, point.lat, point.lng);
+        const incident = await reportIncident(incidentType, severity, point.lat, point.lng);
+        if (photo) {
+          // The report stands even if the photo can't be sent; the list says so.
+          try {
+            await uploadIncidentPhoto(incident.id, photo);
+          } catch {
+            photoFailed = true;
+          }
+        }
       } else {
         await markDangerZone(point.lat, point.lng, radius, severity, reason.trim() || undefined);
       }
@@ -68,7 +92,7 @@ export default function ReportScreen() {
       // so it can confirm the report.
       router.navigate({
         pathname: '/(app)/(tabs)/(incidents)/incidents',
-        params: { reported: kind },
+        params: photoFailed ? { reported: kind, photoFailed: '1' } : { reported: kind },
       });
     } catch (err) {
       setError(extractErrorMessage(err));
@@ -176,6 +200,35 @@ export default function ReportScreen() {
         />
       ) : null}
 
+      {kind === 'incident' ? (
+        <View style={styles.section}>
+          <SectionLabel text="Photo (optional)" />
+          {photo ? (
+            <View style={[styles.photoPreview, { backgroundColor: theme.backgroundSelected }]}>
+              <Image source={{ uri: photo.uri }} style={StyleSheet.absoluteFill} contentFit="cover" />
+              <Pressable
+                onPress={() => setPhoto(null)}
+                testID="remove-photo"
+                accessibilityRole="button"
+                accessibilityLabel="Remove photo"
+                hitSlop={8}
+                style={styles.photoRemove}
+              >
+                <Ionicons name="close" size={18} color="#FFFFFF" />
+              </Pressable>
+            </View>
+          ) : (
+            <View style={styles.photoButtons}>
+              <PhotoButton icon="camera-outline" label="Take photo" onPress={() => addPhoto('camera')} testID="take-photo" />
+              <PhotoButton icon="image-outline" label="Choose photo" onPress={() => addPhoto('library')} testID="choose-photo" />
+            </View>
+          )}
+          <ThemedText type="small" themeColor="textSecondary">
+            Other drivers can see it while the incident is active. It is deleted when the incident is cleared or expires.
+          </ThemedText>
+        </View>
+      ) : null}
+
       <View style={styles.section}>
         <SectionLabel text="Where?" />
         {location ? (
@@ -211,6 +264,37 @@ export default function ReportScreen() {
   );
 }
 
+function PhotoButton({
+  icon,
+  label,
+  onPress,
+  testID,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  onPress: () => void;
+  testID: string;
+}) {
+  const theme = useTheme();
+  return (
+    <Pressable
+      onPress={onPress}
+      testID={testID}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      style={({ pressed }) => [
+        styles.photoButton,
+        { borderColor: theme.primary, backgroundColor: tint(theme.primary, 'subtle'), opacity: pressed ? 0.7 : 1 },
+      ]}
+    >
+      <Ionicons name={icon} size={22} color={theme.primary} />
+      <ThemedText type="smallBold" themeColor="primary">
+        {label}
+      </ThemedText>
+    </Pressable>
+  );
+}
+
 function SectionLabel({ text }: { text: string }) {
   return (
     <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionLabel}>
@@ -243,6 +327,34 @@ const styles = StyleSheet.create({
   },
   typeLabel: { maxWidth: '100%' },
   typeCheck: { position: 'absolute', top: Spacing.one, right: Spacing.one },
+  photoButtons: { flexDirection: 'row', gap: Spacing.two },
+  photoButton: {
+    flex: 1,
+    alignItems: 'center',
+    gap: Spacing.one,
+    paddingVertical: Spacing.three,
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    borderRadius: Radius.small,
+    borderCurve: 'continuous',
+  },
+  photoPreview: {
+    height: 180,
+    borderRadius: Radius.medium,
+    borderCurve: 'continuous',
+    overflow: 'hidden',
+  },
+  photoRemove: {
+    position: 'absolute',
+    top: Spacing.two,
+    right: Spacing.two,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.55)',
+  },
   locationRow: {
     flexDirection: 'row',
     alignItems: 'center',

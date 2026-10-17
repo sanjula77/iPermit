@@ -2,7 +2,8 @@ import { createContext, use, useCallback, useEffect, useMemo, useState } from 'r
 import type { PropsWithChildren } from 'react';
 
 import * as authApi from '@/api/auth';
-import { deleteToken, getToken, saveToken } from '@/lib/token-storage';
+import { ApiError } from '@/api/client';
+import { deleteToken, getCachedUser, getToken, saveCachedUser, saveToken } from '@/lib/token-storage';
 import type { User } from '@/types/auth';
 
 interface AuthContextValue {
@@ -26,9 +27,19 @@ export function AuthProvider({ children }: PropsWithChildren) {
         try {
           const currentUser = await authApi.fetchCurrentUser();
           setUser(currentUser);
-        } catch {
-          // Stored token is invalid/expired — clear it and fall through to login.
-          await deleteToken();
+          await saveCachedUser(currentUser);
+        } catch (err) {
+          if (err instanceof ApiError && err.status === 401) {
+            // The server says the token is invalid/expired: clear it and fall
+            // through to login.
+            await deleteToken();
+          } else {
+            // No connection (or the server is down): that says nothing about
+            // the token. Stay signed in as the last known user so an officer in
+            // a dead zone can still record violations; they send when back online.
+            const cached = await getCachedUser();
+            if (cached) setUser(cached);
+          }
         }
       }
       setIsLoading(false);
@@ -41,6 +52,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     await saveToken(access_token, { persist: remember });
     const currentUser = await authApi.fetchCurrentUser();
     setUser(currentUser);
+    await saveCachedUser(currentUser);
   }, []);
 
   const register = useCallback(async (email: string, nic: string, password: string) => {

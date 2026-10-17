@@ -11,6 +11,7 @@ class ViolationRead(BaseModel):
     type: ViolationType
     points_deducted: int
     evidence_ref: str | None
+    description: str | None = None
     confirmed_at: UtcDateTime
 
     model_config = {"from_attributes": True}

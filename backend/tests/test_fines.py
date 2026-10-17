@@ -150,12 +150,12 @@ def test_pay_fine_marks_paid_but_does_not_give_points_back(client, db_session):
     body = response.json()
     assert body["fine"]["status"] == "PAID"
     assert body["fine"]["payment_method"] == "CARD"
-    # Paying settles the fine; the violation's points still count (SPEEDING = 4).
-    assert body["driver_points"] == 4
+    # Paying settles the fine; the violation's points still count (SPEEDING = 3).
+    assert body["driver_points"] == 3
     assert body["license_status"] == "ACTIVE"
 
     license_response = client.get("/licenses/me", headers=driver_headers)
-    assert license_response.json()["points"] == 4
+    assert license_response.json()["points"] == 3
 
 
 def test_pay_fine_does_not_lift_a_suspension(client, db_session):
@@ -166,8 +166,9 @@ def test_pay_fine_does_not_lift_a_suspension(client, db_session):
     driver_id = client.get(
         "/police/lookup", headers=officer_headers, params={"nic": "991234567V"}
     ).json()["driver_id"]
-    # DRUNK_DRIVING=10 points hits the suspension threshold in one violation.
-    violation = _record_violation(client, officer_headers, driver_id, "DRUNK_DRIVING")
+    # DRUNK_DRIVING (6) plus RED_LIGHT (4) reaches the 10-point threshold.
+    _record_violation(client, officer_headers, driver_id, "DRUNK_DRIVING")
+    violation = _record_violation(client, officer_headers, driver_id, "RED_LIGHT")
     assert violation["license_status"] == "SUSPENDED"
     fine_id = violation["fine"]["id"]
 

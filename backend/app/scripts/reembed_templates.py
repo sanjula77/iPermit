@@ -44,7 +44,11 @@ def main() -> None:
                 skipped += 1
                 continue
             try:
-                store_template(driver_id, build_enrollment_embedding(approved))
+                store_template(
+                    driver_id,
+                    build_enrollment_embedding(approved),
+                    actor_id="system:reembed",
+                )
             except (FaceEnrollmentError, FaceEngineError) as exc:
                 # Keep the old template rather than leaving the driver unmatchable.
                 print(f"skip {driver_id}: {exc}")

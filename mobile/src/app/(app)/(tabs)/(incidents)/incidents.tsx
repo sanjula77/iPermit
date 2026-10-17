@@ -10,6 +10,7 @@ import { Banner } from '@/components/banner';
 import { Card } from '@/components/card';
 import { EmptyState } from '@/components/empty-state';
 import { IconTile } from '@/components/icon-tile';
+import { IncidentPhoto } from '@/components/incident-photo';
 import { IncidentsMap } from '@/components/incidents-map';
 import { ListRow, ListSeparator } from '@/components/list-row';
 import { ScreenState } from '@/components/screen-state';
@@ -45,17 +46,24 @@ export default function IncidentsScreen() {
   // Rows with an action in flight: the server counts every Confirm call, so a
   // double tap must not send two.
   const busyIds = useRef(new Set<string>());
-  const { reported } = useLocalSearchParams<{ reported?: 'incident' | 'zone' }>();
+  const { reported, photoFailed } = useLocalSearchParams<{
+    reported?: 'incident' | 'zone';
+    photoFailed?: string;
+  }>();
 
   useEffect(() => {
     // Set by the Report screen on success; show it once, then clear the param.
     if (reported) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setNotice({ kind: 'success', text: reported === 'zone' ? 'Danger zone marked.' : 'Incident reported.' });
+      setNotice(
+        photoFailed
+          ? { kind: 'error', text: "Incident reported, but the photo couldn't be uploaded." }
+          : { kind: 'success', text: reported === 'zone' ? 'Danger zone marked.' : 'Incident reported.' },
+      );
       setTab(reported === 'zone' ? 'zones' : 'incidents');
-      router.setParams({ reported: undefined });
+      router.setParams({ reported: undefined, photoFailed: undefined });
     }
-  }, [reported]);
+  }, [reported, photoFailed]);
 
   function showOnMap(point: LatLng) {
     setFocus(point);
@@ -225,6 +233,7 @@ export default function IncidentsScreen() {
                       severity={incident.severity}
                       title={INCIDENT_LABEL[incident.type]}
                       detail={`${confirmations(incident.confirmation_count)} · ${relativeTime(incident.created_at)}`}
+                      photoId={incident.has_photo ? incident.id : undefined}
                       onPress={() => showOnMap({ lat: incident.lat, lng: incident.lng })}
                       onConfirm={() =>
                         runAction(incident.id, () => confirmIncident(incident.id), 'Incident confirmed. Thanks for the update.')
@@ -276,6 +285,7 @@ function ReportRow({
   severity,
   title,
   detail,
+  photoId,
   onPress,
   onConfirm,
   onClear,
@@ -287,6 +297,7 @@ function ReportRow({
   severity: RoadIncidentSeverity;
   title: string;
   detail: string;
+  photoId?: string;
   onPress: () => void;
   onConfirm: () => void;
   onClear: () => void;
@@ -306,7 +317,9 @@ function ReportRow({
       meta={detail}
       badge={<StatusBadge tone={SEVERITY_TONE[severity]} icon="alert-circle-outline" label={SEVERITY_LABEL[severity]} />}
       footer={
-        <View style={styles.rowActions}>
+        <>
+          {photoId ? <IncidentPhoto incidentId={photoId} testID={`photo-${photoId}`} /> : null}
+          <View style={styles.rowActions}>
           <Pressable
             onPress={onConfirm}
             testID={confirmTestID}
@@ -333,7 +346,8 @@ function ReportRow({
               Clear
             </ThemedText>
           </Pressable>
-        </View>
+          </View>
+        </>
       }
     />
   );

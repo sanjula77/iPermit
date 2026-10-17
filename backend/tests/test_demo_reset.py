@@ -46,7 +46,9 @@ def _populated(client, db_session):
     return admin, officer, driver
 
 
-def test_reset_is_off_unless_the_server_enables_it(client, db_session):
+def test_reset_is_off_unless_the_server_enables_it(client, db_session, monkeypatch):
+    # Whatever a developer's local .env says, the built-in default is off.
+    monkeypatch.setattr(settings, "allow_demo_reset", False)
     admin, _officer, _driver = _populated(client, db_session)
 
     status = client.get("/admin/demo-reset/status", headers=admin).json()

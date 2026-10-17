@@ -1,6 +1,6 @@
 import type { LicenseCategory, LicenseStatus } from '@/types/license';
 
-export type ViolationType = 'WHITE_LINE' | 'SPEEDING' | 'RED_LIGHT' | 'DRUNK_DRIVING';
+export type ViolationType = 'WHITE_LINE' | 'SPEEDING' | 'RED_LIGHT' | 'DRUNK_DRIVING' | 'OTHER';
 export type FineStatus = 'UNPAID' | 'PAID' | 'REVERSED';
 
 export interface ViolationRead {
@@ -8,6 +8,8 @@ export interface ViolationRead {
   type: ViolationType;
   points_deducted: number;
   evidence_ref: string | null;
+  // What the officer wrote, for an OTHER violation.
+  description: string | null;
   confirmed_at: string;
 }
 
@@ -51,6 +53,7 @@ export interface RecordViolationResponse {
 export interface RecentViolation {
   id: string;
   type: ViolationType;
+  description: string | null;
   points_deducted: number;
   confirmed_at: string;
   driver_email: string;

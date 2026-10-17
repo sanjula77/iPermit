@@ -2,7 +2,7 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, Float, ForeignKey, Integer
+from sqlalchemy import DateTime, Enum, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -55,5 +55,8 @@ class RoadIncident(Base):
     confirmation_count: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     expires_at: Mapped[datetime] = mapped_column(DateTime)
+    # Optional scene photo added by the reporter, path relative to the upload
+    # directory. Removed (file and value) once the incident is cleared or expires.
+    photo_path: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     reporter: Mapped["User"] = relationship()

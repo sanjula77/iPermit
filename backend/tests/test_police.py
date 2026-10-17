@@ -267,10 +267,10 @@ def test_record_violation_deducts_points_and_creates_fine(client, db_session):
     assert response.status_code == 201
     body = response.json()
     assert body["violation"]["type"] == "SPEEDING"
-    assert body["violation"]["points_deducted"] == 4
+    assert body["violation"]["points_deducted"] == 3
     assert body["fine"]["status"] == "UNPAID"
     assert body["fine"]["amount"] == 5000
-    assert body["driver_points"] == 4
+    assert body["driver_points"] == 3
     assert body["license_status"] == "ACTIVE"
     assert driver_id  # sanity: license existed before recording the violation
 
@@ -284,11 +284,20 @@ def test_repeated_violations_suspend_license_at_threshold(client, db_session):
         "/police/lookup", headers=officer_headers, params={"nic": "991234567V"}
     ).json()["driver_id"]
 
-    # DRUNK_DRIVING=10 points meets the 10-point suspension threshold in one shot.
-    response = client.post(
+    # DRUNK_DRIVING=6 does not suspend on its own; adding RED_LIGHT=4 reaches 10.
+    first = client.post(
         "/police/violations",
         headers=officer_headers,
         json={"driver_id": driver_id, "type": "DRUNK_DRIVING"},
+    )
+    assert first.status_code == 201
+    assert first.json()["driver_points"] == 6
+    assert first.json()["license_status"] == "ACTIVE"
+
+    response = client.post(
+        "/police/violations",
+        headers=officer_headers,
+        json={"driver_id": driver_id, "type": "RED_LIGHT"},
     )
 
     assert response.status_code == 201

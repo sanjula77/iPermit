@@ -155,7 +155,11 @@ suspend a license at a threshold, so that repeat offenders are progressively pen
 
 #### Acceptance Criteria
 1. WHEN a violation is confirmed, THE system SHALL deduct points per a defined
-   per-offense schedule (e.g., white-line=3, speeding=4, red-light=6, drunk-driving=10).
+   per-offense schedule (e.g., white-line=1, speeding=3, red-light=4, drunk-driving=6).
+   For an offence not on the list, an officer SHALL be able to record an "other"
+   violation by writing a description (5-100 characters) and choosing 1-5 points;
+   its fine is LKR 1,000 per point, and the 5-point cap keeps a single entry below
+   the suspension threshold.
 2. THE system SHALL start each driver at 0 points and suspend the license WHEN
    the points that currently count reach 10.
 3. THE system SHALL count each violation's points for a fixed period of 12 months from
@@ -166,6 +170,23 @@ suspend a license at a threshold, so that repeat offenders are progressively pen
    to users stop at the threshold (for example 10 / 10) however many further violations
    are recorded.
 4. THE system SHALL maintain a full violation history per driver, immutable once recorded.
+
+#### Offline recording (roadside, no signal)
+An officer in a connectivity dead zone SHALL still be able to record a violation on a
+driver they have already identified:
+1. THE officer app SHALL save every confirmed violation on the phone (SQLite) before
+   sending it, so it survives a dropped connection or a closed app, and SHALL send it
+   automatically when a connection returns (and on app start and every 30 seconds).
+2. EACH violation SHALL carry an id made on the phone; the server SHALL record a given
+   id at most once, so a resend never creates a second violation or fine, and SHALL
+   refuse an id already used by a different officer.
+3. THE violation SHALL keep the time the officer recorded it; points count from then, not
+   from when it reached the server. The server SHALL refuse a time in the future (beyond
+   5 minutes of clock drift) or older than 7 days, and the officer SHALL see the refusal.
+4. THE officer SHALL be able to see what is waiting, sent or refused. Points, the fine and
+   any suspension are applied by the server when the violation arrives.
+Out of scope: identifying a driver offline (face, QR and NIC lookups need the server) and
+uploading evidence photos offline.
 
 ### Requirement REQ-9: Fine Issuance & Payment
 
@@ -232,6 +253,9 @@ I can avoid hazards and warn other drivers.
 3. THE system SHALL let other drivers confirm or clear a reported incident.
 4. THE system SHALL auto-expire incidents after a defined time window.
 5. THE system SHALL notify nearby drivers of new high-severity incidents.
+6. THE system SHALL let the reporter attach one optional photo to an active incident,
+   visible to other signed-in drivers while the incident is active. The photo SHALL be
+   stored without its EXIF metadata and deleted when the incident is cleared or expires.
 
 ### Requirement REQ-14: Admin Analytics Dashboard
 

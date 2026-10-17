@@ -18,7 +18,7 @@ import {
 } from '@/components/ui';
 import * as appealsApi from '@/lib/appeals-api';
 import { extractErrorMessage } from '@/lib/api-client';
-import { VIOLATION_LABEL, formatDate, formatLkr } from '@/lib/format';
+import { formatDate, formatLkr, violationTitle } from '@/lib/format';
 import type { Appeal, AppealStatus } from '@/types/fine';
 
 type Filter = AppealStatus | 'ALL';
@@ -146,7 +146,7 @@ export default function AppealsPage() {
                         </div>
                       </td>
                       <td className="whitespace-nowrap px-5 py-4">
-                        <p className="font-medium text-gray-900">{VIOLATION_LABEL[appeal.fine.violation.type]}</p>
+                        <p className="font-medium text-gray-900">{violationTitle(appeal.fine.violation.type, appeal.fine.violation.description)}</p>
                         <p className="text-xs text-gray-500">
                           {formatLkr(appeal.fine.amount)} · {appeal.fine.violation.points_deducted} pts ·{' '}
                           {formatDate(appeal.fine.violation.confirmed_at)}

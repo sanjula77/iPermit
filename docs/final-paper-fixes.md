@@ -44,6 +44,7 @@ Severity: **A** = fix before submitting; **B** = should fix; **C** = polish.
 | P24 | Imprecise wording | **Confirmed** | "predicts days until suspension" is a linear projection; "log-tampering detection depends on an externally stored head hash" — it is the removal of the **newest entries** that needs it | C |
 | P25 | Author block | **Confirmed** | Supervisor spelled "Wijayawardhana"; README and slides use "Wijewardhana". The four e-mails are one run: "…lk,ITBIN-…" with no spaces | B |
 | P26 | **Personal name in the file properties** | **New** | `lastModifiedBy` = "bashi rashmika"; creator "iPermit authors". Matters if review is blind | B |
+| P28 | **"An AI match alone never confirms identity" is wrong** | **New** | Sect. 3.1. In the code a single confident match opens the driver record directly (`police-verify.tsx` line 102); only a low-confidence match needs officer confirmation | A |
 | P27 | Template: built by direct formatting, not the Springer macro styles | **Confirmed** | Page size and margins match (A4, 12.2 × 19.3 cm), Times, headings sized correctly; body paragraphs have no named style and no first-line indent | C |
 
 ### Corrections to what I said earlier
@@ -66,10 +67,10 @@ Severity: **A** = fix before submitting; **B** = should fix; **C** = polish.
 ### F1 — Abstract (replace the whole paragraph) — fixes P1, P12, P2
 **FIND:** the paragraph starting "Abstract. Driving-license administration and traffic enforcement in many developing countries…"
 
-**REPLACE WITH** (keep the run-in "Abstract."; 222 words, limit 150–250):
+**REPLACE WITH** (keep the run-in "Abstract."; 230 words, limit 150–250):
 
 ```text
-Driving-license administration and traffic enforcement in Sri Lanka, a developing country, still rely on physical cards, visual identity checks and partly manual fine handling. This paper presents iPermit, a working prototype of a virtual driving-license platform for drivers, police officers and administrators. Drivers hold a QR-based digital license; officers verify identity by face scan, QR code or NIC lookup; and a rolling 12-month demerit-point scheme (suspension at 10 points) drives fines, appeals, suspension and automatic reinstatement. A rule-based behavior analyzer gives each driver an explainable risk level and trend, and a community map shares road incidents and danger zones without tracking drivers. Face verification uses RetinaFace and ArcFace on ONNX Runtime with a FAISS index. Templates are stored separately under AES-256-GCM envelope encryption, and every biometric action is written to a hash-chained, Ed25519-signed audit log, a design intended to support the data-protection duties for biometric data. An offline-first queue lets officers record violations without coverage and synchronize them without duplicates. On two public datasets (LFW and a South Asian celebrity set), at a similarity threshold of 0.42, the false-accept rate was 0.001% and 0.003% and the false-reject rate 2.9% and 9.9%, measured before a pre-processing step that raised false rejections was removed. These results come from public images, not local drivers. Liveness detection, automated violation detection and user-acceptance testing remain future work.
+Driving-license administration and traffic enforcement in Sri Lanka, a developing country, still rely on physical cards, visual identity checks and partly manual fine handling. This paper presents iPermit, a working prototype of a virtual driving-license platform for drivers, police officers and administrators. Drivers hold a QR-based digital license; officers verify identity by face scan, QR code or NIC lookup; and a rolling 12-month demerit-point scheme (suspension at 10 points) drives fines, appeals, suspension and automatic reinstatement. A rule-based behavior analyzer gives each driver an explainable risk level and trend, and a community map shares road incidents and danger zones without tracking drivers. Face verification uses RetinaFace and ArcFace on ONNX Runtime with a FAISS index. Templates are stored separately under AES-256-GCM envelope encryption, and every biometric action is written to a hash-chained, Ed25519-signed audit log, a design intended to support the data-protection duties for biometric data. An offline-first queue lets officers record violations without coverage and synchronize them without duplicates. On two public datasets (LFW and an Indian film-celebrity set used as a regional proxy), comparing single photo pairs at a similarity threshold of 0.42, the false-accept rate was 0.001% and 0.003% and the false-reject rate 2.9% and 9.9%, measured before a pre-processing step that raised false rejections was removed. These results come from public images, not local drivers. Liveness detection, automated violation detection and user-acceptance testing remain future work.
 ```
 
 If you re-run the face evaluation with CLAHE off, replace the four numbers and delete "measured before a pre-processing step that raised false rejections was removed".
@@ -144,7 +145,7 @@ The system serves three roles: drivers, police officers and administrators.
 ### F10 — Sect. 4 paragraphs — fixes P5, P7, P18, P24
 **F10a — "Face pipeline and quality gate." (replace the whole paragraph; adds the `[21]` citation and the 112-pixel detail):**
 ```text
-Face pipeline and quality gate. Enrollment requires 4 photographs, checked for face detection confidence, size, sharpness, and brightness. Sharpness is measured on the face resized to the recognizer's 112-pixel input, so sharp phone selfies are not rejected. Pairwise cosine similarity ensures all images show the same person before their embeddings are averaged into one template. Invalid submissions are rejected. Roadside verification uses a 0.42 matching threshold, with officer confirmation of ranked candidates. Contrast-limited adaptive histogram equalization (CLAHE) [21] was disabled after it raised the false-reject rate (Sect. 5.2), and stored templates were recomputed. Thresholds and quality limits remain configurable.
+Face pipeline and quality gate. Enrollment requires 4 photographs, checked for face detection confidence, size, sharpness, and brightness. Sharpness is measured on the face resized to the recognizer's 112-pixel input, so sharp phone selfies are not rejected. Pairwise cosine similarity ensures all images show the same person before their embeddings are averaged into one template. Invalid submissions are rejected. Roadside identification searches all enrolled templates with a 0.42 similarity threshold, and uncertain matches need officer confirmation. Contrast-limited adaptive histogram equalization (CLAHE) [21] was disabled after it raised the false-reject rate (Sect. 5.2), and stored templates were recomputed. Thresholds and quality limits remain configurable.
 ```
 
 **F10b — "Behavior analysis and badges." (remove the `[13]` and the "predicts" wording):**
@@ -166,7 +167,7 @@ Protection of biometric data. Each face template is encrypted using AES-256-GCM 
 ### F11 — Sect. 5.1 first paragraph and Sect. 5.2 — fixes P23 (new numbers)
 **FIND (Sect. 5.1, first sentence):** "…two public sets (Table 2): LFW [10] and a Kaggle set of Bollywood celebrity faces [21], included because…"
 ```text
-We assessed verification with a FAR/FRR/EER harness on two public sets (Table 2): LFW [12] and a Kaggle set of Bollywood celebrity faces [25], included because its faces are closer to the South Asian user base. Both used the buffalo_l pipeline (RetinaFace and ArcFace), a 640×640 detector input, at most 15 usable images per person so that the comparison is like-for-like, and seed 42. Confidence intervals come from an identity-level bootstrap with 1,000 replicates.
+We assessed verification with a FAR/FRR/EER harness on two public sets (Table 2): LFW [12] and a Kaggle set of Bollywood celebrity faces [25], used as a regional proxy for the South Asian user base. Both used the buffalo_l pipeline (RetinaFace and ArcFace), a 640×640 detector input, at most 15 usable images per person so that the comparison is like-for-like, and seed 42. Confidence intervals come from an identity-level bootstrap with 1,000 replicates.
 ```
 **FIND (Sect. 5.2):** "A standard enhancement step therefore harmed a modern embedding model, which is why it was removed."
 ```text
@@ -175,14 +176,14 @@ In this setting a standard enhancement step therefore harmed a pretrained embedd
 
 ### F12 — Sect. 6 Discussion and Limitations (replace the whole section) — fixes P22
 ```text
-Three design choices matter most. A rolling window makes points expire, so paying a fine cannot reset a driver's record. Face recognition stays advisory: officers confirm uncertain matches, and QR or NIC lookup remains available. Proactive alerts to nearby drivers were left out because they would require continuous location tracking.
+Three design choices matter most. A rolling window makes points expire, so paying a fine cannot reset a driver's record. Uncertain face matches require officer confirmation, and QR or NIC lookup remains available. Proactive alerts to nearby drivers were left out because they would require continuous location tracking.
 
-Limitations. (i) Face verification was evaluated on public celebrity images, not on Sri Lankan drivers or roadside photographs, and the reported rates were measured before CLAHE was disabled. (ii) There is no liveness detection, so a printed photograph could be accepted; the officer is the final check. (iii) No consent step or data-protection impact assessment exists, although the Act lists consent among the conditions for processing special categories of personal data [18]. (iv) The QR token is replayable and works only online; uploaded photos and network traffic are not yet encrypted, and the master key is an environment variable. (v) Automated violation detection is not built. (vi) Point values and fines are placeholders, and payment uses a mock gateway. (vii) The behavior thresholds are unvalidated. (viii) The phone-side SQLite queue was not tested on a device, push delivery was not verified on a physical phone, and no load test, iOS test or usability study was carried out.
+Limitations. (i) Face verification was evaluated on public celebrity images, not on Sri Lankan drivers or roadside photographs; the rates are for single-photo pair comparison, not for searching a full driver database; and they were measured before CLAHE was disabled. (ii) There is no liveness detection, so a printed photograph could be accepted; the officer is the final check. (iii) No consent step or data-protection impact assessment exists, although the Act lists consent among the conditions for processing special categories of personal data [18]. (iv) The QR token is replayable and works only online; uploaded photos and network traffic are not yet encrypted, and the master key is an environment variable. (v) Automated violation detection is not built. (vi) Point values and fines are placeholders, and payment uses a mock gateway. (vii) The behavior thresholds are unvalidated. (viii) The phone-side SQLite queue was not tested on a device, push delivery was not verified on a physical phone, and no load test, iOS test or usability study was carried out.
 ```
 
 ### F13 — Sect. 7 Conclusion (replace both paragraphs) — fixes P2
 ```text
-iPermit is a prototype that integrates digital licensing, face verification, demerit points, explainable behavior analysis, offline-first violation handling and protected biometric storage. On two public datasets, at a threshold of 0.42, the false-accept rate was 0.001% and 0.003% and the false-reject rate 2.9% and 9.9%, measured before CLAHE was disabled; on LFW, disabling it lowered the false-reject rate from 2.95% to 1.37%. These results come from public images, not from Sri Lankan drivers.
+iPermit is a prototype that integrates digital licensing, face verification, demerit points, explainable behavior analysis, offline-first violation handling and protected biometric storage. On two public datasets, comparing single photo pairs at a threshold of 0.42, the false-accept rate was 0.001% and 0.003% and the false-reject rate 2.9% and 9.9%, measured before CLAHE was disabled; on LFW, disabling it lowered the false-reject rate from 2.95% to 1.37%. These results come from public images, not from Sri Lankan drivers.
 
 Future work: validate on photographs of local drivers, add consent and liveness detection, conduct user-acceptance testing, add HTTPS and managed key storage, and integrate with national payment and licensing platforms.
 ```
@@ -269,12 +270,93 @@ The layout matches the Springer template's page, margins and heading sizes, so i
 
 ---
 
-## 3. Apply-and-check list
-- [ ] F1–F3, F9, F12–F15 (no numbering impact).
+## 3. No-re-run fixes for the high-priority technical problems (added 2026-10-20)
+
+These fix the biggest technical problems with **text and a calculation from numbers already in the paper**.
+Nothing here needs a new experiment. They make the paper say exactly what the evidence shows, which is
+what a reviewer checks. Apply F20–F25 together with F1, F10a, F11, F12 and F13 (already updated above).
+
+### F20 — Sect. 5.1: add a "Protocol and scope" paragraph (right after the first paragraph, before Table 2) — fixes high problems 1, 2
+```text
+Protocol and scope. The harness scores pairs of single photographs, genuine (same person) or impostor (different people), and so reports 1:1 verification error. The deployed system differs in two ways that are not measured here. Enrollment averages four photographs into one template, and a roadside scan is searched against all templates (1:N identification). Images in which the detector found no face, or more than one face, were excluded because the system also rejects them: on LFW 6 images with no face and 276 with two or more; on the second set 17 and 119, plus one duplicate. The rates below therefore describe single-photo pair comparison, not the performance of roadside search; Sect. 5.3 gives an indicative estimate of how they scale.
+```
+
+### F21 — Table 3 caption, header and the paragraph after it — fixes high problems 3, 4 and the notation issue
+**FIND (caption):** `Table 3. Verification error at the operating threshold of 0.42 (intervals in brackets). Measured with CLAHE enabled.`
+```text
+Table 3. Single-photo pair verification error at the operating threshold of 0.42 (intervals in brackets). Measured with the pre-ablation pipeline (CLAHE enabled); the deployed pipeline has CLAHE disabled.
+```
+**FIND (column header):** `TAR at FAR = 0.001` → **REPLACE WITH:** `TAR at FAR = 0.1%`
+
+**FIND (last sentence of the paragraph after Table 3):** `Tables 2 and 3 used CLAHE, whereas the deployed system has it disabled.`
+```text
+Tables 2 and 3 used the pre-ablation pipeline (CLAHE enabled). The deployed pipeline, with CLAHE disabled, was measured only on LFW (Table 4: false-reject rate 1.37%, false-accept rate 0.0016%); its rates on the second dataset were not measured.
+```
+
+### F22 — New Sect. 5.3 "From Pair Verification to Roadside Search" (insert before "Software Testing", which becomes 5.4) — fixes high problem 1
+This is a calculation from the false-accept rates already in Table 3, labelled as an estimate, not a measurement.
+
+```text
+5.3 From Pair Verification to Roadside Search
+```
+```text
+The roadside scan searches one probe against every enrolled template, so the chance of a false candidate grows with the number of drivers N. If each comparison behaved like the impostor pairs in Table 3, a search would return about N × FAR false candidates (Table 5). This is an indicative calculation, not a measurement: it assumes that the pair-level rate holds for every comparison and that comparisons are independent, and the rates include pairs traced to mislabeled photographs, which overstates them. The system presents ranked candidates and requires officer confirmation of uncertain matches, but a single confident match opens the driver record directly, so a false candidate in a large database could reach the officer. A database of national size would need an identification-level evaluation, and probably a higher threshold or a second factor (QR code or NIC) before a search result is trusted.
+```
+```text
+Table 5. Indicative false candidates per search at threshold 0.42, from the per-pair false-accept rates of Table 3 (LFW 0.00126%, second dataset 0.00251%).
+```
+
+| Enrolled drivers N | Expected false candidates per search (LFW / second set) | Chance of at least one false candidate (LFW / second set) |
+|---|---|---|
+| 1,000 | 0.013 / 0.025 | 1.3% / 2.5% |
+| 10,000 | 0.13 / 0.25 | 11.9% / 22.2% |
+| 100,000 | 1.3 / 2.5 | 71.8% / 91.9% |
+
+(Computed as N × FAR and 1 − (1 − FAR)^N from 12 of 949,024 and 28 of 1,113,750 impostor pairs.)
+
+### F23 — Terminology: identification versus verification — fixes the terminology problem
+| Where | FIND | REPLACE WITH |
+|---|---|---|
+| Sect. 2.2 heading | `2.2 Face Recognition for Identity Verification` | `2.2 Face Recognition for Identity Verification and Identification` |
+| Sect. 5.1 heading | `5.1 Face Verification on Public Data` | `5.1 Face Verification on Public Data (1:1 Pairs)` |
+| Sect. 4 face pipeline | (already changed in F10a) | "Roadside identification searches all enrolled templates…" |
+
+Use "identification" for the officer's scan and "verification" only for the evaluation's pair comparison.
+
+### F24 — Sect. 3.1: remove the false statement — fixes P28
+**FIND:** `makes explicit that an AI match alone never confirms identity.`
+```text
+makes explicit that a low-confidence AI match never identifies a driver on its own; a confident match opens the driver record, and the officer can always use QR or NIC lookup.
+```
+
+### F25 — Sect. 4 "Offline recording": evidence wording and one added limit — fixes high problem 7
+**FIND:** `End-to-end browser testing confirmed that one queued violation produced exactly one violation and one fine after the backend restarted. However, the preview used localStorage rather than device SQLite, and the queue is unencrypted.`
+```text
+In one end-to-end run in a browser preview, a violation queued while the backend was stopped produced exactly one violation and one fine after the backend restarted. The preview used localStorage instead of device SQLite, so the on-device queue is untested, and the queue is unencrypted. The offense time comes from the officer's phone clock, so an officer could shift a violation by up to the 7-day limit.
+```
+
+### How the high-priority problems are now covered without a re-run
+| High problem | Covered by | What the paper now says |
+|---|---|---|
+| 1. 1:N vs 1:1 | F20, F22, F23 | The numbers are for single-photo pairs; an indicative N × FAR table shows how they scale; the confident-match behavior is stated |
+| 2. Template protocol differs | F20 | States that four-photo averaging and 1:N search are not measured |
+| 3. CLAHE-on numbers | F1, F13, F21 | Table 3 is labelled "pre-ablation"; the deployed pipeline is reported on LFW only (Table 4); the second dataset's deployed rate is stated as not measured |
+| 4. "Zero false accepts" | F13 | Measured rates replace it |
+| 5. Abstract misstates the rule | F1 | Replaced |
+| 6. Claims not supported by their sources | F4–F8, F10, F18 | Sources replaced or the claim reworded |
+| 7. Offline evidence | F25 | "One run, on a stand-in" |
+| 8. "Never confirms identity" | F24 | Corrected |
+
+**What this does not remove:** a reviewer can still say the evaluation is 1:1 on public images. That is why the paper now says so itself, and why the limits are in Sect. 5.1, 5.3 and 6 rather than hidden. Stating the limit is accepted practice. Overclaiming is what gets papers rejected.
+
+---
+
+## 4. Apply-and-check list
+- [ ] F1–F3, F9, F12–F15, F20, F21, F23–F25 (no numbering impact; F22 adds Table 5 and renames Software Testing to 5.4).
 - [ ] F4–F8, F10–F11 and F18 **together** (numbering).
 - [ ] Search the paper for `[`: every number must exist in F18 and every entry must be cited (F18 is checked: first citations run 1 → 25 in order).
 - [ ] Search for "offence", "Enrolment", "licence", "Sect. 5.4", "Emerging", "such as drivers", "fixed demerit" — none should remain.
 - [ ] Rebuild the three figures (F16) and check them at print size.
 - [ ] Remove personal information from the file (F17).
-- [ ] Re-run the face evaluation with CLAHE off (still open), then update F1 and F13, Table 3 and the Table 3 caption.
+- [ ] Optional, only if time allows later: re-run the face evaluation with CLAHE off, then update F1, F13, Table 3 and its caption. Not needed for submission now (see Sect. 3).
 - [ ] Confirm with the call for papers: page limit, blind review, keyword count.
